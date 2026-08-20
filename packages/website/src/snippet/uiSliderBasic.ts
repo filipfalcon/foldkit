@@ -4,7 +4,7 @@
 import { Match as M, Option, Schema as S } from 'effect'
 import { Subscription, Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Slider } from '@foldkit/ui'
@@ -34,8 +34,10 @@ const init = () => [
 ]
 
 // Embed the Slider Message in your parent Message:
-const GotSliderMessage = m('GotSliderMessage', {
-  message: Slider.Message,
+const Message = messages({
+  GotSliderMessage: {
+    message: Slider.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. `ChangedValue`
@@ -62,7 +64,7 @@ const foldSlider = Update.foldChild({
   read: (model: Model) => Option.some(model.ratingDemo),
   write: (model, nextRatingDemo) =>
     evo(model, { ratingDemo: () => nextRatingDemo }),
-  toParentMessage: message => GotSliderMessage({ message }),
+  toParentMessage: message => Message.GotSliderMessage({ message }),
   foldOutMessage: foldSliderOutMessage,
 })
 
@@ -77,7 +79,7 @@ const sliderSubscriptions = Subscription.lift({
   sliderEscape: Slider.subscriptions.dragEscape,
 })<Model, Message>({
   toChildModel: model => model.ratingDemo,
-  toParentMessage: message => GotSliderMessage({ message }),
+  toParentMessage: message => Message.GotSliderMessage({ message }),
 })
 
 const subscriptions = Subscription.aggregate<Model, Message>()(
@@ -142,5 +144,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
           ],
         ),
     },
-    toParentMessage: message => GotSliderMessage({ message }),
+    toParentMessage: message => Message.GotSliderMessage({ message }),
   })

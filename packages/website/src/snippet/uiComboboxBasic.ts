@@ -4,7 +4,7 @@
 import { Array, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import { type HtmlBuilder, childAttributes } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Combobox } from '@foldkit/ui'
@@ -35,8 +35,10 @@ const init = () => [
 ]
 
 // Wrap Combobox's Messages so they can flow through your update:
-const GotComboboxMessage = m('GotComboboxMessage', {
-  message: Combobox.Message,
+const Message = messages({
+  GotComboboxMessage: {
+    message: Combobox.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. `Selected`
@@ -63,7 +65,7 @@ const foldCombobox = Update.foldChild({
   update: CityCombobox.update,
   read: (model: Model) => Option.some(model.combobox),
   write: (model, nextCombobox) => evo(model, { combobox: () => nextCombobox }),
-  toParentMessage: message => GotComboboxMessage({ message }),
+  toParentMessage: message => Message.GotComboboxMessage({ message }),
   foldOutMessage: foldComboboxOutMessage,
 })
 
@@ -130,7 +132,7 @@ const view = (model: Model, h: HtmlBuilder<Message>) => {
           backdropAttributes: childAttributes([h.Class('fixed inset-0')]),
           anchor: { placement: 'bottom-start', gap: 8, padding: 8 },
         },
-        toParentMessage: message => GotComboboxMessage({ message }),
+        toParentMessage: message => Message.GotComboboxMessage({ message }),
       }),
     ],
   )

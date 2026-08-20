@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { Document, HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 import { Button } from '@foldkit/ui'
 
@@ -12,9 +12,12 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const ClickedCrash = m('ClickedCrash')
+export const Message = messages({
+  ClickedCrash: {},
+})
 
-export const Message = Schema.Union([ClickedCrash])
+export const { ClickedCrash } = Message
+
 export type Message = typeof Message.Type
 
 // UPDATE
@@ -39,7 +42,7 @@ export const view = (_model: Model, h: HtmlBuilder<Message>): Document => ({
     [
       Button.view(
         {
-          onClick: ClickedCrash(),
+          onClick: Message.ClickedCrash(),
           toView: attributes =>
             h.button(
               [

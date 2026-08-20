@@ -1,4 +1,4 @@
-import { Schema as S, Types } from 'effect'
+import { Array, Schema as S, Types } from 'effect'
 
 /** A `TaggedStruct` schema that can be called directly as a constructor: `Foo({ count: 1 })` instead of `Foo.make({ count: 1 })`. */
 export type CallableTaggedStruct<
@@ -34,46 +34,37 @@ const makeCallable = <Tag extends string, Fields extends S.Struct.Fields>(
     },
   }) as unknown as CallableTaggedStruct<Tag, Fields>
 
-/**
- * Wraps `Schema.TaggedStruct` to create a message variant you can call directly as a constructor.
- * Use `m` for message types — enabling `ClickedReset()` instead of `ClickedReset.make()`.
- *
- * @example
- * ```typescript
- * const ClickedReset = m('ClickedReset')
- * ClickedReset() // { _tag: 'ClickedReset' }
- *
- * const ChangedCount = m('ChangedCount', { count: S.Number })
- * ChangedCount({ count: 1 }) // { _tag: 'ChangedCount', count: 1 }
- * ```
- */
-export function m<Tag extends string>(tag: Tag): CallableTaggedStruct<Tag, {}>
-export function m<Tag extends string, Fields extends S.Struct.Fields>(
-  tag: Tag,
-  fields: Fields,
-): CallableTaggedStruct<Tag, Fields>
-export function m(tag: string, fields: S.Struct.Fields = {}): any {
-  return makeCallable(S.TaggedStruct(tag, fields))
-}
+type TaggedUnionProperty = keyof S.TaggedUnion<{}>
 
-/** Property names the schema surface already occupies. A variant cannot use
- *  one, because the constructor attached under that name would shadow it. */
-type ReservedVariantName =
-  | 'Encoded'
-  | 'Iso'
-  | 'Type'
-  | 'annotate'
-  | 'ast'
-  | 'cases'
-  | 'check'
-  | 'guards'
-  | 'isAnyOf'
-  | 'make'
-  | 'makeEffect'
-  | 'makeOption'
-  | 'match'
-  | 'pipe'
-  | 'rebuild'
+const taggedUnionTypeOnlyPropertyNames = new Set<string>([
+  'Rebuild',
+  '~type.parameters',
+  'Type',
+  'Encoded',
+  'DecodingServices',
+  'EncodingServices',
+  '~type.make.in',
+  '~type.make',
+  '~type.constructor.default',
+  'Iso',
+  '~type.mutability',
+  '~type.optionality',
+  '~encoded.mutability',
+  '~encoded.optionality',
+] satisfies ReadonlyArray<TaggedUnionProperty>)
+
+type MessageVariantNameCollision<Name extends PropertyKey> = Readonly<{
+  'Message variant names must not conflict with Schema.TaggedUnion properties': Name
+}>
+
+type ValidateMessageVariantNames<
+  CasesByTag extends Record<string, S.Struct.Fields>,
+> =
+  Extract<keyof CasesByTag, TaggedUnionProperty> extends infer Name
+    ? [Name] extends [never]
+      ? unknown
+      : MessageVariantNameCollision<Name & PropertyKey>
+    : never
 
 /** The union `messages` returns. A `Schema.TaggedUnion` that also carries one
  *  callable constructor per variant, reachable by tag. */
@@ -99,9 +90,9 @@ export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
  * callable constructor that is itself a schema, which is what `Command.define`
  * needs for its `messages` list.
  *
- * Matching is unaffected. The values are ordinary tagged objects, so `Match`
- * keeps working, including the forms `TaggedUnion.match` cannot express, such
- * as `M.tag` over several tags and `M.tags` with an `M.orElse` fallback.
+ * Use `Message.match` for exhaustive dispatch. The values are ordinary tagged
+ * objects, so Effect `Match` remains available for partial matching, one
+ * handler over several tags, and fallbacks.
  *
  * A Submodel's OutMessage is declared the same way, with variants of its own. A
  * Message is a fact the Submodel handles; an OutMessage is a fact it reports to
@@ -109,11 +100,9 @@ export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
  * internal vocabulary in the parent's contract, so declare them separately even
  * when a pair happens to carry the same fields.
  *
- * `m` still declares a single variant, which is what existing code uses and
- * what keeps an incremental migration working.
- *
  * A variant may not be named after the schema surface it would shadow, such as
- * `make`, `match`, `cases`, or `ast`. Doing so is a type error.
+ * `make`, `match`, `cases`, or `ast`. TypeScript reports the conflicting names,
+ * and untyped calls fail with a runtime error.
  *
  * @example
  * ```typescript
@@ -130,11 +119,20 @@ export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
 export function messages<
   const CasesByTag extends Record<string, S.Struct.Fields>,
 >(
-  casesByTag: Extract<keyof CasesByTag, ReservedVariantName> extends never
-    ? CasesByTag
-    : never,
+  casesByTag: CasesByTag & ValidateMessageVariantNames<CasesByTag>,
 ): Messages<CasesByTag> {
   const union = S.TaggedUnion(casesByTag)
+
+  const conflictingNames = Array.filter(
+    Object.keys(casesByTag),
+    name =>
+      Reflect.has(union, name) || taggedUnionTypeOnlyPropertyNames.has(name),
+  )
+  if (Array.isArrayNonEmpty(conflictingNames)) {
+    throw new Error(
+      `Message variant names conflict with Schema.TaggedUnion properties: ${conflictingNames.join(', ')}`,
+    )
+  }
 
   /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
   const members = union.cases as Record<

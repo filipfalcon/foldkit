@@ -26,7 +26,10 @@ export const workHistoryView = Submodel.defineView<
               model: entry,
               view: workEntryView,
               toParentMessage: message =>
-                WorkHistory.GotEntryMessage({ entryId: entry.id, message }),
+                WorkHistory.GotEntryMessage({
+                  entryId: entry.id,
+                  message,
+                }),
             }),
           ),
         ),

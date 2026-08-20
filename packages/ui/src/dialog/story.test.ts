@@ -10,19 +10,12 @@ import { describe, it } from '@effect/vitest'
 import * as Animation from '../animation/index.js'
 import {
   CloseDialog,
-  Closed,
-  CompletedCloseDialog,
-  CompletedReleaseDialogResources,
-  CompletedShowDialog,
-  type Message,
+  Message,
   type Model,
-  Opened,
+  OutMessage,
   ReleaseDialogResources,
   type RenderInfo,
-  RequestedClose,
-  RequestedOpen,
   ShowDialog,
-  Unmounted,
   descriptionId,
   init,
   initialFocusMarkerAttribute,
@@ -150,9 +143,9 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test' })),
-          Story.message(RequestedOpen()),
-          Story.expectOutMessage(Opened()),
-          Story.Command.resolve(ShowDialog, CompletedShowDialog()),
+          Story.message(Message.RequestedOpen()),
+          Story.expectOutMessage(OutMessage.Opened()),
+          Story.Command.resolve(ShowDialog, Message.CompletedShowDialog()),
           Story.model(model => {
             expect(model.isOpen).toBe(true)
           }),
@@ -163,13 +156,13 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test' })),
-          Story.message(RequestedOpen()),
+          Story.message(Message.RequestedOpen()),
           Story.Command.resolve(
             ShowDialog({
               id: 'test',
               focusSelector: initialFocusMarkerSelector,
             }),
-            CompletedShowDialog(),
+            Message.CompletedShowDialog(),
           ),
         )
       })
@@ -178,10 +171,10 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', focusSelector: '#search-input' })),
-          Story.message(RequestedOpen()),
+          Story.message(Message.RequestedOpen()),
           Story.Command.resolve(
             ShowDialog({ id: 'test', focusSelector: '#search-input' }),
-            CompletedShowDialog(),
+            Message.CompletedShowDialog(),
           ),
         )
       })
@@ -190,7 +183,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', isOpen: true })),
-          Story.message(RequestedOpen()),
+          Story.message(Message.RequestedOpen()),
           Story.expectNoOutMessage(),
           Story.model(model => {
             expect(model.isOpen).toBe(true)
@@ -202,9 +195,9 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', isOpen: true })),
-          Story.message(RequestedClose()),
-          Story.expectOutMessage(Closed()),
-          Story.Command.resolve(CloseDialog, CompletedCloseDialog()),
+          Story.message(Message.RequestedClose()),
+          Story.expectOutMessage(OutMessage.Closed()),
+          Story.Command.resolve(CloseDialog, Message.CompletedCloseDialog()),
           Story.model(model => {
             expect(model.isOpen).toBe(false)
           }),
@@ -215,7 +208,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test' })),
-          Story.message(RequestedClose()),
+          Story.message(Message.RequestedClose()),
           Story.expectNoOutMessage(),
           Story.model(model => {
             expect(model.isOpen).toBe(false)
@@ -228,7 +221,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(originalModel),
-          Story.message(CompletedShowDialog()),
+          Story.message(Message.CompletedShowDialog()),
           Story.model(model => {
             expect(model).toBe(originalModel)
           }),
@@ -241,10 +234,10 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', isAnimated: true })),
-          Story.message(RequestedOpen()),
+          Story.message(Message.RequestedOpen()),
           Story.Command.expectHas(ShowDialog, Animation.WaitForPaint),
           Story.Command.resolveAll(
-            [ShowDialog, CompletedShowDialog()],
+            [ShowDialog, Message.CompletedShowDialog()],
             [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
             [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
           ),
@@ -259,7 +252,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', isOpen: true, isAnimated: true })),
-          Story.message(RequestedClose()),
+          Story.message(Message.RequestedClose()),
           Story.model(model => {
             expect(model.isOpen).toBe(false)
             expect(model.animation.transitionState).toBe('LeaveStart')
@@ -267,7 +260,7 @@ describe('Dialog', () => {
           Story.Command.resolveAll(
             [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
             [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
-            [CloseDialog, CompletedCloseDialog()],
+            [CloseDialog, Message.CompletedCloseDialog()],
           ),
           Story.model(model => {
             expect(model.animation.transitionState).toBe('Idle')
@@ -288,7 +281,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(leavingModel),
-          Story.message(RequestedClose()),
+          Story.message(Message.RequestedClose()),
           Story.model(model => {
             expect(model).toBe(leavingModel)
           }),
@@ -309,7 +302,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(leavingModel),
-          Story.message(RequestedClose()),
+          Story.message(Message.RequestedClose()),
           Story.model(model => {
             expect(model).toBe(leavingModel)
           }),
@@ -323,14 +316,14 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(init({ id: 'test', isOpen: true })),
-          Story.message(Unmounted()),
+          Story.message(Message.Unmounted()),
           Story.expectNoOutMessage(),
           Story.model(model => {
             expect(model.isOpen).toBe(false)
           }),
           Story.Command.resolve(
             ReleaseDialogResources,
-            CompletedReleaseDialogResources(),
+            Message.CompletedReleaseDialogResources(),
           ),
         )
       })
@@ -348,7 +341,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(leavingModel),
-          Story.message(Unmounted()),
+          Story.message(Message.Unmounted()),
           Story.expectNoOutMessage(),
           Story.model(model => {
             expect(model.isOpen).toBe(false)
@@ -356,7 +349,7 @@ describe('Dialog', () => {
           }),
           Story.Command.resolve(
             ReleaseDialogResources,
-            CompletedReleaseDialogResources(),
+            Message.CompletedReleaseDialogResources(),
           ),
         )
       })
@@ -366,7 +359,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(closedModel),
-          Story.message(Unmounted()),
+          Story.message(Message.Unmounted()),
           Story.expectNoOutMessage(),
           Story.model(model => {
             expect(model).toBe(closedModel)
@@ -380,7 +373,7 @@ describe('Dialog', () => {
         Story.story(
           update,
           Story.given(originalModel),
-          Story.message(CompletedReleaseDialogResources()),
+          Story.message(Message.CompletedReleaseDialogResources()),
           Story.model(model => {
             expect(model).toBe(originalModel)
           }),

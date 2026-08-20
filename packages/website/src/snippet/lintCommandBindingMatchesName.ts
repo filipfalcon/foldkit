@@ -1,17 +1,19 @@
 import { Effect } from 'effect'
 import { Command } from 'foldkit'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-const CompletedFetchUser = m('CompletedFetchUser')
+const Message = messages({
+  CompletedFetchUser: {},
+})
 
 // ❌ Bad
 const SaveUser = Command.define('FetchUser', {
-  messages: [CompletedFetchUser],
-  execute: Effect.succeed(CompletedFetchUser()),
+  messages: [Message.CompletedFetchUser],
+  execute: Effect.succeed(Message.CompletedFetchUser()),
 })
 
 // ✅ Good
 const FetchUser = Command.define('FetchUser', {
-  messages: [CompletedFetchUser],
-  execute: Effect.succeed(CompletedFetchUser()),
+  messages: [Message.CompletedFetchUser],
+  execute: Effect.succeed(Message.CompletedFetchUser()),
 })

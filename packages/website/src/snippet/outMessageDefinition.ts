@@ -1,21 +1,27 @@
 import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 // MESSAGE
 
-export const SubmittedLoginForm = m('SubmittedLoginForm')
-export const SucceededAuthenticate = m('SucceededAuthenticate', {
-  sessionId: S.String,
+export const Message = messages({
+  SubmittedLoginForm: {},
+  SucceededAuthenticate: {
+    sessionId: S.String,
+  },
 })
 
-export const Message = S.Union([SubmittedLoginForm, SucceededAuthenticate])
+export const { SubmittedLoginForm, SucceededAuthenticate } = Message
+
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const SucceededLogin = m('SucceededLogin', {
-  sessionId: S.String,
+export const OutMessage = messages({
+  SucceededLogin: {
+    sessionId: S.String,
+  },
 })
 
-export const OutMessage = S.Union([SucceededLogin])
+export const { SucceededLogin } = OutMessage
+
 export type OutMessage = typeof OutMessage.Type

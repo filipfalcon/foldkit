@@ -1,8 +1,10 @@
 import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-const ClickedSave = m('ClickedSave')
-const Message = S.Union([ClickedSave])
+
+const Message = messages({
+  ClickedSave: {},
+})
 type Message = typeof Message.Type
 
 const initialMessage: Message = {

@@ -1,11 +1,14 @@
 import { Effect } from 'effect'
 import { Command } from 'foldkit'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-const CompletedFetchWeather = m('CompletedFetchWeather')
-const fetchWeatherEffect = Effect.succeed(CompletedFetchWeather())
+const Message = messages({
+  CompletedFetchWeather: {},
+})
+
+const fetchWeatherEffect = Effect.succeed(Message.CompletedFetchWeather())
 
 export const FetchWeather = Command.define('FetchWeather', {
-  messages: [CompletedFetchWeather],
+  messages: [Message.CompletedFetchWeather],
   execute: fetchWeatherEffect,
 })

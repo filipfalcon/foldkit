@@ -1,6 +1,6 @@
-import { Match as M, Schema as S } from 'effect'
+import { Schema as S } from 'effect'
 import { Command, Submodel } from 'foldkit'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -14,26 +14,24 @@ export const init: Model = { count: 0 }
 
 // MESSAGE
 
-export const ClickedDecrement = m('ClickedDecrement')
-export const ClickedIncrement = m('ClickedIncrement')
+export const Message = messages({
+  ClickedDecrement: {},
+  ClickedIncrement: {},
+})
 
-export const Message = S.Union([ClickedDecrement, ClickedIncrement])
+export const { ClickedDecrement, ClickedIncrement } = Message
+
 export type Message = typeof Message.Type
 
 // UPDATE
 
-export const update = (
-  model: Model,
-  message: Message,
-): readonly [Model, ReadonlyArray<Command.Command<Message>>] =>
-  M.value(message).pipe(
-    M.withReturnType<
-      readonly [Model, ReadonlyArray<Command.Command<Message>>]
-    >(),
-    M.tagsExhaustive({
+export const update = (model: Model, message: Message) =>
+  Message.match<readonly [Model, ReadonlyArray<Command.Command<Message>>]>(
+    message,
+    {
       ClickedDecrement: () => [evo(model, { count: count => count - 1 }), []],
       ClickedIncrement: () => [evo(model, { count: count => count + 1 }), []],
-    }),
+    },
   )
 
 // VIEW
@@ -47,7 +45,7 @@ export const view = Submodel.defineView<Model, Message>((model, h) =>
     [
       Button.view(
         {
-          onClick: ClickedDecrement(),
+          onClick: Message.ClickedDecrement(),
           toView: attributes =>
             h.button([...attributes.button, h.Class(buttonStyle)], ['-']),
         },
@@ -59,7 +57,7 @@ export const view = Submodel.defineView<Model, Message>((model, h) =>
       ),
       Button.view(
         {
-          onClick: ClickedIncrement(),
+          onClick: Message.ClickedIncrement(),
           toView: attributes =>
             h.button([...attributes.button, h.Class(buttonStyle)], ['+']),
         },

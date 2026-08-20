@@ -1,3 +1,5 @@
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-export const NoOp = m('NoOp')
+const Message = messages({
+  NoOp: {},
+})

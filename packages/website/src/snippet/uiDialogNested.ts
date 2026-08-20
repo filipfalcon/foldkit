@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Command } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Dialog } from '@foldkit/ui'
@@ -26,18 +26,20 @@ const init = () => [
 
 // Embed each Dialog Message in your parent Message and delegate each to its
 // own Dialog.update (see the basic Dialog example for the delegation).
-const GotSettingsDialogMessage = m('GotSettingsDialogMessage', {
-  message: Dialog.Message,
-})
-const GotConfirmDialogMessage = m('GotConfirmDialogMessage', {
-  message: Dialog.Message,
+const Message = messages({
+  GotSettingsDialogMessage: {
+    message: Dialog.Message,
+  },
+  GotConfirmDialogMessage: {
+    message: Dialog.Message,
+  },
+  ClickedDeleteProject: {},
+  ConfirmedDeleteProject: {},
 })
 
 // Opening the confirmation is a parent fact, not a hand-wrapped child message.
 // The button dispatches ClickedDeleteProject; the update opens the confirmation
 // through Dialog.open, keeping Got* for genuine child results.
-const ClickedDeleteProject = m('ClickedDeleteProject')
-const ConfirmedDeleteProject = m('ConfirmedDeleteProject')
 
 // ...in your update's M.tagsExhaustive({...}):
 ClickedDeleteProject: () => {
@@ -47,7 +49,7 @@ ClickedDeleteProject: () => {
   return [
     evo(model, { confirmDialog: () => nextConfirmDialog }),
     Command.mapMessages(confirmDialogCommands, message =>
-      GotConfirmDialogMessage({ message }),
+      Message.GotConfirmDialogMessage({ message }),
     ),
   ]
 }
@@ -62,7 +64,7 @@ ConfirmedDeleteProject: () => {
   return [
     evo(model, { confirmDialog: () => nextConfirmDialog }),
     Command.mapMessages(confirmDialogCommands, message =>
-      GotConfirmDialogMessage({ message }),
+      Message.GotConfirmDialogMessage({ message }),
     ),
   ]
 }
@@ -91,14 +93,17 @@ const view = (h: HtmlBuilder<Message>) => {
                   [
                     h.h2([...title], ['Delete project?']),
                     h.button([...closeButton], ['Cancel']),
-                    h.button([h.OnClick(ConfirmedDeleteProject())], ['Delete']),
+                    h.button(
+                      [h.OnClick(Message.ConfirmedDeleteProject())],
+                      ['Delete'],
+                    ),
                   ],
                 ),
               ]
             : [],
         ),
     },
-    toParentMessage: message => GotConfirmDialogMessage({ message }),
+    toParentMessage: message => Message.GotConfirmDialogMessage({ message }),
   })
 
   const settingsDialog = h.submodel({
@@ -120,7 +125,7 @@ const view = (h: HtmlBuilder<Message>) => {
                   [
                     h.h2([...title], ['Project settings']),
                     h.button(
-                      [h.OnClick(ClickedDeleteProject())],
+                      [h.OnClick(Message.ClickedDeleteProject())],
                       ['Delete project'],
                     ),
                   ],
@@ -129,7 +134,7 @@ const view = (h: HtmlBuilder<Message>) => {
             : [],
         ),
     },
-    toParentMessage: message => GotSettingsDialogMessage({ message }),
+    toParentMessage: message => Message.GotSettingsDialogMessage({ message }),
   })
 
   return h.div([], [settingsDialog, confirmDialog])

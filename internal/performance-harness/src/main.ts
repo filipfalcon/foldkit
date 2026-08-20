@@ -1,7 +1,7 @@
-import { Array, Effect, Match as M, Number, Schema as S } from 'effect'
+import { Array, Effect, Number, Schema as S } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { Document, type HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 // MODEL
@@ -23,27 +23,29 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const ClickedTick = m('ClickedTick')
-const ClickedDispatchLargeMessage = m('ClickedDispatchLargeMessage', {
-  payload: S.Array(HeavyItem),
-})
-const ClickedFillLargeModel = m('ClickedFillLargeModel', {
-  items: S.Array(HeavyItem),
-})
-const ClickedClearLargeModel = m('ClickedClearLargeModel')
-const ClickedFillHistory = m('ClickedFillHistory')
-const CompletedFillHistoryStep = m('CompletedFillHistoryStep', {
-  remaining: S.Number,
+export const Message = messages({
+  ClickedTick: {},
+  ClickedDispatchLargeMessage: {
+    payload: S.Array(HeavyItem),
+  },
+  ClickedFillLargeModel: {
+    items: S.Array(HeavyItem),
+  },
+  ClickedClearLargeModel: {},
+  ClickedFillHistory: {},
+  CompletedFillHistoryStep: {
+    remaining: S.Number,
+  },
 })
 
-export const Message = S.Union([
+export const {
   ClickedTick,
   ClickedDispatchLargeMessage,
   ClickedFillLargeModel,
   ClickedClearLargeModel,
   ClickedFillHistory,
   CompletedFillHistoryStep,
-])
+} = Message
 type Message = typeof Message.Type
 
 // CONSTANTS
@@ -65,22 +67,17 @@ const heavyPayload = makeHeavyArray(HEAVY_ITEM_COUNT)
 
 const FillHistoryStep = Command.define('FillHistoryStep', {
   args: { remaining: S.Number },
-  messages: [CompletedFillHistoryStep],
+  messages: [Message.CompletedFillHistoryStep],
   execute: ({ remaining }) =>
-    Effect.sync(() => CompletedFillHistoryStep({ remaining })),
+    Effect.sync(() => Message.CompletedFillHistoryStep({ remaining })),
 })
 
 // UPDATE
 
-export const update = (
-  model: Model,
-  message: Message,
-): readonly [Model, ReadonlyArray<Command.Command<Message>>] =>
-  M.value(message).pipe(
-    M.withReturnType<
-      readonly [Model, ReadonlyArray<Command.Command<Message>>]
-    >(),
-    M.tagsExhaustive({
+export const update = (model: Model, message: Message) =>
+  Message.match<readonly [Model, ReadonlyArray<Command.Command<Message>>]>(
+    message,
+    {
       ClickedTick: () => [
         evo(model, { tickCount: tickCount => tickCount + 1 }),
         [],
@@ -104,7 +101,7 @@ export const update = (
           ? [FillHistoryStep({ remaining: Number.decrement(remaining) })]
           : [],
       ],
-    }),
+    },
   )
 
 // INIT
@@ -150,7 +147,10 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         div(
           [Class(rowStyle)],
           [
-            button([OnClick(ClickedTick()), Class(buttonStyle)], ['Tick']),
+            button(
+              [OnClick(Message.ClickedTick()), Class(buttonStyle)],
+              ['Tick'],
+            ),
             div([Class(stateStyle)], [`tickCount: ${model.tickCount}`]),
           ],
         ),
@@ -169,7 +169,11 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           [
             button(
               [
-                OnClick(ClickedDispatchLargeMessage({ payload: heavyPayload })),
+                OnClick(
+                  Message.ClickedDispatchLargeMessage({
+                    payload: heavyPayload,
+                  }),
+                ),
                 Class(buttonStyle),
               ],
               ['Dispatch large Message'],
@@ -195,13 +199,13 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           [
             button(
               [
-                OnClick(ClickedFillLargeModel({ items: heavyPayload })),
+                OnClick(Message.ClickedFillLargeModel({ items: heavyPayload })),
                 Class(buttonStyle),
               ],
               ['Fill Model (10k items)'],
             ),
             button(
-              [OnClick(ClickedClearLargeModel()), Class(buttonStyle)],
+              [OnClick(Message.ClickedClearLargeModel()), Class(buttonStyle)],
               ['Clear'],
             ),
             div(
@@ -227,7 +231,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           [Class(rowStyle)],
           [
             button(
-              [OnClick(ClickedFillHistory()), Class(buttonStyle)],
+              [OnClick(Message.ClickedFillHistory()), Class(buttonStyle)],
               [`Fill history (${HISTORY_FILL_COUNT} Messages)`],
             ),
           ],

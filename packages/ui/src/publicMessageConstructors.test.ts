@@ -62,7 +62,23 @@ const barrelsByComponent: Readonly<Record<string, Record<string, unknown>>> = {
   virtualList: VirtualList,
 }
 
-const MINIMUM_COMPONENTS_WITH_A_MESSAGE_UNION = 14
+const COMPONENTS_WITH_A_MESSAGE_UNION = [
+  'animation',
+  'calendar',
+  'combobox',
+  'datePicker',
+  'dialog',
+  'dragAndDrop',
+  'fileDrop',
+  'listbox',
+  'menu',
+  'popover',
+  'radioGroup',
+  'slider',
+  'tabs',
+  'tooltip',
+  'virtualList',
+]
 
 // NOTE: A Schema value is callable, so `Predicate.isObject` rejects it. Reading
 // a property off one has to accept functions as well as plain objects.
@@ -70,9 +86,6 @@ const isIndexable = (
   value: unknown,
 ): value is Readonly<Record<PropertyKey, unknown>> =>
   Predicate.isObjectKeyword(value)
-
-const isUnknownArray = (value: unknown): value is ReadonlyArray<unknown> =>
-  Array.isArray(value)
 
 const maybeProperty = (value: unknown, key: string): Option.Option<unknown> =>
   isIndexable(value) ? Option.fromNullishOr(value[key]) : Option.none()
@@ -94,7 +107,11 @@ const maybeTagOf = (member: unknown): Option.Option<string> =>
 const maybeMessageUnionMembers = (
   barrel: Record<string, unknown>,
 ): Option.Option<ReadonlyArray<unknown>> =>
-  Option.filter(maybeProperty(barrel['Message'], 'members'), isUnknownArray)
+  pipe(
+    maybeProperty(barrel['Message'], 'cases'),
+    Option.filter(isIndexable),
+    Option.map(cases => Object.values(cases)),
+  )
 
 const toAudit = (
   component: string,
@@ -126,8 +143,8 @@ const audits: ReadonlyArray<BarrelAudit> = pipe(
 
 describe('public Message constructors', () => {
   it('finds a Message union in the components that declare one', () => {
-    expect(audits.length).toBeGreaterThanOrEqual(
-      MINIMUM_COMPONENTS_WITH_A_MESSAGE_UNION,
+    expect(Array.map(audits, ({ component }) => component)).toEqual(
+      COMPONENTS_WITH_A_MESSAGE_UNION,
     )
   })
 

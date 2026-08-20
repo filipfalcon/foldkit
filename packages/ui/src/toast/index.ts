@@ -218,15 +218,15 @@ export const make = <A, I>(payloadSchema: S.Codec<A, I>) => {
           h.AriaAtomic(true),
           h.DataAttribute('variant', entry.variant),
           h.Style({ pointerEvents: 'auto' }),
-          h.OnMouseEnter(HoveredEntry({ entryId: entry.id })),
-          h.OnMouseLeave(LeftEntry({ entryId: entry.id })),
+          h.OnMouseEnter(runtime.Message.HoveredEntry({ entryId: entry.id })),
+          h.OnMouseLeave(runtime.Message.LeftEntry({ entryId: entry.id })),
           ...animationAttributes,
           ...(entryClassName ? [h.Class(entryClassName)] : []),
         ]
 
         const handlers: EntryHandlers = {
           dismiss: childAttributes([
-            h.OnClick(Dismissed({ entryId: entry.id })),
+            h.OnClick(runtime.Message.Dismissed({ entryId: entry.id })),
           ]),
         }
 

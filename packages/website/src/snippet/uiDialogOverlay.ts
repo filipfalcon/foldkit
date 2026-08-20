@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Option } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 import { Combobox, Dialog } from '@foldkit/ui'
 
@@ -29,9 +29,11 @@ const init = () => [
 
 // Embed each submodel's Message in your parent Message and delegate both to
 // their own update (see the Dialog and Combobox examples for the delegation).
-const GotDialogMessage = m('GotDialogMessage', { message: Dialog.Message })
-const GotComboboxMessage = m('GotComboboxMessage', {
-  message: Combobox.Message,
+const Message = messages({
+  GotDialogMessage: { message: Dialog.Message },
+  GotComboboxMessage: {
+    message: Combobox.Message,
+  },
 })
 
 // Render the overlay inside the dialog panel. The key is `portal: false` on
@@ -71,7 +73,7 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
                         anchor: { placement: 'bottom-start', portal: false },
                       },
                       toParentMessage: message =>
-                        GotComboboxMessage({ message }),
+                        Message.GotComboboxMessage({ message }),
                     }),
                   ],
                 ),
@@ -79,5 +81,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
             : [],
         ),
     },
-    toParentMessage: message => GotDialogMessage({ message }),
+    toParentMessage: message => Message.GotDialogMessage({ message }),
   })

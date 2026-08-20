@@ -8,15 +8,8 @@ import { describe, it } from '@effect/vitest'
 import * as UiCalendar from '../calendar/index.js'
 import * as Popover from '../popover/index.js'
 import {
-  ChangedViewMonth,
-  Cleared,
-  ClearedDate,
-  Closed,
-  GotCalendarMessage,
-  GotPopoverMessage,
-  Opened,
-  RequestedSelectDate,
-  SelectedDate,
+  Message,
+  OutMessage,
   clear,
   close,
   focusDate,
@@ -34,7 +27,7 @@ const today = Calendar.make(2026, 4, 13)
 
 const givenClosed = Story.given(init({ id: 'picker', today }))
 
-const givenOpen = flow(givenClosed, Story.message(Opened()))
+const givenOpen = flow(givenClosed, Story.message(Message.Opened()))
 
 describe('DatePicker', () => {
   describe('init', () => {
@@ -84,7 +77,7 @@ describe('DatePicker', () => {
         Story.story(
           update,
           givenClosed,
-          Story.message(Opened()),
+          Story.message(Message.Opened()),
           Story.model(model => {
             expect(model.popover.isOpen).toBe(true)
           }),
@@ -96,7 +89,7 @@ describe('DatePicker', () => {
         Story.story(
           update,
           givenClosed,
-          Story.message(Opened()),
+          Story.message(Message.Opened()),
           Story.Command.expectNone(),
         )
       })
@@ -106,14 +99,18 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
             UiCalendar.CompletedFocusGrid(),
           ),
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
@@ -122,12 +119,12 @@ describe('DatePicker', () => {
           Story.model(model => {
             expect(model.calendar.viewMode).toBe('Years')
           }),
-          Story.message(Closed()),
+          Story.message(Message.Closed()),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
           ),
-          Story.message(Opened()),
+          Story.message(Message.Opened()),
           Story.model(model => {
             expect(model.calendar.viewMode).toBe('Days')
           }),
@@ -140,7 +137,7 @@ describe('DatePicker', () => {
         Story.story(
           update,
           givenOpen,
-          Story.message(Closed()),
+          Story.message(Message.Closed()),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
@@ -157,14 +154,18 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
             UiCalendar.CompletedFocusGrid(),
           ),
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
@@ -173,7 +174,7 @@ describe('DatePicker', () => {
           Story.model(model => {
             expect(model.calendar.viewMode).toBe('Years')
           }),
-          Story.message(Closed()),
+          Story.message(Message.Closed()),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
@@ -189,25 +190,29 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
             UiCalendar.CompletedFocusGrid(),
           ),
           Story.message(
-            GotCalendarMessage({ message: UiCalendar.ClickedHeading() }),
+            Message.GotCalendarMessage({
+              message: UiCalendar.ClickedHeading(),
+            }),
           ),
           Story.Command.resolve(
             UiCalendar.FocusGrid,
             UiCalendar.CompletedFocusGrid(),
           ),
           Story.message(
-            GotCalendarMessage({
+            Message.GotCalendarMessage({
               message: UiCalendar.PagedYears({ direction: 1 }),
             }),
           ),
-          Story.message(Closed()),
+          Story.message(Message.Closed()),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
@@ -230,8 +235,8 @@ describe('DatePicker', () => {
         Story.story(
           update,
           givenOpen,
-          Story.message(RequestedSelectDate({ date: target })),
-          Story.expectOutMessage(SelectedDate({ date: target })),
+          Story.message(Message.RequestedSelectDate({ date: target })),
+          Story.expectOutMessage(OutMessage.SelectedDate({ date: target })),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
@@ -250,7 +255,7 @@ describe('DatePicker', () => {
         Story.story(
           update,
           givenOpen,
-          Story.message(RequestedSelectDate({ date: target })),
+          Story.message(Message.RequestedSelectDate({ date: target })),
           Story.Command.resolve(
             Popover.FocusButton,
             Popover.CompletedFocusButton(),
@@ -272,13 +277,13 @@ describe('DatePicker', () => {
         })
         Story.story(
           update,
-          flow(Story.given(seeded), Story.message(Opened())),
-          Story.message(Cleared()),
+          flow(Story.given(seeded), Story.message(Message.Opened())),
+          Story.message(Message.Cleared()),
           Story.Command.expectNone(),
           Story.model(model => {
             expect(model.popover.isOpen).toBe(true)
           }),
-          Story.expectOutMessage(ClearedDate()),
+          Story.expectOutMessage(OutMessage.ClearedDate()),
         )
       })
     })
@@ -289,14 +294,16 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotCalendarMessage({
+            Message.GotCalendarMessage({
               message: UiCalendar.ClickedNextMonthButton(),
             }),
           ),
           Story.model(model => {
             expect(model.calendar.viewMonth).toBe(5)
           }),
-          Story.expectOutMessage(ChangedViewMonth({ year: 2026, month: 5 })),
+          Story.expectOutMessage(
+            OutMessage.ChangedViewMonth({ year: 2026, month: 5 }),
+          ),
         )
       })
 
@@ -305,7 +312,7 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotCalendarMessage({
+            Message.GotCalendarMessage({
               message: UiCalendar.PressedKeyOnGrid({
                 key: 'ArrowRight',
                 isShift: false,
@@ -327,7 +334,9 @@ describe('DatePicker', () => {
           update,
           givenOpen,
           Story.message(
-            GotPopoverMessage({ message: Popover.RequestedClose() }),
+            Message.GotPopoverMessage({
+              message: Popover.RequestedClose(),
+            }),
           ),
           Story.Command.resolve(
             Popover.FocusButton,
@@ -361,7 +370,7 @@ describe('DatePicker', () => {
       const [nextModel, , maybeOutMessage] = selectDate(openedModel, target)
       expect(nextModel.popover.isOpen).toBe(false)
       expect(maybeOutMessage).toStrictEqual(
-        Option.some(SelectedDate({ date: target })),
+        Option.some(OutMessage.SelectedDate({ date: target })),
       )
     })
 
@@ -372,7 +381,9 @@ describe('DatePicker', () => {
         initialViewDate: Calendar.make(2026, 4, 20),
       })
       const [, , maybeOutMessage] = clear(seeded)
-      expect(maybeOutMessage).toStrictEqual(Option.some(ClearedDate()))
+      expect(maybeOutMessage).toStrictEqual(
+        Option.some(OutMessage.ClearedDate()),
+      )
     })
 
     it('reflectMinDate(model, minDate) forwards to the embedded calendar', () => {

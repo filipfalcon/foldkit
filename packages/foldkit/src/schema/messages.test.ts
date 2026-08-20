@@ -69,19 +69,49 @@ describe('messages', () => {
   })
 
   it('works with exhaustive tag matching', () => {
-    const describeMessage = (message: Message): string =>
-      M.value(message).pipe(
-        M.withReturnType<string>(),
-        M.tagsExhaustive({
-          ClickedReset: () => 'reset',
-          ChangedCount: ({ count }) => `count ${count}`,
-          SelectedItem: ({ label }) => `selected ${label}`,
-        }),
-      )
+    const describeMessage = (message: Message) =>
+      Message.match<string>(message, {
+        ClickedReset: () => 'reset',
+        ChangedCount: ({ count }) => `count ${count}`,
+        SelectedItem: ({ label }) => `selected ${label}`,
+      })
 
     expect(describeMessage(Message.ClickedReset())).toBe('reset')
     expect(describeMessage(Message.ChangedCount({ count: 4 }))).toBe('count 4')
   })
+
+  it('rejects names that conflict with the tagged union surface', () => {
+    expect(() =>
+      Reflect.apply(messages, undefined, [{ match: {} }]),
+    ).toThrowError(
+      'Message variant names conflict with Schema.TaggedUnion properties: match',
+    )
+  })
+
+  it('rejects names inherited from the tagged union prototype', () => {
+    expect(() =>
+      Reflect.apply(messages, undefined, [{ toString: {} }]),
+    ).toThrowError(
+      'Message variant names conflict with Schema.TaggedUnion properties: toString',
+    )
+  })
+
+  it('rejects type-only tagged union property names at runtime', () => {
+    expect(() =>
+      Reflect.apply(messages, undefined, [{ Type: {} }]),
+    ).toThrowError(
+      'Message variant names conflict with Schema.TaggedUnion properties: Type',
+    )
+  })
+
+  if (false) {
+    // @ts-expect-error Message variant names cannot shadow tagged union properties
+    messages({ match: {} })
+    // @ts-expect-error The collision check follows additions to the tagged union surface
+    messages({ annotateKey: {} })
+    // @ts-expect-error Type-only tagged union properties are also reserved
+    messages({ Type: {} })
+  }
 
   it('works with a single handler across several tags', () => {
     const isInteraction = (message: Message): boolean =>

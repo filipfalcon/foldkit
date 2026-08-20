@@ -3,39 +3,52 @@ import { describe, expect, it } from 'vitest'
 
 import { gotPrefixRequiresSubmodelPayload } from '../../src/rules/got-prefix-requires-submodel-payload.ts'
 
-const m = (tag: string, fields?: unknown) =>
-  Testing.callExpr(
-    'm',
-    fields === undefined
-      ? [Testing.strLiteral(tag)]
-      : [Testing.strLiteral(tag), fields],
-  )
+const message = (name: string, fields: unknown = Testing.objectExpr([])) => ({
+  key: name,
+  value: fields,
+})
+
+const messages = (...cases: ReadonlyArray<ReturnType<typeof message>>) =>
+  Testing.callExpr('messages', [Testing.objectExpr(cases)])
+
+const runRule = (node: unknown) =>
+  Testing.runRuleMulti(gotPrefixRequiresSubmodelPayload, [
+    [
+      'Program',
+      Testing.program([
+        Testing.importDeclWithSpecifiers('foldkit/message', [
+          Testing.importSpecifier('messages'),
+        ]),
+      ]),
+    ],
+    ['CallExpression', node],
+  ])
 
 describe('got-prefix-requires-submodel-payload', () => {
   it('allows Got*Message wrappers whose Message schema is indirect', () => {
-    const unknownPayload = Testing.runRule(
-      gotPrefixRequiresSubmodelPayload,
-      'CallExpression',
-      m(
-        'GotInspectorTabsMessage',
-        Testing.objectExpr([
-          { key: 'message', value: Testing.memberExpr('S', 'Unknown') },
-        ]),
+    const unknownPayload = runRule(
+      messages(
+        message(
+          'GotInspectorTabsMessage',
+          Testing.objectExpr([
+            { key: 'message', value: Testing.memberExpr('S', 'Unknown') },
+          ]),
+        ),
       ),
     )
-    const suspendedPayload = Testing.runRule(
-      gotPrefixRequiresSubmodelPayload,
-      'CallExpression',
-      m(
-        'GotSliderMessage',
-        Testing.objectExpr([
-          {
-            key: 'message',
-            value: Testing.callOfMember('S', 'suspend', [
-              Testing.arrowFn(Testing.memberExpr('Slider', 'Message')),
-            ]),
-          },
-        ]),
+    const suspendedPayload = runRule(
+      messages(
+        message(
+          'GotSliderMessage',
+          Testing.objectExpr([
+            {
+              key: 'message',
+              value: Testing.callOfMember('S', 'suspend', [
+                Testing.arrowFn(Testing.memberExpr('Slider', 'Message')),
+              ]),
+            },
+          ]),
+        ),
       ),
     )
 
@@ -44,10 +57,10 @@ describe('got-prefix-requires-submodel-payload', () => {
   })
 
   it('reserves Got-prefixed Messages for Submodel wrappers', () => {
-    const result = Testing.runRule(
-      gotPrefixRequiresSubmodelPayload,
-      'CallExpression',
-      m('GotWeather', Testing.objectExpr([{ key: 'temperature' }])),
+    const result = runRule(
+      messages(
+        message('GotWeather', Testing.objectExpr([{ key: 'temperature' }])),
+      ),
     )
 
     expect(result).toHaveLength(1)
@@ -57,10 +70,8 @@ describe('got-prefix-requires-submodel-payload', () => {
   })
 
   it('requires Got-prefixed Submodel wrappers to carry a Message payload', () => {
-    const result = Testing.runRule(
-      gotPrefixRequiresSubmodelPayload,
-      'CallExpression',
-      m('GotChildMessage', Testing.objectExpr([{ key: 'id' }])),
+    const result = runRule(
+      messages(message('GotChildMessage', Testing.objectExpr([{ key: 'id' }]))),
     )
 
     expect(result).toHaveLength(1)

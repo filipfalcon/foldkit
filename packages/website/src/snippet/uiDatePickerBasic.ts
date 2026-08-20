@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { Calendar, Update } from 'foldkit'
 import type { ChildAttribute, Html, HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { DatePicker, Calendar as UiCalendar } from '@foldkit/ui'
@@ -47,8 +47,10 @@ const init = (flags: Flags) => [
 
 // Embed the DatePicker Message in your parent Message. DatePicker handles
 // Calendar + Popover routing internally. You only need one wrapper:
-const GotDatePickerMessage = m('GotDatePickerMessage', {
-  message: DatePicker.Message,
+const Message = messages({
+  GotDatePickerMessage: {
+    message: DatePicker.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. `SelectedDate`
@@ -89,7 +91,7 @@ const foldDatePicker = Update.foldChild({
   read: (model: Model) => Option.some(model.datePickerDemo),
   write: (model, nextDatePickerDemo) =>
     evo(model, { datePickerDemo: () => nextDatePickerDemo }),
-  toParentMessage: message => GotDatePickerMessage({ message }),
+  toParentMessage: message => Message.GotDatePickerMessage({ message }),
   foldOutMessage: foldDatePickerOutMessage,
 })
 
@@ -316,7 +318,7 @@ const view = (model: Model, h: HtmlBuilder<Message>) => {
           // Optional: enable hidden form input for native <form> submission:
           name: 'appointment-date',
         },
-        toParentMessage: message => GotDatePickerMessage({ message }),
+        toParentMessage: message => Message.GotDatePickerMessage({ message }),
       }),
     ],
   )

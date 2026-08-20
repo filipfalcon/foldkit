@@ -3,14 +3,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { fromString } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
 
-import {
-  ChangedUrl,
-  GotPeopleMessage,
-  HomeRoute,
-  Model,
-  PeopleRoute,
-  update,
-} from './main'
+import { HomeRoute, Message, Model, PeopleRoute, update } from './main'
 import { People } from './page'
 
 const peoplePageWith = (searchInput: string) =>
@@ -56,7 +49,9 @@ describe('update', () => {
       story(
         update,
         given(home),
-        message(ChangedUrl({ url: urlOrThrow('http://localhost/people') })),
+        message(
+          Message.ChangedUrl({ url: urlOrThrow('http://localhost/people') }),
+        ),
         model(model => {
           if (model.route._tag === 'People') {
             expect(model.route.searchText).toStrictEqual(Option.none())
@@ -73,7 +68,7 @@ describe('update', () => {
         update,
         given(home),
         message(
-          ChangedUrl({
+          Message.ChangedUrl({
             url: urlOrThrow('http://localhost/people?searchText=foo'),
           }),
         ),
@@ -92,7 +87,9 @@ describe('update', () => {
       story(
         update,
         given(home),
-        message(ChangedUrl({ url: urlOrThrow('http://localhost/people/3') })),
+        message(
+          Message.ChangedUrl({ url: urlOrThrow('http://localhost/people/3') }),
+        ),
         model(model => {
           if (model.route._tag === 'Person') {
             expect(model.route.personId).toBe(3)
@@ -107,7 +104,9 @@ describe('update', () => {
       story(
         update,
         given(home),
-        message(ChangedUrl({ url: urlOrThrow('http://localhost/missing') })),
+        message(
+          Message.ChangedUrl({ url: urlOrThrow('http://localhost/missing') }),
+        ),
         model(model => {
           if (model.route._tag === 'NotFound') {
             expect(model.route.path).toBe('/missing')
@@ -123,7 +122,7 @@ describe('update', () => {
         update,
         given(home),
         message(
-          ChangedUrl({
+          Message.ChangedUrl({
             url: urlOrThrow('http://localhost/nested/route/is/very/nested'),
           }),
         ),
@@ -137,7 +136,9 @@ describe('update', () => {
       story(
         update,
         given(home),
-        message(ChangedUrl({ url: urlOrThrow('http://localhost/files') })),
+        message(
+          Message.ChangedUrl({ url: urlOrThrow('http://localhost/files') }),
+        ),
         model(model => {
           expect(model.route._tag).toBe('FilesIndex')
         }),
@@ -149,7 +150,7 @@ describe('update', () => {
         update,
         given(home),
         message(
-          ChangedUrl({
+          Message.ChangedUrl({
             url: urlOrThrow('http://localhost/files/documents/taxes'),
           }),
         ),
@@ -168,7 +169,7 @@ describe('update', () => {
         update,
         given(onPeople('')),
         message(
-          ChangedUrl({
+          Message.ChangedUrl({
             url: urlOrThrow('http://localhost/people?searchText=designer'),
           }),
         ),
@@ -198,17 +199,17 @@ describe('update', () => {
         update,
         given(onPeople('')),
         message(
-          GotPeopleMessage({
+          Message.GotPeopleMessage({
             message: People.ChangedSearchInput({ value: 'd' }),
           }),
         ),
         message(
-          GotPeopleMessage({
+          Message.GotPeopleMessage({
             message: People.ChangedSearchInput({ value: 'de' }),
           }),
         ),
         message(
-          GotPeopleMessage({
+          Message.GotPeopleMessage({
             message: People.ChangedSearchInput({ value: 'designer' }),
           }),
         ),
@@ -224,7 +225,11 @@ describe('update', () => {
       story(
         update,
         given(onPeople('designer')),
-        message(GotPeopleMessage({ message: People.SubmittedSearch() })),
+        message(
+          Message.GotPeopleMessage({
+            message: People.SubmittedSearch(),
+          }),
+        ),
         Command.expectHas(People.PushSearchUrl),
         Command.resolve(People.PushSearchUrl, People.CompletedPushSearchUrl()),
       )

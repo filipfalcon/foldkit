@@ -1,14 +1,21 @@
-import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 // MESSAGE
 
-export const ClickedLogout = m('ClickedLogout')
-export const Message = S.Union([ClickedLogout])
+export const Message = messages({
+  ClickedLogout: {},
+})
+
+export const { ClickedLogout } = Message
+
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const RequestedLogout = m('RequestedLogout')
-export const OutMessage = S.Union([RequestedLogout])
+export const OutMessage = messages({
+  RequestedLogout: {},
+})
+
+export const { RequestedLogout } = OutMessage
+
 export type OutMessage = typeof OutMessage.Type

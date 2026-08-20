@@ -1,12 +1,13 @@
 import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 // MESSAGE
 
-// m() gives you a Message type with a callable constructor
-const ClickedDecrement = m('ClickedDecrement')
-const ClickedIncrement = m('ClickedIncrement')
-const ClickedReset = m('ClickedReset')
+// messages() declares the union and its callable constructors together
 
-const Message = S.Union([ClickedDecrement, ClickedIncrement, ClickedReset])
+const Message = messages({
+  ClickedDecrement: {},
+  ClickedIncrement: {},
+  ClickedReset: {},
+})
 type Message = typeof Message.Type

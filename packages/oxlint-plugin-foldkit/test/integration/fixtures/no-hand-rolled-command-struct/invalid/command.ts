@@ -1,8 +1,11 @@
 import { Effect } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-const CompletedSaveDraft = m('CompletedSaveDraft')
-const saveDraftEffect = Effect.succeed(CompletedSaveDraft())
+const Message = messages({
+  CompletedSaveDraft: {},
+})
+
+const saveDraftEffect = Effect.succeed(Message.CompletedSaveDraft())
 
 export const SaveDraft = {
   name: 'SaveDraft',

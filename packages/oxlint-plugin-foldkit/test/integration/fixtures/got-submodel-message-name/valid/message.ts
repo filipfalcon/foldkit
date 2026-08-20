@@ -1,8 +1,10 @@
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 import * as Child from './child'
 
-export const OpenedChild = m('OpenedChild')
-export const GotChildMessage = m('GotChildMessage', {
+const Message = messages({
+  OpenedChild: {},
+  GotChildMessage: {
   message: Child.Message,
+},
 })

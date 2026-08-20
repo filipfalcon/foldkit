@@ -13,14 +13,7 @@ import { describe, test } from 'vitest'
 
 import { Tabs } from '@foldkit/ui'
 
-import {
-  FetchPostDetail,
-  FetchStats,
-  SettledFetchPostDetail,
-  SettledFetchStats,
-  update,
-  view,
-} from './main'
+import { FetchPostDetail, FetchStats, Message, update, view } from './main'
 import {
   FETCHED_AT,
   cachedFirstPostModel,
@@ -53,7 +46,7 @@ describe('view', () => {
       Command.expectExact(FetchPostDetail({ postId: 'first-post' })),
       Command.resolve(
         FetchPostDetail,
-        SettledFetchPostDetail({
+        Message.SettledFetchPostDetail({
           postId: 'first-post',
           result: Result.succeed({
             detail: firstPostDetail,
@@ -88,7 +81,7 @@ describe('view', () => {
       click(role('button', { name: /First Post/ })),
       Command.resolve(
         FetchPostDetail,
-        SettledFetchPostDetail({
+        Message.SettledFetchPostDetail({
           postId: 'first-post',
           result: Result.fail('The connection dropped.'),
         }),
@@ -108,7 +101,7 @@ describe('view', () => {
       Command.expectExact(FetchStats()),
       Command.resolve(
         FetchStats,
-        SettledFetchStats({
+        Message.SettledFetchStats({
           result: Result.succeed({
             stats: fixtureStats,
             fetchedAt: FETCHED_AT,

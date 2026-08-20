@@ -77,6 +77,23 @@ export const Message = messages({
   SucceededSaveTodos: { todos: Todos },
   FailedSaveTodos: {},
 })
+
+export const {
+  UpdatedNewTodo,
+  UpdatedEditingTodo,
+  AddedTodo,
+  CompletedGenerateTodo,
+  DeletedTodo,
+  ToggledTodo,
+  StartedEditing,
+  SavedEdit,
+  CancelledEdit,
+  ToggledAll,
+  ClearedCompleted,
+  SelectedFilter,
+  SucceededSaveTodos,
+  FailedSaveTodos,
+} = Message
 export type Message = typeof Message.Type
 
 // FLAGS
@@ -100,15 +117,10 @@ export const init: Runtime.ApplicationInit<Model, Message, Flags> = flags => [
 
 // UPDATE
 
-export const update = (
-  model: Model,
-  message: Message,
-): readonly [Model, ReadonlyArray<Command.Command<Message>>] =>
-  M.value(message).pipe(
-    M.withReturnType<
-      readonly [Model, ReadonlyArray<Command.Command<Message>>]
-    >(),
-    M.tagsExhaustive({
+export const update = (model: Model, message: Message) =>
+  Message.match<readonly [Model, ReadonlyArray<Command.Command<Message>>]>(
+    message,
+    {
       UpdatedNewTodo: ({ text }) => [
         evo(model, {
           newTodoText: () => text,
@@ -283,7 +295,7 @@ export const update = (
       ],
 
       FailedSaveTodos: () => [model, []],
-    }),
+    },
   )
 
 // COMMAND

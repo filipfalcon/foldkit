@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Menu } from '@foldkit/ui'
@@ -25,8 +25,10 @@ const init = () => [
 ]
 
 // Embed the Menu Message in your parent Message:
-const GotMenuMessage = m('GotMenuMessage', {
-  message: Menu.Message,
+const Message = messages({
+  GotMenuMessage: {
+    message: Menu.Message,
+  },
 })
 
 type Action = 'Edit' | 'Duplicate' | 'Archive' | 'Delete'
@@ -60,7 +62,7 @@ const foldMenu = Update.foldChild({
   update: ActionMenu.update,
   read: (model: Model) => Option.some(model.menu),
   write: (model, nextMenu) => evo(model, { menu: () => nextMenu }),
-  toParentMessage: message => GotMenuMessage({ message }),
+  toParentMessage: message => Message.GotMenuMessage({ message }),
   foldOutMessage: foldMenuOutMessage,
 })
 
@@ -92,5 +94,5 @@ const view = (h: HtmlBuilder<Message>) =>
       backdropClassName: 'fixed inset-0',
       anchor: { placement: 'bottom-start', gap: 4, padding: 8 },
     },
-    toParentMessage: message => GotMenuMessage({ message }),
+    toParentMessage: message => Message.GotMenuMessage({ message }),
   })

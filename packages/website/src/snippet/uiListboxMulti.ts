@@ -4,7 +4,7 @@
 import { Array, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Listbox } from '@foldkit/ui'
@@ -35,8 +35,10 @@ const init = () => [
 ]
 
 // Wrap Listbox's Messages so they can flow through your update:
-const GotListboxMultiMessage = m('GotListboxMultiMessage', {
-  message: Listbox.Message,
+const Message = messages({
+  GotListboxMultiMessage: {
+    message: Listbox.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. `Selected` carries
@@ -70,7 +72,7 @@ const foldListboxMulti = Update.foldChild({
   read: (model: Model) => Option.some(model.listboxMulti),
   write: (model, nextListboxMulti) =>
     evo(model, { listboxMulti: () => nextListboxMulti }),
-  toParentMessage: message => GotListboxMultiMessage({ message }),
+  toParentMessage: message => Message.GotListboxMultiMessage({ message }),
   foldOutMessage: foldListboxMultiOutMessage,
 })
 
@@ -117,5 +119,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
       backdropClassName: 'fixed inset-0',
       anchor: { placement: 'bottom-start', gap: 4, padding: 8 },
     },
-    toParentMessage: message => GotListboxMultiMessage({ message }),
+    toParentMessage: message => Message.GotListboxMultiMessage({ message }),
   })

@@ -1,25 +1,20 @@
-import { Schema as S } from 'effect'
 import { Url } from 'foldkit'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { UrlRequest } from 'foldkit/navigation'
 
 import { Home, Room } from './page'
 
-export const CompletedNavigateInternal = m('CompletedNavigateInternal')
-export const CompletedLoadExternal = m('CompletedLoadExternal')
-export const CompletedNavigateToRoom = m('CompletedNavigateToRoom')
-export const ClickedLink = m('ClickedLink', {
-  request: UrlRequest,
-})
-export const ChangedUrl = m('ChangedUrl', { url: Url.Url })
-export const GotHomeMessage = m('GotHomeMessage', {
-  message: Home.Message.Message,
-})
-export const GotRoomMessage = m('GotRoomMessage', {
-  message: Room.Message.Message,
+export const Message = messages({
+  CompletedNavigateInternal: {},
+  CompletedLoadExternal: {},
+  CompletedNavigateToRoom: {},
+  ClickedLink: { request: UrlRequest },
+  ChangedUrl: { url: Url.Url },
+  GotHomeMessage: { message: Home.Message },
+  GotRoomMessage: { message: Room.Message },
 })
 
-export const Message = S.Union([
+export const {
   CompletedNavigateInternal,
   CompletedLoadExternal,
   CompletedNavigateToRoom,
@@ -27,5 +22,5 @@ export const Message = S.Union([
   ChangedUrl,
   GotHomeMessage,
   GotRoomMessage,
-])
+} = Message
 export type Message = typeof Message.Type

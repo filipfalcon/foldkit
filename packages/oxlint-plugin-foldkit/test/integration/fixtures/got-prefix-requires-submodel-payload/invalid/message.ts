@@ -1,6 +1,8 @@
 import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-export const GotWeather = m('GotWeather', {
+const Message = messages({
+  GotWeather: {
   temperature: S.Number,
+},
 })

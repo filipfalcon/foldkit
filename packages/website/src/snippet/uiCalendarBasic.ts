@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { Calendar, Update } from 'foldkit'
 import type { ChildAttribute, Html, HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Calendar as UiCalendar } from '@foldkit/ui'
@@ -47,8 +47,10 @@ const init = (flags: Flags) => [
 
 // Embed the Calendar Message in your parent Message for navigation and
 // keyboard routing:
-const GotCalendarMessage = m('GotCalendarMessage', {
-  message: UiCalendar.Message,
+const Message = messages({
+  GotCalendarMessage: {
+    message: UiCalendar.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. When the user
@@ -82,7 +84,7 @@ const foldCalendar = Update.foldChild({
   read: (model: Model) => Option.some(model.calendarDemo),
   write: (model, nextCalendarDemo) =>
     evo(model, { calendarDemo: () => nextCalendarDemo }),
-  toParentMessage: message => GotCalendarMessage({ message }),
+  toParentMessage: message => Message.GotCalendarMessage({ message }),
   foldOutMessage: foldCalendarOutMessage,
 })
 
@@ -281,5 +283,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
         }),
       ),
     },
-    toParentMessage: message => GotCalendarMessage({ message }),
+    toParentMessage: message => Message.GotCalendarMessage({ message }),
   })

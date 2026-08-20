@@ -12,7 +12,7 @@ The counter has three Messages:
 
 Messages use verb-first, past-tense names such as `ClickedIncrement`, not `Increment` or `ADD_COUNT`. Prefixes make their causes easy to scan. `Clicked*` records clicks, and `Updated*` records input changes. Command results use `Succeeded*` or `Failed*` when the distinction matters, and `Completed*` otherwise. `Got*` is reserved for results lifted from a child [Submodel](/core/submodel).
 
-The `m()` helper creates a Schema-backed tagged struct with a callable constructor. `m('ClickedIncrement')` provides both the tag that update can match and the `ClickedIncrement()` constructor that creates the Message. `S.Union` then collects every variant into the application’s closed `Message` union.
+The `messages()` helper declares the whole union in one place. Each key becomes a callable constructor on the union, so `Message.ClickedIncrement()` creates the value and `Message.match(message, handlers)` handles every variant exhaustively.
 
 :::Info{label="Name the cause"}
 A Message says what happened, not what update intends to do next. That keeps the same fact useful when the application’s response changes.

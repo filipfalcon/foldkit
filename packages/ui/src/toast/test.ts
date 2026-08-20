@@ -6,7 +6,7 @@ import {
   WaitForAnimationSettled,
   WaitForPaint,
 } from '../animation/index.js'
-import { CompletedWaitBeforeDismissal } from './schema.js'
+import { Message } from './schema.js'
 import { WaitBeforeDismissal } from './update.js'
 
 /** Input for {@link drainEntry}. `entryId` selects the entry whose lifecycle
@@ -58,7 +58,10 @@ export const drainEntry = ({
   Story.Command.resolveAll(
     [WaitForPaint, CompletedWaitForPaint()],
     [WaitForAnimationSettled, EndedAnimation()],
-    [WaitBeforeDismissal, CompletedWaitBeforeDismissal({ entryId, version })],
+    [
+      WaitBeforeDismissal,
+      Message.CompletedWaitBeforeDismissal({ entryId, version }),
+    ],
     [WaitForPaint, CompletedWaitForPaint()],
     [WaitForAnimationSettled, EndedAnimation()],
   )

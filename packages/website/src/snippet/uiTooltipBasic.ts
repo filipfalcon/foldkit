@@ -4,7 +4,7 @@
 import { Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Tooltip } from '@foldkit/ui'
@@ -25,8 +25,10 @@ const init = () => [
 ]
 
 // Embed the Tooltip Message in your parent Message:
-const GotTooltipMessage = m('GotTooltipMessage', {
-  message: Tooltip.Message,
+const Message = messages({
+  GotTooltipMessage: {
+    message: Tooltip.Message,
+  },
 })
 
 // At module scope, fold the OutMessage into your own Model. `Shown` and
@@ -54,7 +56,7 @@ const foldTooltip = Update.foldChild({
   update: Tooltip.update,
   read: (model: Model) => Option.some(model.tooltip),
   write: (model, nextTooltip) => evo(model, { tooltip: () => nextTooltip }),
-  toParentMessage: message => GotTooltipMessage({ message }),
+  toParentMessage: message => Message.GotTooltipMessage({ message }),
   foldOutMessage: foldTooltipOutMessage,
 })
 
@@ -102,5 +104,5 @@ const view = (h: HtmlBuilder<Message>) =>
           ],
         ),
     },
-    toParentMessage: message => GotTooltipMessage({ message }),
+    toParentMessage: message => Message.GotTooltipMessage({ message }),
   })

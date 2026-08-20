@@ -4,7 +4,7 @@
 import { Effect, Schema as S } from 'effect'
 import { Command, Subscription } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { VirtualList } from '@foldkit/ui'
@@ -31,8 +31,10 @@ const init = () => [
 ]
 
 // Embed the VirtualList Message in your parent Message:
-const GotActivityListMessage = m('GotActivityListMessage', {
-  message: VirtualList.Message,
+const Message = messages({
+  GotActivityListMessage: {
+    message: VirtualList.Message,
+  },
 })
 
 // Inside your update function's M.tagsExhaustive({...}), delegate to
@@ -43,7 +45,7 @@ GotActivityListMessage: ({ message }) => {
   return [
     evo(model, { activityList: () => nextList }),
     Command.mapMessages(commands, message =>
-      GotActivityListMessage({ message }),
+      Message.GotActivityListMessage({ message }),
     ),
   ]
 }
@@ -55,7 +57,7 @@ const activityListSubscriptions = Subscription.lift({
   activityListEvents: VirtualList.subscriptions.containerEvents,
 })<Model, Message>({
   toChildModel: model => model.activityList,
-  toParentMessage: message => GotActivityListMessage({ message }),
+  toParentMessage: message => Message.GotActivityListMessage({ message }),
 })
 
 const subscriptions = Subscription.aggregate<Model, Message>()(
@@ -99,7 +101,7 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
       containerClassName:
         'h-96 w-full rounded-lg bg-white ring-1 ring-gray-200',
     },
-    toParentMessage: message => GotActivityListMessage({ message }),
+    toParentMessage: message => Message.GotActivityListMessage({ message }),
   })
 
 // Programmatic scrolling. Returns [Model, Commands] in the same shape as

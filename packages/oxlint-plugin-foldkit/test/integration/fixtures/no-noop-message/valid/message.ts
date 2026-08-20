@@ -1,3 +1,5 @@
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-export const IgnoredMouseClick = m('IgnoredMouseClick')
+const Message = messages({
+  IgnoredMouseClick: {},
+})

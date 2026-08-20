@@ -4,7 +4,7 @@
 import { Match as M, Option, Schema as S } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { RadioGroup } from '@foldkit/ui'
@@ -34,10 +34,13 @@ const init = () => [
 ]
 
 // Embed the RadioGroup Message in your parent Message:
-const GotPlanRadioGroupMessage = m('GotPlanRadioGroupMessage', {
-  message: RadioGroup.Message,
+const Message = messages({
+  GotPlanRadioGroupMessage: {
+    message: RadioGroup.Message,
+  },
 })
-type Message = typeof GotPlanRadioGroupMessage.Type // ...united with your others
+
+type Message = typeof Message.Type // ...united with your others
 
 // Declare a typed RadioGroup factory once at module scope. The Value
 // generic types option.value in toView so the consumer can switch on it
@@ -73,7 +76,7 @@ const foldPlanRadioGroup = Update.foldChild({
   read: (model: Model) => Option.some(model.planRadioGroup),
   write: (model, nextPlanRadioGroup) =>
     evo(model, { planRadioGroup: () => nextPlanRadioGroup }),
-  toParentMessage: message => GotPlanRadioGroupMessage({ message }),
+  toParentMessage: message => Message.GotPlanRadioGroupMessage({ message }),
   foldOutMessage: foldPlanRadioGroupOutMessage,
 })
 
@@ -117,5 +120,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
           }),
         ),
     },
-    toParentMessage: message => GotPlanRadioGroupMessage({ message }),
+    toParentMessage: message => Message.GotPlanRadioGroupMessage({ message }),
   })

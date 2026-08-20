@@ -2,12 +2,14 @@
 // as the basic tabs; only the view config changes to set orientation and
 // use flex + flex-col for layout.
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 import { Tabs } from '@foldkit/ui'
 
-const GotTabsMessage = m('GotTabsMessage', {
-  message: Tabs.Message,
+const Message = messages({
+  GotTabsMessage: {
+    message: Tabs.Message,
+  },
 })
 
 const Framework = S.Literals(['Foldkit', 'React', 'Elm'])
@@ -63,5 +65,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
           ],
         ),
     },
-    toParentMessage: message => GotTabsMessage({ message }),
+    toParentMessage: message => Message.GotTabsMessage({ message }),
   })

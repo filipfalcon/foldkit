@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { File, Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { FileDrop } from '@foldkit/ui'
@@ -27,8 +27,10 @@ const init = () => [
 ]
 
 // Embed FileDrop's Message in your parent Message:
-const GotFileDropMessage = m('GotFileDropMessage', {
-  message: FileDrop.Message,
+const Message = messages({
+  GotFileDropMessage: {
+    message: FileDrop.Message,
+  },
 })
 
 // At module scope, fold the OutMessage FileDrop emits when files arrive (via
@@ -59,7 +61,7 @@ const foldFileDrop = Update.foldChild({
   update: FileDrop.update,
   read: (model: Model) => Option.some(model.uploader),
   write: (model, nextUploader) => evo(model, { uploader: () => nextUploader }),
-  toParentMessage: message => GotFileDropMessage({ message }),
+  toParentMessage: message => Message.GotFileDropMessage({ message }),
   foldOutMessage: foldFileDropOutMessage,
 })
 
@@ -93,5 +95,5 @@ const view = (model: Model, h: HtmlBuilder<Message>) =>
           ],
         ),
     },
-    toParentMessage: message => GotFileDropMessage({ message }),
+    toParentMessage: message => Message.GotFileDropMessage({ message }),
   })

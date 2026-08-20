@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
 import { Menu, Tabs } from '@foldkit/ui'
 
@@ -15,52 +15,51 @@ import {
 
 // STEP SUBMODELS
 
-export const GotPersonalInfoMessage = m('GotPersonalInfoMessage', {
-  message: PersonalInfo.Message,
-})
-export const GotWorkHistoryMessage = m('GotWorkHistoryMessage', {
-  message: WorkHistory.Message,
-})
-export const GotEducationMessage = m('GotEducationMessage', {
-  message: Education.Message,
-})
-export const GotSkillsMessage = m('GotSkillsMessage', {
-  message: Skills.Message,
-})
-export const GotCoverLetterMessage = m('GotCoverLetterMessage', {
-  message: CoverLetter.Message,
-})
-export const GotAttachmentsMessage = m('GotAttachmentsMessage', {
-  message: Attachments.Message,
-})
-export const GotStepMenuMessage = m('GotStepMenuMessage', {
-  message: Menu.Message,
-})
-export const GotStepTabsMessage = m('GotStepTabsMessage', {
-  message: Tabs.Message,
-})
-
 // NAVIGATION
-
-export const NavigatedToStep = m('NavigatedToStep', { step: Step.Step })
-export const ClickedNext = m('ClickedNext')
-export const ClickedPrevious = m('ClickedPrevious')
 
 // PREVIEW
 
-export const ToggledPreview = m('ToggledPreview')
-
 // SUBMISSION
-
-export const ClickedSubmit = m('ClickedSubmit')
-export const SucceededSubmitApplication = m('SucceededSubmitApplication')
-export const FailedSubmitApplication = m('FailedSubmitApplication', {
-  error: S.String,
-})
 
 // UNION
 
-export const Message = S.Union([
+export const Message = messages({
+  GotPersonalInfoMessage: {
+    message: PersonalInfo.Message,
+  },
+  GotWorkHistoryMessage: {
+    message: WorkHistory.Message,
+  },
+  GotEducationMessage: {
+    message: Education.Message,
+  },
+  GotSkillsMessage: {
+    message: Skills.Message,
+  },
+  GotCoverLetterMessage: {
+    message: CoverLetter.Message,
+  },
+  GotAttachmentsMessage: {
+    message: Attachments.Message,
+  },
+  GotStepMenuMessage: {
+    message: Menu.Message,
+  },
+  GotStepTabsMessage: {
+    message: Tabs.Message,
+  },
+  NavigatedToStep: { step: Step.Step },
+  ClickedNext: {},
+  ClickedPrevious: {},
+  ToggledPreview: {},
+  ClickedSubmit: {},
+  SucceededSubmitApplication: {},
+  FailedSubmitApplication: {
+    error: S.String,
+  },
+})
+
+export const {
   GotPersonalInfoMessage,
   GotWorkHistoryMessage,
   GotEducationMessage,
@@ -76,5 +75,6 @@ export const Message = S.Union([
   ClickedSubmit,
   SucceededSubmitApplication,
   FailedSubmitApplication,
-])
+} = Message
+
 export type Message = typeof Message.Type

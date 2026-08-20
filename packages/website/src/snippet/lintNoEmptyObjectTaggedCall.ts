@@ -1,9 +1,11 @@
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 
-const ClickedSave = m('ClickedSave')
+const Message = messages({
+  ClickedSave: {},
+})
 
 // ❌ Bad
-const badMessage = ClickedSave({})
+const badMessage = Message.ClickedSave({})
 
 // ✅ Good
-const goodMessage = ClickedSave()
+const goodMessage = Message.ClickedSave()

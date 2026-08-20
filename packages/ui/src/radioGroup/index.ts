@@ -11,7 +11,7 @@ import {
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { m } from 'foldkit/message'
+import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { type View as SubmodelView, defineView } from 'foldkit/submodel'
 
@@ -38,35 +38,33 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
+/** Union of all messages the radio group can produce. */
+export const Message = messages({
+  SelectedOption: {
+    index: S.Number,
+    value: S.String,
+  },
+  FocusedOption: { index: S.Number },
+  CompletedFocusOption: {},
+})
+
 /** Sent when an option is committed via click or keyboard. Commits the option
  *  as the new selection and moves focus onto it. */
-export const SelectedOption = m('SelectedOption', {
-  index: S.Number,
-  value: S.String,
-})
+export const { SelectedOption } = Message
+
 /** Sent when an option receives keyboard focus without being committed, which
  *  is how a read-only group navigates. */
-export const FocusedOption = m('FocusedOption', { index: S.Number })
+export const { FocusedOption } = Message
+
 /** Sent when the focus-option command completes. */
-export const CompletedFocusOption = m('CompletedFocusOption')
+export const { CompletedFocusOption } = Message
 
-/** Union of all messages the radio group can produce. */
-export const Message: S.Union<
-  [typeof SelectedOption, typeof FocusedOption, typeof CompletedFocusOption]
-> = S.Union([SelectedOption, FocusedOption, CompletedFocusOption])
-
-export type SelectedOption = typeof SelectedOption.Type
-export type FocusedOption = typeof FocusedOption.Type
+export type SelectedOption = typeof Message.SelectedOption.Type
+export type FocusedOption = typeof Message.FocusedOption.Type
 
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
-
-/** Sent to the parent when an option is committed via click or keyboard. Carries both the option's value (typed as `Value` via `RadioGroup.create<Value>()`) and its index. Generic at the type level; the schema stores `value: string` and the factory's fenced cast types it as `Value`. */
-export const Selected = m('Selected', {
-  value: S.String,
-  index: S.Number,
-})
 
 export type Selected<Value extends string = string> = Readonly<{
   readonly _tag: 'Selected'
@@ -75,7 +73,15 @@ export type Selected<Value extends string = string> = Readonly<{
 }>
 
 /** Union of out-messages the radio group can produce. Surfaced as the third element of `update`'s return tuple and pattern-matched by the parent. */
-export const OutMessage = S.Union([Selected])
+export const OutMessage = messages({
+  Selected: {
+    value: S.String,
+    index: S.Number,
+  },
+})
+
+/** Sent to the parent when an option is committed via click or keyboard. Carries both the option's value (typed as `Value` via `RadioGroup.create<Value>()`) and its index. Generic at the type level; the schema stores `value: string` and the factory's fenced cast types it as `Value`. */
+export const { Selected } = OutMessage
 
 /** Generic over `Value extends string` so consumers using
  *  `RadioGroup.create<MyUnion>()` receive `value: MyUnion` in the
@@ -110,11 +116,11 @@ const descriptionId = (id: string, index: number): string =>
 /** Moves focus to the option at the given index. */
 export const FocusOption = Command.define('FocusOption', {
   args: { id: S.String, index: S.Number },
-  messages: [CompletedFocusOption],
+  messages: [Message.CompletedFocusOption],
   execute: ({ id, index }) =>
     Dom.focus(idSelector(optionId(id, index))).pipe(
       Effect.ignore,
-      Effect.as(CompletedFocusOption()),
+      Effect.as(Message.CompletedFocusOption()),
     ),
 })
 
@@ -128,23 +134,20 @@ type UpdateReturn = readonly [
  *  an optional OutMessage. `Selected` fires when an option is committed via
  *  click or keyboard; the parent stores the new value and passes it back in as
  *  `selectedValue`. */
-export const update = (model: Model, message: Message): UpdateReturn =>
-  M.value(message).pipe(
-    M.withReturnType<UpdateReturn>(),
-    M.tagsExhaustive({
-      SelectedOption: ({ index, value }) => [
-        evo(model, { maybeFocusedIndex: () => Option.none() }),
-        [FocusOption({ id: model.id, index })],
-        Option.some(Selected({ value, index })),
-      ],
-      FocusedOption: ({ index }) => [
-        evo(model, { maybeFocusedIndex: () => Option.some(index) }),
-        [FocusOption({ id: model.id, index })],
-        Option.none(),
-      ],
-      CompletedFocusOption: () => [model, [], Option.none()],
-    }),
-  )
+export const update = (model: Model, message: Message) =>
+  Message.match<UpdateReturn>(message, {
+    SelectedOption: ({ index, value }) => [
+      evo(model, { maybeFocusedIndex: () => Option.none() }),
+      [FocusOption({ id: model.id, index })],
+      Option.some(OutMessage.Selected({ value, index })),
+    ],
+    FocusedOption: ({ index }) => [
+      evo(model, { maybeFocusedIndex: () => Option.some(index) }),
+      [FocusOption({ id: model.id, index })],
+      Option.none(),
+    ],
+    CompletedFocusOption: () => [model, [], Option.none()],
+  })
 
 // VIEW
 
@@ -296,7 +299,7 @@ const internalView = defineView<Model, Message, ViewInputs>(
       pipe(
         options,
         Array.get(index),
-        Option.map(value => SelectedOption({ index, value })),
+        Option.map(value => Message.SelectedOption({ index, value })),
       )
 
     const handleSelectingKeyDown = (
@@ -326,7 +329,8 @@ const internalView = defineView<Model, Message, ViewInputs>(
           'End',
           'PageUp',
           'PageDown',
-          () => Option.some(FocusedOption({ index: resolveKeyIndex(key) })),
+          () =>
+            Option.some(Message.FocusedOption({ index: resolveKeyIndex(key) })),
         ),
         M.orElse(() => Option.none()),
       )
@@ -364,7 +368,7 @@ const internalView = defineView<Model, Message, ViewInputs>(
         const clickAttributes =
           isOptionDisabledNow || isReadOnly
             ? []
-            : [h.OnClick(SelectedOption({ index, value }))]
+            : [h.OnClick(Message.SelectedOption({ index, value }))]
         const keyDownAttributes = isOptionDisabledNow
           ? []
           : [h.OnKeyDownPreventDefault(handleKeyDown(index))]
