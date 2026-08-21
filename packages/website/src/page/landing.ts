@@ -625,7 +625,7 @@ const exampleTile = (key: string, title: string, href: string): Html =>
         [
           ih.Href(href),
           ih.Class(
-            'group flex min-h-20 md:min-h-24 h-full items-center justify-between gap-3 px-3 py-4 md:px-4 bg-cream dark:bg-gray-900 text-gray-900 dark:text-white transition-colors hover:bg-accent-600 hover:text-white dark:hover:bg-accent-500 dark:hover:text-accent-950 focus-visible:outline-none focus-visible:bg-accent-600 focus-visible:text-white dark:focus-visible:bg-accent-500 dark:focus-visible:text-accent-950',
+            'group flex min-h-20 md:min-h-24 h-full items-center justify-between gap-3 px-3 py-4 md:px-4 bg-cream dark:bg-gray-900 text-gray-900 dark:text-white transition-colors hover:bg-accent-200/30 dark:hover:bg-accent-400/10 focus-visible:outline-none focus-visible:bg-accent-200/30 dark:focus-visible:bg-accent-400/10',
           ),
         ],
         [
@@ -666,7 +666,7 @@ const exampleCatalogTile: Html = ih.keyed('li')(
       [
         ih.Href(examplesRouter()),
         ih.Class(
-          'group flex min-h-20 md:min-h-24 h-full items-center justify-between gap-3 px-3 py-4 md:px-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 transition-colors hover:bg-accent-600 dark:hover:bg-accent-500 dark:hover:text-accent-950 focus-visible:outline-none focus-visible:bg-accent-600 dark:focus-visible:bg-accent-500 dark:focus-visible:text-accent-950',
+          'group flex min-h-20 md:min-h-24 h-full items-center justify-between gap-3 px-3 py-4 md:px-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 transition-colors hover:bg-accent-900 dark:hover:bg-accent-100 focus-visible:outline-none focus-visible:bg-accent-900 dark:focus-visible:bg-accent-100',
         ),
       ],
       [
