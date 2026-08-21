@@ -66,15 +66,34 @@ type ValidateMessageVariantNames<
       : MessageVariantNameCollision<Name & PropertyKey>
     : never
 
-/** The union `defineMessageUnion` returns. A `Schema.TaggedUnion` that also
- * carries one callable constructor per variant, reachable by tag. */
-export type MessageUnion<CasesByTag extends Record<string, S.Struct.Fields>> =
+type TaggedMessageUnion<CasesByTag extends Record<string, S.Struct.Fields>> =
   S.TaggedUnion<{
     readonly [Tag in keyof CasesByTag & string]: S.TaggedStruct<
       Tag,
       CasesByTag[Tag]
     >
-  }> & {
+  }>
+
+interface MessageSchema<
+  CasesByTag extends Record<string, S.Struct.Fields>,
+> extends S.BottomLazy<
+  TaggedMessageUnion<CasesByTag>['ast'],
+  MessageSchema<CasesByTag>
+> {
+  readonly Type: TaggedMessageUnion<CasesByTag>['Type']
+  readonly Encoded: TaggedMessageUnion<CasesByTag>['Encoded']
+  readonly DecodingServices: TaggedMessageUnion<CasesByTag>['DecodingServices']
+  readonly EncodingServices: TaggedMessageUnion<CasesByTag>['EncodingServices']
+  readonly '~type.make.in': TaggedMessageUnion<CasesByTag>['~type.make.in']
+  readonly '~type.make': TaggedMessageUnion<CasesByTag>['~type.make']
+  readonly Iso: TaggedMessageUnion<CasesByTag>['Iso']
+  readonly match: TaggedMessageUnion<CasesByTag>['match']
+}
+
+/** The union `defineMessageUnion` returns. A Schema with exhaustive matching
+ * and one callable constructor per variant, reachable by tag. */
+export type MessageUnion<CasesByTag extends Record<string, S.Struct.Fields>> =
+  MessageSchema<CasesByTag> & {
     readonly [Tag in keyof CasesByTag & string]: CallableTaggedStruct<
       Tag,
       CasesByTag[Tag]
@@ -85,9 +104,9 @@ export type MessageUnion<CasesByTag extends Record<string, S.Struct.Fields>> =
  * Declares a whole Message union from one record of fields per variant, naming
  * each variant once instead of once per constructor and once in the union list.
  *
- * The result is a `Schema.TaggedUnion`, so it decodes, nests in a Model, and
- * carries `cases`, `guards`, and `isAnyOf`. Each variant hangs off it as a
- * callable constructor that is itself a schema, which is what `Command.define`
+ * The result is a Schema, so it decodes and nests in a Model. Its focused
+ * Message surface is exhaustive `match` plus one callable constructor per
+ * variant. Each constructor is itself a schema, which is what `Command.define`
  * needs for its `messages` list.
  *
  * Use `Message.match` for exhaustive dispatch. The values are ordinary tagged

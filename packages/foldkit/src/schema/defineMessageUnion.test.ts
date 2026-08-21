@@ -56,18 +56,6 @@ describe('defineMessageUnion', () => {
     ).toStrictEqual({ _tag: 'ChangedCount', count: 3 })
   })
 
-  it('carries the tagged union utilities', () => {
-    expect(Object.keys(Message.cases)).toStrictEqual([
-      'ClickedReset',
-      'ChangedCount',
-      'SelectedItem',
-    ])
-    expect(Message.guards.ClickedReset(Message.ClickedReset())).toBe(true)
-    expect(
-      Message.isAnyOf(['ClickedReset'])(Message.ChangedCount({ count: 1 })),
-    ).toBe(false)
-  })
-
   it('works with exhaustive tag matching', () => {
     const describeMessage = (message: Message) =>
       Message.match<string>(message, {
@@ -105,6 +93,12 @@ describe('defineMessageUnion', () => {
   })
 
   if (false) {
+    // @ts-expect-error TaggedUnion cases are not part of the Message API
+    Message.cases
+    // @ts-expect-error TaggedUnion guards are not part of the Message API
+    Message.guards
+    // @ts-expect-error TaggedUnion isAnyOf is not part of the Message API
+    Message.isAnyOf
     // @ts-expect-error Message variant names cannot shadow tagged union properties
     defineMessageUnion({ match: {} })
     // @ts-expect-error The collision check follows additions to the tagged union surface
