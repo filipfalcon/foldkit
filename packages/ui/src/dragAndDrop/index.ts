@@ -121,36 +121,6 @@ export const Message = messages({
   CompletedFocusItem: {},
 })
 
-/** The user pressed a pointer on a draggable item. */
-export const { PressedDraggable } = Message
-
-/** The pointer moved during a drag, with collision detection results. */
-export const { MovedPointer } = Message
-
-/** The pointer was released. */
-export const { ReleasedPointer } = Message
-
-/** Escape was pressed during a drag. */
-export const { CancelledDrag } = Message
-
-/** The user activated keyboard drag with Space or Enter on a focused draggable. */
-export const { ActivatedKeyboardDrag } = Message
-
-/** The ResolveKeyboardMove Command resolved the next keyboard drag position. */
-export const { CompletedResolveKeyboardMove } = Message
-
-/** The user confirmed a keyboard drop with Space or Enter. */
-export const { ConfirmedKeyboardDrop } = Message
-
-/** The user pressed an arrow key during keyboard drag. */
-export const { PressedArrowKey } = Message
-
-/** An animation frame fired during auto-scroll. */
-export const { AdvancedAutoScrollFrame } = Message
-
-/** The FocusItem Command completed. */
-export const { CompletedFocusItem } = Message
-
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -166,12 +136,6 @@ export const OutMessage = messages({
   },
   Cancelled: {},
 })
-
-/** Emitted when a drag completes with a valid drop target. The parent uses this to commit the reorder. */
-export const { Reordered } = OutMessage
-
-/** Emitted when a drag is cancelled via Escape or pointer release without a drop target. */
-export const { Cancelled } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 // INIT

@@ -106,14 +106,6 @@ export const Message = messages({
   CompletedPushSearchUrl: {},
 })
 
-export const {
-  ChangedSearchInput,
-  SubmittedSearch,
-  ChangedRoute,
-  SucceededFetchPeople,
-  CompletedPushSearchUrl,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

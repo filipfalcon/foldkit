@@ -19,8 +19,6 @@ export const Message = messages({
   PressedShiftKey: { key: S.String },
 })
 
-export const { PressedKey, PressedShiftKey } = Message
-
 export type Message = typeof Message.Type
 
 // INIT

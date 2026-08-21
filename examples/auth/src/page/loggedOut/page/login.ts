@@ -58,14 +58,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ChangedEmail,
-  ChangedPassword,
-  SubmittedForm,
-  SucceededSimulateAuthRequest,
-  FailedSimulateAuthRequest,
-} = Message
-
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -73,8 +65,6 @@ export type Message = typeof Message.Type
 export const OutMessage = messages({
   SucceededLogin: { session: Session },
 })
-
-export const { SucceededLogin } = OutMessage
 
 export type OutMessage = typeof OutMessage.Type
 

@@ -77,16 +77,6 @@ export const Message = messages({
   FailedSubmitForm: {},
 })
 
-export const {
-  UpdatedName,
-  UpdatedEmail,
-  CompletedValidateEmail,
-  UpdatedMessageText,
-  ClickedFormSubmit,
-  SucceededSubmitForm,
-  FailedSubmitForm,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

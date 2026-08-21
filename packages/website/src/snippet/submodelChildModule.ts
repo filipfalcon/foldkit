@@ -28,8 +28,6 @@ export const Message = messages({
   ToggledNotifications: {},
 })
 
-export const { ChangedTheme, ChangedFontSize, ToggledNotifications } = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

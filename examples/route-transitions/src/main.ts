@@ -88,17 +88,6 @@ export const Message = messages({
   SucceededSaveDraft: { draft: S.String },
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  ClickedLink,
-  ChangedUrl,
-  SucceededLoadCatalog,
-  SucceededLoadPainting,
-  UpdatedStudioDraft,
-  SucceededSaveDraft,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

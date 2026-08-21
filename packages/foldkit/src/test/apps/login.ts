@@ -29,15 +29,6 @@ export const Message = messages({
   ClickedLogout: {},
 })
 
-export const {
-  UpdatedEmail,
-  UpdatedPassword,
-  SubmittedLogin,
-  SucceededAuthenticate,
-  FailedAuthenticate,
-  ClickedLogout,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

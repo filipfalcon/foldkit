@@ -57,20 +57,6 @@ export const Message = messages({
   SelectedFilter: { filter: Filter },
 })
 
-export const {
-  UpdatedNewTodo,
-  UpdatedEditingTodo,
-  AddedTodo,
-  DeletedTodo,
-  ToggledTodo,
-  StartedEditing,
-  SavedEdit,
-  CancelledEdit,
-  ToggledAll,
-  ClearedCompleted,
-  SelectedFilter,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

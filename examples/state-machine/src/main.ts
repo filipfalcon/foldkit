@@ -123,21 +123,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedContinue,
-  ClickedBack,
-  ClickedCancel,
-  ClickedPlaceOrder,
-  ClickedStartOver,
-  ToggledPaymentMethod,
-  SelectedEdition,
-  GotEditionRadioGroupMessage,
-  ToggledTermsAccepted,
-  UpdatedPromoCode,
-  SubmittedPromoCode,
-  SucceededPlaceOrder,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

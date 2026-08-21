@@ -19,7 +19,7 @@ import {
 } from './index.js'
 
 const animationEndMessage = Message.GotAnimationMessage({
-  message: Animation.EndedAnimation(),
+  message: Animation.Message.EndedAnimation(),
 })
 
 const givenClosed = Story.given(init({ id: 'test' }))
@@ -32,8 +32,8 @@ const givenOpenAnimated = flow(
   givenClosedAnimated,
   Story.message(Message.RequestedOpen()),
   Story.Command.resolveAll(
-    [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-    [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+    [Animation.WaitForPaint, Animation.Message.CompletedWaitForPaint()],
+    [Animation.WaitForAnimationSettled, Animation.Message.EndedAnimation()],
   ),
 )
 
@@ -333,8 +333,14 @@ describe('Popover', () => {
             }),
             Story.Command.expectHas(Animation.WaitForPaint),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
           )
         })
@@ -346,14 +352,14 @@ describe('Popover', () => {
             Story.message(Message.RequestedOpen()),
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('EnterAnimating')
             }),
             Story.Command.resolve(
               Animation.WaitForAnimationSettled,
-              Animation.EndedAnimation(),
+              Animation.Message.EndedAnimation(),
             ),
           )
         })
@@ -364,8 +370,14 @@ describe('Popover', () => {
             givenClosedAnimated,
             Story.message(Message.RequestedOpen()),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('Idle')
@@ -386,7 +398,10 @@ describe('Popover', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -416,7 +431,10 @@ describe('Popover', () => {
               expect(model.animation.transitionState).toBe('LeaveStart')
             }),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -429,7 +447,7 @@ describe('Popover', () => {
             Story.message(Message.RequestedClose()),
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('LeaveAnimating')
@@ -449,7 +467,10 @@ describe('Popover', () => {
             Story.message(Message.RequestedClose()),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.model(model => {
@@ -491,7 +512,7 @@ describe('Popover', () => {
             givenOpen,
             Story.message(
               Message.GotAnimationMessage({
-                message: Animation.CompletedWaitForPaint(),
+                message: Animation.Message.CompletedWaitForPaint(),
               }),
             ),
             Story.model(model => {
@@ -521,8 +542,14 @@ describe('Popover', () => {
             givenClosedAnimated,
             Story.message(Message.RequestedOpen()),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
             Story.message(Message.RequestedClose()),
             Story.model(model => {
@@ -531,7 +558,10 @@ describe('Popover', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )

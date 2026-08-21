@@ -152,75 +152,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when the combobox popup opens. Contains an optional initial active item index. */
-export const { Opened } = Message
-
-/** Sent when the combobox closes via Escape key or backdrop click. `restingInputValue` is what the input returns to on close (the parent-owned selection's display text, or empty), computed by the view from `ViewInputs.restingInputValue`. `isClearable` carries whether this close may emit `ClearedSelection`, which a read-only combobox denies; the view holds `isReadOnly` and the update does not. */
-export const { Closed } = Message
-
-/** Sent when the combobox input loses focus. `restingInputValue` is what the input returns to on close (the parent-owned selection's display text, or empty), computed by the view from `ViewInputs.restingInputValue`. `isClearable` carries whether this close may emit `ClearedSelection`, which a read-only combobox denies. */
-export const { BlurredInput } = Message
-
-/** Sent when an item is highlighted via arrow keys or mouse hover. Includes activation trigger and optional immediate selection info. */
-export const { ActivatedItem } = Message
-
-/** Sent when the mouse leaves an enabled item. */
-export const { DeactivatedItem } = Message
-
-/** Sent when an item is selected via Enter or click. `displayText` is the item's resting input text, and `wasSelected` reports whether the item was already in the parent-owned selection when activated, so nullable deselect logic works without the Model knowing the selection. */
-export const { SelectedItem } = Message
-
-/** Sent when the pointer moves over a combobox item. */
-export const { MovedPointerOverItem } = Message
-
-/** Sent when Enter or Space is pressed on the active item, triggering a programmatic click. */
-export const { RequestedItemClick } = Message
-
-/** Sent when Enter is pressed on the active item of a read-only combobox. Update no-ops; the Message exists so the keydown handler returns `Option.some` and calls `preventDefault`, which stops a surrounding form from submitting, and so the keypress stays visible for DevTools. */
-export const { SuppressedItemCommit } = Message
-
-/** Sent when the scroll lock command completes. */
-export const { CompletedLockScroll } = Message
-
-/** Sent when the scroll unlock command completes. */
-export const { CompletedUnlockScroll } = Message
-
-/** Sent when the inert-others command completes. */
-export const { CompletedInertOthers } = Message
-
-/** Sent when the restore-inert command completes. */
-export const { CompletedRestoreInert } = Message
-
-/** Sent when the focus-input command completes. */
-export const { CompletedFocusInput } = Message
-
-/** Sent when the scroll-into-view command completes after keyboard activation. */
-export const { CompletedScrollIntoView } = Message
-
-/** Sent when the programmatic item click command completes. */
-export const { CompletedClickItem } = Message
-
-/** Sent when the items panel mounts and Floating UI has positioned it. Update no-ops; surfaces the positioning side effect for DevTools. */
-export const { CompletedAnchorCombobox } = Message
-
-/** Sent when the items panel mounts and the capture-phase pointerdown listener is attached (with or without anchor). Update no-ops; surfaces the listener-attach side effect for DevTools. */
-export const { CompletedAttachComboboxPreventBlur } = Message
-
-/** Sent when the input mounts and the focus listener that auto-selects on focus is attached. Update no-ops; surfaces the listener-attach side effect for DevTools. */
-export const { CompletedAttachComboboxSelectOnFocus } = Message
-
-/** Sent when the combobox backdrop mounts and is portaled to the document body. Update no-ops; surfaces the portal side effect for DevTools. */
-export const { CompletedPortalComboboxBackdrop } = Message
-
-/** Wraps an Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-
-/** Sent when the user types in the input. */
-export const { UpdatedInputValue } = Message
-
-/** Sent when the optional toggle button is clicked. `restingInputValue` is what the input returns to when the press closes the combobox (the parent-owned selection's display text, or empty), computed by the view from `ViewInputs.restingInputValue`. `isClearable` carries whether a close from this press may emit `ClearedSelection`, which a read-only combobox denies. */
-export const { PressedToggleButton } = Message
-
 export type Opened = typeof Message.Opened.Type
 export type Closed = typeof Message.Closed.Type
 export type BlurredInput = typeof Message.BlurredInput.Type
@@ -259,12 +190,6 @@ export const OutMessage = messages({
   },
   ClearedSelection: {},
 })
-
-/** Sent when the user activates an item. Carries the neutral fact that the item was activated; the parent owns the selection and decides what it means (single-select stores the value, nullable single-select toggles it, multi-select toggles the value's membership). Generic over `Value extends string`: the runtime schema stores `value: string`, but the type-level OutMessage exposes `value: Value` so consumers who supply `items: ReadonlyArray<MyUnion>` receive `value: MyUnion` from the factory's `update` without casting. */
-export const { Selected } = OutMessage
-
-/** Sent when a nullable combobox closes with an empty input, meaning the user cleared it. The parent clears the selection it owns. */
-export const { ClearedSelection } = OutMessage
 
 /** Generic over `Value extends string` so consumers who create the combobox
  *  via `Combobox.create<MyUnion>()` receive `value: MyUnion` in the

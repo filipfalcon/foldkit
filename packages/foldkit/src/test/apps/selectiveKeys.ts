@@ -19,8 +19,6 @@ export const Message = messages({
   Reset: {},
   CompletedRecordReset: {},
 })
-
-export const { Committed, Reset, CompletedRecordReset } = Message
 export type Message = typeof Message.Type
 
 /** Left unresolved by a test that wants a bookkeeping violation alongside a

@@ -16,8 +16,6 @@ export const Message = messages({
   UpdatedContent: { value: S.String },
 })
 
-export const { UpdatedContent } = Message
-
 export type Message = typeof Message.Type
 
 // INIT

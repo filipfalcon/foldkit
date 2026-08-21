@@ -10,8 +10,6 @@ export const Message = messages({
   },
 })
 
-export const { SubmittedLoginForm, SucceededAuthenticate } = Message
-
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -21,7 +19,5 @@ export const OutMessage = messages({
     sessionId: S.String,
   },
 })
-
-export const { SucceededLogin } = OutMessage
 
 export type OutMessage = typeof OutMessage.Type

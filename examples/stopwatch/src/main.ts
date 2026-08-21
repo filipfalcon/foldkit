@@ -41,15 +41,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedStart,
-  CompletedDetermineStartTime,
-  ClickedStop,
-  ClickedReset,
-  Ticked,
-  CompletedDetermineTickTime,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

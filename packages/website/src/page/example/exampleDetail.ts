@@ -68,15 +68,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  GotSourceFileTabsMessage,
-  ChangedExampleUrl,
-  ToggledLivePreview,
-  RequestedExampleSources,
-  SucceededLoadExampleSources,
-  FailedLoadExampleSources,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

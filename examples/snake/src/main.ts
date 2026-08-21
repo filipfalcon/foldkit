@@ -48,14 +48,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  TickedClock,
-  PressedKey,
-  PausedGame,
-  RestartedGame,
-  CompletedGenerateApplePosition,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

@@ -4,6 +4,7 @@ import type { Html } from 'foldkit/html'
 import { Button } from '@foldkit/ui'
 
 import { WorkHistory } from '../step'
+import { Message } from '../step/workHistory'
 import { workEntryView } from './workEntry'
 
 export const workHistoryView = Submodel.defineView<
@@ -26,7 +27,7 @@ export const workHistoryView = Submodel.defineView<
               model: entry,
               view: workEntryView,
               toParentMessage: message =>
-                WorkHistory.GotEntryMessage({
+                Message.GotEntryMessage({
                   entryId: entry.id,
                   message,
                 }),
@@ -35,7 +36,7 @@ export const workHistoryView = Submodel.defineView<
         ),
         Button.view(
           {
-            onClick: WorkHistory.ClickedAddEntry(),
+            onClick: Message.ClickedAddEntry(),
             toView: attributes =>
               h.button(
                 [

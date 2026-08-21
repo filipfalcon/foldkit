@@ -42,9 +42,9 @@ import {
 } from './docsNav'
 import { Message, ResolvedTheme, ThemePreference } from './message'
 import * as Page from './page'
-import { SucceededLoadApiData } from './page/apiReference/message'
+import { Message as ApiReferenceMessage } from './page/apiReference/message'
 import { ApiData } from './page/apiReference/model'
-import { SucceededLoadExampleSources } from './page/example/exampleDetail'
+import { Message as ExampleDetailMessage } from './page/example/exampleDetail'
 import { type ExampleSlug } from './page/example/meta'
 import { ExampleSources } from './page/example/sources'
 import {
@@ -298,7 +298,7 @@ const initApiReference = (
     onSome: apiData => {
       const [seededApiReference] = Page.ApiReference.update(
         apiReference,
-        SucceededLoadApiData({ apiData }),
+        ApiReferenceMessage.SucceededLoadApiData({ apiData }),
       )
       // NOTE: prerendered module pages seed a per-module slice of the API
       // data, so the boot Commands still run: the full reference replaces
@@ -319,7 +319,7 @@ const initExampleDetail = (
     onSome: sources => {
       const [seededExampleDetail] = Page.Example.ExampleDetail.update(
         exampleDetail,
-        SucceededLoadExampleSources({ sources }),
+        ExampleDetailMessage.SucceededLoadExampleSources({ sources }),
       )
       return [seededExampleDetail, []]
     },

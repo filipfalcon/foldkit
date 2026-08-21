@@ -5,6 +5,7 @@ import { fromString } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog } from '@foldkit/ui'
+import { Message as DialogMessage } from '@foldkit/ui/dialog'
 
 import { HomeRoute, Message, type Model, update } from './main'
 import { uiInit } from './ui/init'
@@ -114,7 +115,10 @@ describe('update', () => {
         message(
           Message.ChangedUrl({ url: urlOrThrow('http://localhost/button') }),
         ),
-        Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+        Command.resolve(
+          Dialog.CloseDialog,
+          DialogMessage.CompletedCloseDialog(),
+        ),
         model(model => {
           expect(model.uiModel.mobileMenuDialog.isOpen).toBe(false)
         }),

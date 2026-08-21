@@ -38,16 +38,4 @@ export const Message = messages({
   },
 })
 
-export const {
-  TickedFrame,
-  CompletedGenerateAmbientParticle,
-  CompletedGenerateBurstParticle,
-  PressedCanvas,
-  MovedPointer,
-  ClickedTogglePlay,
-  ClickedReset,
-  GotFlowStrengthSliderMessage,
-  GotNoiseScaleSliderMessage,
-} = Message
-
 export type Message = typeof Message.Type

@@ -53,15 +53,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedStartUpload,
-  ClickedCancelUpload,
-  ClickedCancelAllUploads,
-  ClickedRestartUpload,
-  SucceededUploadFile,
-  CompletedCancelUploadFile,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

@@ -72,18 +72,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  UpdatedFirstName,
-  UpdatedLastName,
-  UpdatedEmail,
-  CompletedValidateEmailAsync,
-  UpdatedPhone,
-  GotPronounsMessage,
-  UpdatedCustomPronouns,
-  UpdatedPortfolioUrl,
-  GotAvailableDateMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

@@ -31,14 +31,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  CompletedReplaceSearchUrl,
-  ChangedSearchInput,
-  ClickedAddToCart,
-  ClickedIncrementQuantity,
-  ClickedDecrementQuantity,
-} = Message
-
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -52,9 +44,6 @@ export const OutMessage = messages({
     itemId: S.String,
   },
 })
-
-export const { AddedToCart, IncrementedQuantity, DecrementedQuantity } =
-  OutMessage
 
 export type OutMessage = typeof OutMessage.Type
 

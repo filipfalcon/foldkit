@@ -34,9 +34,6 @@ export const Message = messages({
   CompletedPersistCount: {},
 })
 
-export const { ClickedDecrement, ClickedIncrement, CompletedPersistCount } =
-  Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

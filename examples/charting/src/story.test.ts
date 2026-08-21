@@ -2,6 +2,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { expect, test } from 'vitest'
 
 import { RadioGroup } from '@foldkit/ui'
+import { Message as RadioGroupMessage } from '@foldkit/ui/radioGroup'
 
 import { FetchTelemetry, SyncChart } from './command'
 import {
@@ -17,7 +18,7 @@ import { update } from './update'
 
 const selectedChartMode = (chartMode: ChartMode) =>
   Message.GotChartModeRadioGroupMessage({
-    message: RadioGroup.SelectedOption({
+    message: RadioGroupMessage.SelectedOption({
       index: chartModes.indexOf(chartMode),
       value: chartMode,
     }),
@@ -25,7 +26,7 @@ const selectedChartMode = (chartMode: ChartMode) =>
 
 const selectedPackage = (packageId: PackageId) =>
   Message.GotPackageRadioGroupMessage({
-    message: RadioGroup.SelectedOption({
+    message: RadioGroupMessage.SelectedOption({
       index: packageIds.indexOf(packageId),
       value: packageId,
     }),
@@ -33,7 +34,7 @@ const selectedPackage = (packageId: PackageId) =>
 
 const resolveChartModeFocus = Command.resolve(
   RadioGroup.FocusOption,
-  RadioGroup.CompletedFocusOption(),
+  RadioGroupMessage.CompletedFocusOption(),
 )
 
 test('mounting the chart syncs current telemetry into ECharts', () => {

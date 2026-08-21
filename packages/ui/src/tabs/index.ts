@@ -54,16 +54,6 @@ export const Message = messages({
   CompletedFocusTab: {},
 })
 
-/** Sent when a tab is selected via click or keyboard. Commits the tab as the
- *  new selection and moves focus onto it. */
-export const { SelectedTab } = Message
-
-/** Sent when a tab receives keyboard focus in `Manual` mode without being activated. */
-export const { FocusedTab } = Message
-
-/** Sent when the focus-tab command completes. */
-export const { CompletedFocusTab } = Message
-
 export type SelectedTab = typeof Message.SelectedTab.Type
 export type FocusedTab = typeof Message.FocusedTab.Type
 
@@ -84,9 +74,6 @@ export const OutMessage = messages({
     index: S.Number,
   },
 })
-
-/** Sent to the parent when a tab is committed via click or keyboard. Carries both the tab's value (typed as `Value` via `Tabs.create<Value>()`) and its index. Generic at the type level; the schema stores `value: string` and the factory's fenced cast types it as `Value`. */
-export const { Selected } = OutMessage
 
 /** Generic over `Value extends string` so consumers using
  *  `Tabs.create<MyUnion>()` receive `value: MyUnion` in the

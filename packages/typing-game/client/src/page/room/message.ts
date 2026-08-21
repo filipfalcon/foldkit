@@ -35,32 +35,4 @@ export const Message = messages({
   CompletedWaitForExitCountdownInterval: {},
   SucceededJoinRoom: { player: Shared.Player },
 })
-
-export const {
-  CompletedFocusRoomPageUsernameInput,
-  CompletedFocusUserGameTextInput,
-  CompletedNavigateHome,
-  SucceededStartGame,
-  FailedStartGame,
-  CompletedUpdatePlayerProgress,
-  CompletedSavePlayerSession,
-  CompletedClearSession,
-  FailedJoinRoom,
-  FailedCopyRoomId,
-  PressedKey,
-  ChangedUserText,
-  BlurredRoomPageUsernameInput,
-  ChangedRoomPageUsername,
-  SubmittedJoinRoomFromPage,
-  UpdatedRoom,
-  FailedStreamRoom,
-  CompletedLoadSession,
-  SucceededFetchRoom,
-  FailedFetchRoom,
-  ClickedCopyRoomId,
-  SucceededCopyRoomId,
-  CompletedWaitBeforeHidingRoomIdCopiedIndicator,
-  CompletedWaitForExitCountdownInterval,
-  SucceededJoinRoom,
-} = Message
 export type Message = typeof Message.Type

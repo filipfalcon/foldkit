@@ -2,34 +2,23 @@ import { Match as M, Schema as S } from 'effect'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
 import { defineView } from 'foldkit/submodel'
 
-import {
+import { Message, Position, Variant } from './schema.js'
+import { WaitBeforeDismissal, makeRuntime } from './update.js'
+
+export type {
   CompletedWaitBeforeDismissal,
   Dismissed,
   DismissedAll,
   GotAnimationMessage,
   HoveredEntry,
+  InitConfig,
   LeftEntry,
-  Position,
-  Variant,
 } from './schema.js'
-import { WaitBeforeDismissal, makeRuntime } from './update.js'
-
-export type { InitConfig } from './schema.js'
 export type { ShowInput } from './update.js'
 
 export * as test from './test.js'
 
-export {
-  Variant,
-  Position,
-  Dismissed,
-  DismissedAll,
-  CompletedWaitBeforeDismissal,
-  HoveredEntry,
-  LeftEntry,
-  GotAnimationMessage,
-  WaitBeforeDismissal,
-}
+export { Message, Variant, Position, WaitBeforeDismissal }
 
 // VIEW
 

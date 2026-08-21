@@ -25,8 +25,6 @@ export const Message = messages({
   },
 })
 
-export const { ClickedSaveDraft, SucceededSaveDraft } = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

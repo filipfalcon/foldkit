@@ -459,7 +459,7 @@ export const Message = messages({
 export type Message = typeof Message.Type
 ```
 
-Keep the `messages()` declaration and `type Message` alias adjacent. Construct variants through the namespace, such as `Message.ClickedSubmit()` and `Message.UpdatedEmail({ value })`.
+Keep the `messages()` declaration and `type Message` alias adjacent. Construct variants through the namespace, such as `Message.ClickedSubmit()` and `Message.UpdatedEmail({ value })`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
 
 Name messages by category:
 

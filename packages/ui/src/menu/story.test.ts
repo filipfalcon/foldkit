@@ -58,7 +58,7 @@ const acknowledgeFocusItems = Story.Command.resolve(
 )
 
 const animationEndMessage = Message.GotAnimationMessage({
-  message: Animation.EndedAnimation(),
+  message: Animation.Message.EndedAnimation(),
 })
 
 const STALE_CLEAR_SEARCH_VERSION = 9999
@@ -78,8 +78,8 @@ const givenOpenAnimated = flow(
   Story.message(Message.Opened({ maybeActiveItemIndex: Option.some(0) })),
   acknowledgeFocusItems,
   Story.Command.resolveAll(
-    [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-    [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+    [Animation.WaitForPaint, Animation.Message.CompletedWaitForPaint()],
+    [Animation.WaitForAnimationSettled, Animation.Message.EndedAnimation()],
   ),
 )
 
@@ -1024,8 +1024,14 @@ describe('Menu', () => {
               expect(model.animation.transitionState).toBe('EnterStart')
             }),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1041,13 +1047,16 @@ describe('Menu', () => {
             acknowledgeFocusItems,
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('EnterAnimating')
             }),
             Story.Command.resolveAll(
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1062,8 +1071,14 @@ describe('Menu', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.model(model => {
@@ -1099,8 +1114,14 @@ describe('Menu', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1116,8 +1137,14 @@ describe('Menu', () => {
               expect(model.animation.transitionState).toBe('LeaveStart')
             }),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1134,8 +1161,14 @@ describe('Menu', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1148,14 +1181,17 @@ describe('Menu', () => {
             Story.message(Message.Closed()),
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('LeaveAnimating')
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1168,8 +1204,14 @@ describe('Menu', () => {
             Story.message(Message.Closed()),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.model(model => {
@@ -1214,7 +1256,7 @@ describe('Menu', () => {
             givenOpen,
             Story.message(
               Message.GotAnimationMessage({
-                message: Animation.CompletedWaitForPaint(),
+                message: Animation.Message.CompletedWaitForPaint(),
               }),
             ),
             Story.model(model => {
@@ -1247,8 +1289,14 @@ describe('Menu', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.message(Message.Closed()),
@@ -1258,8 +1306,14 @@ describe('Menu', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1274,8 +1328,14 @@ describe('Menu', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.message(Message.Closed()),
@@ -1285,8 +1345,14 @@ describe('Menu', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )

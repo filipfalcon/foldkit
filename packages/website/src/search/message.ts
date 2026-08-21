@@ -36,18 +36,4 @@ export const Message = messages({
   },
 })
 
-export const {
-  UpdatedSearchQuery,
-  CompletedFetchSearchResults,
-  SelectedSearchResult,
-  GotSearchDialogMessage,
-  ClickedOpenSearch,
-  PressedSearchShortcut,
-  ClearedSearchQuery,
-  CompletedNavigateToResult,
-  CompletedScrollToResult,
-  CompletedFocusSearchInput,
-  PressedArrowKey,
-} = Message
-
 export type Message = typeof Message.Type

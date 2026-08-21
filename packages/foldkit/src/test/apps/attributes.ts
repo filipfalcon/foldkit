@@ -8,8 +8,6 @@ export const Message = messages({
   IgnoredInteraction: {},
 })
 
-export const { IgnoredInteraction } = Message
-
 export type Message = typeof Message.Type
 
 // MODEL

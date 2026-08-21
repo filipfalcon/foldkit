@@ -19,6 +19,7 @@ import {
   Tooltip,
   VirtualList,
 } from '@foldkit/ui'
+import { Message as AnimationMessage } from '@foldkit/ui/animation'
 
 import { UiMessage } from './message'
 import type {
@@ -1187,7 +1188,7 @@ export const uiUpdate = (model: UiModel, message: UiMessage): UiUpdateReturn =>
       const nextShowing = !model.isAnimationDemoShowing
       return foldAnimationDemo(
         evo(model, { isAnimationDemoShowing: () => nextShowing }),
-        nextShowing ? Animation.Showed() : Animation.Hid(),
+        nextShowing ? AnimationMessage.Showed() : AnimationMessage.Hid(),
       )
     },
 

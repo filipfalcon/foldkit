@@ -66,30 +66,6 @@ export const Message = messages({
   },
 })
 
-/** The user pressed the thumb. Starts a drag without changing the value. The
- *  view supplies `originValue`, the current value, so Escape can restore it. */
-export const { PressedThumb } = Message
-
-/** The user pressed the track. Starts a drag and snaps the value to the
- *  cursor position. Ignored while already dragging, which absorbs the bubble
- *  from a thumb press so the value is not shifted. `originValue` is the current
- *  value the drag restores to on Escape. */
-export const { PressedPointer } = Message
-
-/** The pointer moved during a drag, producing a new snapped value from the
- *  cursor position within the track. */
-export const { MovedDragPointer } = Message
-
-/** The pointer was released during a drag. Commits the current value. */
-export const { ReleasedDragPointer } = Message
-
-/** Escape was pressed during a drag. Restores the value from the drag origin. */
-export const { CancelledDrag } = Message
-
-/** The user pressed a keyboard navigation key on the focused thumb. The view
- *  supplies `value`, the current value, to compute the next one from. */
-export const { PressedKeyboardNavigation } = Message
-
 export type Message = typeof Message.Type
 
 export type PressedThumb = typeof Message.PressedThumb.Type
@@ -106,11 +82,6 @@ export type PressedKeyboardNavigation =
 export const OutMessage = messages({
   ChangedValue: { value: S.Number },
 })
-
-/** Emitted when the slider value changes. The parent can handle this to
- *  update its own state or dispatch its own Commands, for example to run
- *  validation or trigger a downstream Command. */
-export const { ChangedValue } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 // INIT

@@ -19,8 +19,6 @@ export const Message = messages({
   ClickedIncrement: {},
 })
 
-export const { ClickedDecrement, ClickedIncrement } = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

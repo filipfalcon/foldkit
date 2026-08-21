@@ -71,14 +71,6 @@ export const Message = messages({
   ClickedTogglePlay: {},
 })
 
-export const {
-  TickedFrame,
-  ClickedCanvas,
-  CompletedGenerateBall,
-  ClickedClear,
-  ClickedTogglePlay,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

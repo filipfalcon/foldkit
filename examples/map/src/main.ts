@@ -91,24 +91,6 @@ export const Message = messages({
   CompletedUnlockBodyScroll: {},
 })
 
-export const {
-  SucceededMountMap,
-  FailedMountMap,
-  MovedMap,
-  ClickedMarker,
-  ClickedLocation,
-  UpdatedSearchQuery,
-  ClickedFindMe,
-  DismissedGeolocate,
-  SucceededGeolocate,
-  FailedGeolocate,
-  SucceededFlyTo,
-  FailedFlyTo,
-  CompletedFocusSearchInput,
-  CompletedLockBodyScroll,
-  CompletedUnlockBodyScroll,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

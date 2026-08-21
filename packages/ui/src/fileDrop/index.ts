@@ -31,27 +31,6 @@ export const Message = messages({
   },
   DroppedNonFiles: {},
 })
-
-/** Sent when a drag enters the drop zone. Flips `isDragOver` to true so
- * the consumer's styling can highlight the zone. */
-export const { EnteredDragZone } = Message
-
-/** Sent when a drag leaves the drop zone without dropping. Flips
- * `isDragOver` back to false. */
-export const { LeftDragZone } = Message
-
-/** Sent when the user drops files on the zone or selects them via the
- * hidden `<input type="file">`. Carries a non-empty list of `File`
- * objects, resets `isDragOver`, and emits `ReceivedFiles` as an
- * OutMessage. */
-export const { DroppedFiles } = Message
-
-/** Sent when a drop or input-change event fires without any files,
- * typically a drag of non-file data (text, URLs, images from another
- * page). Resets `isDragOver` and emits `RejectedNonFiles` as an
- * OutMessage so the consumer can surface a message (e.g. "Only files are
- * accepted"). */
-export const { DroppedNonFiles } = Message
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -64,16 +43,6 @@ export const OutMessage = messages({
   },
   RejectedNonFiles: {},
 })
-
-/** Emitted when files arrive via drop or input-change. The consumer's
- * parent update handles this to process the files (validate, upload,
- * store in Model, etc.). The files list is non-empty. */
-export const { ReceivedFiles } = OutMessage
-
-/** Emitted when a drop or input-change event produces no files. The
- * consumer's parent update handles this to surface a message (e.g. "Only
- * files are accepted"). */
-export const { RejectedNonFiles } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 // INIT

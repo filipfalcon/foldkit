@@ -122,66 +122,12 @@ export const Message = messages({
 
 export type Message = typeof Message.Type
 
-/** Sent when the menu opens via button click or keyboard. Contains an optional initial active item index: None for pointer, Some for keyboard. */
-export const { Opened } = Message
-/** Sent when the menu closes via Escape key or backdrop click. */
-export const { Closed } = Message
-/** Sent when the menu items container loses focus. */
-export const { BlurredItems } = Message
-/** Sent when an item is highlighted via arrow keys or mouse hover. Includes activation trigger. */
-export const { ActivatedItem } = Message
-/** Sent when the mouse leaves an enabled item. */
-export const { DeactivatedItem } = Message
-/** Sent when an item is selected via Enter, Space, or click. */
-export const { SelectedItem } = Message
-/** Sent when Enter or Space is pressed on the active item, triggering a programmatic click on the DOM element. */
-export const { RequestedItemClick } = Message
-/** Sent when a printable character is typed for typeahead search. */
-export const { Searched } = Message
-/** Sent after the search debounce period to clear the accumulated query. */
-export const { CompletedDelayClearSearch } = Message
-/** Sent when the pointer moves over a menu item, carrying screen coordinates for tracked-pointer comparison. */
-export const { MovedPointerOverItem } = Message
-/** Sent when the focus-items command completes after opening the menu. */
-export const { CompletedFocusItems } = Message
-/** Sent when the focus-button command completes after closing or selecting. */
-export const { CompletedFocusButton } = Message
-/** Sent when the scroll lock command completes. */
-export const { CompletedLockScroll } = Message
-/** Sent when the scroll unlock command completes. */
-export const { CompletedUnlockScroll } = Message
-/** Sent when the inert-others command completes. */
-export const { CompletedInertOthers } = Message
-/** Sent when the restore-inert command completes. */
-export const { CompletedRestoreInert } = Message
-/** Sent when the scroll-into-view command completes after keyboard activation. */
-export const { CompletedScrollIntoView } = Message
-/** Sent when the programmatic click command completes. */
-export const { CompletedClickItem } = Message
-/** Sent when a mouse click on the button is ignored because pointer-down already handled the toggle. */
-export const { IgnoredMouseClick } = Message
-/** Sent when a Space key-up is captured to prevent page scrolling. */
-export const { SuppressedSpaceScroll } = Message
-/** Sent when the menu items panel mounts and Floating UI has positioned it. Update no-ops; the side effect is the act of positioning, surfaced for DevTools observability. */
-export const { CompletedAnchorMenu } = Message
-/** Sent when the menu backdrop mounts and is portaled to the document body. Update no-ops; surfaces the portal side effect for DevTools. */
-export const { CompletedPortalMenuBackdrop } = Message
-/** Wraps an Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-/** Sent when the user presses a pointer device on the menu button. Records pointer type and toggles for mouse. */
-export const { PressedPointerOnButton } = Message
-/** Sent when the user releases a pointer on the items container, enabling drag-to-select for mouse. */
-export const { ReleasedPointerOnItems } = Message
-
 // OUT MESSAGE
 
 /** Union of out-messages the menu component can produce. Surfaced as the third element of `update`'s return tuple and pattern-matched by the parent. */
 export const OutMessage = messages({
   Selected: { value: S.String, index: S.Number },
 })
-
-/** Sent to the parent when a menu item is selected. Carries both the selected value (from the `viewInputs.items` array supplied at view time) and its index. The menu has already closed when this fires; the parent does not need to dispatch `Menu.close`. */
-export const { Selected } = OutMessage
 
 export type Selected<Value extends string = string> = Readonly<{
   readonly _tag: 'Selected'
@@ -194,20 +140,21 @@ export type Selected<Value extends string = string> = Readonly<{
  *  `Selected` OutMessage. Defaults to `string`. */
 export type OutMessage<Value extends string = string> = Selected<Value>
 
-export type Opened = typeof Opened.Type
-export type Closed = typeof Closed.Type
-export type BlurredItems = typeof BlurredItems.Type
-export type ActivatedItem = typeof ActivatedItem.Type
-export type DeactivatedItem = typeof DeactivatedItem.Type
-export type SelectedItem = typeof SelectedItem.Type
-export type MovedPointerOverItem = typeof MovedPointerOverItem.Type
-export type RequestedItemClick = typeof RequestedItemClick.Type
-export type Searched = typeof Searched.Type
-export type CompletedDelayClearSearch = typeof CompletedDelayClearSearch.Type
-export type IgnoredMouseClick = typeof IgnoredMouseClick.Type
-export type SuppressedSpaceScroll = typeof SuppressedSpaceScroll.Type
-export type PressedPointerOnButton = typeof PressedPointerOnButton.Type
-export type ReleasedPointerOnItems = typeof ReleasedPointerOnItems.Type
+export type Opened = typeof Message.Opened.Type
+export type Closed = typeof Message.Closed.Type
+export type BlurredItems = typeof Message.BlurredItems.Type
+export type ActivatedItem = typeof Message.ActivatedItem.Type
+export type DeactivatedItem = typeof Message.DeactivatedItem.Type
+export type SelectedItem = typeof Message.SelectedItem.Type
+export type MovedPointerOverItem = typeof Message.MovedPointerOverItem.Type
+export type RequestedItemClick = typeof Message.RequestedItemClick.Type
+export type Searched = typeof Message.Searched.Type
+export type CompletedDelayClearSearch =
+  typeof Message.CompletedDelayClearSearch.Type
+export type IgnoredMouseClick = typeof Message.IgnoredMouseClick.Type
+export type SuppressedSpaceScroll = typeof Message.SuppressedSpaceScroll.Type
+export type PressedPointerOnButton = typeof Message.PressedPointerOnButton.Type
+export type ReleasedPointerOnItems = typeof Message.ReleasedPointerOnItems.Type
 
 // INIT
 

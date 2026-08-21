@@ -24,15 +24,6 @@ export const Message = messages({
   ScrolledTo: { offset: S.Number },
 })
 
-export const {
-  ClickedToggle,
-  MeasuredPanel,
-  CompletedFocusButton,
-  FailedMountSidebar,
-  ClickedIncrement,
-  ScrolledTo,
-} = Message
-
 export type Message = typeof Message.Type
 
 // MOUNT

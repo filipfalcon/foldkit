@@ -28,8 +28,6 @@ export const Message = messages({
   ChangedColor: { value: S.String },
 })
 
-export const { ChangedColor } = Message
-
 export type Message = typeof Message.Type
 
 // INIT

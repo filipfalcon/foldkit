@@ -36,14 +36,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  ClickedLink,
-  ChangedUrl,
-  GotCounterMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

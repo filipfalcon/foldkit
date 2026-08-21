@@ -80,17 +80,6 @@ export const Message = messages({
   SkippedCompute: {},
 })
 
-export const {
-  ClickedStartEngine,
-  ClickedStopEngine,
-  StartedEngine,
-  StoppedEngine,
-  FailedStartEngine,
-  ClickedCompute,
-  CompletedCompute,
-  SkippedCompute,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

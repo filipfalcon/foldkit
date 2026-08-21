@@ -26,13 +26,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedToggleFeed,
-  AcquiredFeedSocket,
-  ReleasedFeedSocket,
-  FailedAcquireFeedSocket,
-} = Message
-
 export type Message = typeof Message.Type
 
 // MANAGED RESOURCE

@@ -3,6 +3,8 @@ import { Command, click, expect, given, role, scene, text } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 
 import { Dialog, Listbox, RadioGroup } from '@foldkit/ui'
+import { Message as DialogMessage } from '@foldkit/ui/dialog'
+import { Message as RadioGroupMessage } from '@foldkit/ui/radioGroup'
 
 import { ExportPng, SaveCanvas } from './command'
 import { createEmptyGrid } from './grid'
@@ -13,7 +15,7 @@ import { view } from './view'
 
 const resolveFocusOption = Command.resolve(
   RadioGroup.FocusOption,
-  RadioGroup.CompletedFocusOption(),
+  RadioGroupMessage.CompletedFocusOption(),
 )
 
 const createTestModel = (): Model => ({
@@ -67,7 +69,7 @@ describe('export workflow', () => {
         ExportPng,
         Message.FailedExportPng({ error: 'Canvas 2D context not available' }),
       ),
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       expect(text('Export Failed')).toExist(),
       expect(text('Canvas 2D context not available')).toExist(),
       expect(role('button', { name: 'Dismiss' })).toExist(),
@@ -83,10 +85,10 @@ describe('export workflow', () => {
         ExportPng,
         Message.FailedExportPng({ error: 'Canvas 2D context not available' }),
       ),
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       expect(text('Export Failed')).toExist(),
       click(role('button', { name: 'Dismiss' })),
-      Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+      Command.resolve(Dialog.CloseDialog, DialogMessage.CompletedCloseDialog()),
       expect(text('Export Failed')).toBeAbsent(),
     )
   })
@@ -194,7 +196,7 @@ describe('grid size change', () => {
       given(createPaintedModel()),
       click(role('radio', { name: '8' })),
       resolveFocusOption,
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       expect(text('Change to 8\u00d78?')).toExist(),
       expect(
         text('This will clear your canvas and reset undo history.'),
@@ -220,7 +222,7 @@ describe('grid size change', () => {
       given(modelWithPendingResize),
       expect(text('Change to 8\u00d78?')).toExist(),
       click(role('button', { name: 'Clear and Resize' })),
-      Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+      Command.resolve(Dialog.CloseDialog, DialogMessage.CompletedCloseDialog()),
       Command.resolve(SaveCanvas, Message.CompletedSaveCanvas()),
       expect(text('Change to 8\u00d78?')).toBeAbsent(),
     )
@@ -241,7 +243,7 @@ describe('grid size change', () => {
       given(modelWithPendingResize),
       expect(text('Change to 8\u00d78?')).toExist(),
       click(role('button', { name: 'Cancel' })),
-      Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+      Command.resolve(Dialog.CloseDialog, DialogMessage.CompletedCloseDialog()),
       expect(text('Change to 8\u00d78?')).toBeAbsent(),
     )
   })

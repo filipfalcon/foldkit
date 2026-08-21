@@ -51,32 +51,4 @@ export const Message = messages({
   CompletedSaveCanvas: {},
 })
 
-export const {
-  PressedCell,
-  EnteredCell,
-  LeftCanvas,
-  ReleasedMouse,
-  SelectedColor,
-  SelectedTool,
-  SelectedGridSize,
-  ToggledMirrorHorizontal,
-  ToggledMirrorVertical,
-  ClickedUndo,
-  ClickedRedo,
-  ClickedHistoryStep,
-  ClickedRedoStep,
-  ClickedClear,
-  ClickedExport,
-  SucceededExportPng,
-  FailedExportPng,
-  GotErrorDialogMessage,
-  GotThemeListboxMessage,
-  GotToolRadioGroupMessage,
-  GotGridSizeRadioGroupMessage,
-  GotPaletteRadioGroupMessage,
-  ConfirmedGridSizeChange,
-  GotGridSizeConfirmDialogMessage,
-  CompletedSaveCanvas,
-} = Message
-
 export type Message = typeof Message.Type

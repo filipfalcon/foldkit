@@ -17,6 +17,7 @@ import * as Page from '../page'
 import { defaultRenderHeadingLink } from '../prose'
 import { type DocsRoute, homeRouter } from '../route'
 import * as Search from '../search'
+import { Message as SearchMessage } from '../search/message'
 import { defaultRenderCopyButton } from './codeBlock'
 import { headerNavView } from './headerNav'
 import { betaTag, emailFormView, iconLink, skipNavLink } from './shared'
@@ -32,7 +33,7 @@ const PagefindIgnore = ih.DataAttribute('pagefind-ignore', '')
 const LlmIgnore = ih.DataAttribute('llm-ignore', '')
 
 const openSearchDialog: Message = Message.GotSearchMessage({
-  message: Search.ClickedOpenSearch(),
+  message: SearchMessage.ClickedOpenSearch(),
 })
 
 /**

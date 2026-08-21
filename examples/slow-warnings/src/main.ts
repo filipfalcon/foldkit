@@ -69,15 +69,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedRunUpdateWork,
-  ClickedRunViewWork,
-  ClickedRunPatchWork,
-  ClickedRunSubscriptionDependenciesWork,
-  ClickedClearWarnings,
-  RecordedSlowWarning,
-} = Message
-
 export type Message = typeof Message.Type
 
 const slowWarningTarget = new EventTarget()

@@ -18,22 +18,6 @@ export const Message = messages({
   FailedJoinRoom: { error: S.String },
   PressedKey: { key: S.String },
 })
-
-export const {
-  CompletedFocusUsernameInput,
-  CompletedFocusRoomIdInput,
-  SubmittedUsernameForm,
-  ChangedUsername,
-  BlurredUsernameInput,
-  ChangedRoomId,
-  BlurredRoomIdInput,
-  SubmittedJoinRoomForm,
-  SucceededCreateRoom,
-  SucceededJoinRoom,
-  FailedCreateRoom,
-  FailedJoinRoom,
-  PressedKey,
-} = Message
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -42,6 +26,4 @@ export const OutMessage = messages({
   CreatedRoom: { roomId: S.String, player: Shared.Player },
   JoinedRoom: { roomId: S.String, player: Shared.Player },
 })
-
-export const { CreatedRoom, JoinedRoom } = OutMessage
 export type OutMessage = typeof OutMessage.Type

@@ -66,6 +66,9 @@ Match the implementation style to the subsystem and the behavior being modeled. 
 - Never use bracket array indexing (`xs[0]`, `xs[xs.length - 1]`). Use `Array.get`, `Array.head`, `Array.last`, or non-empty variants.
 - Use `Array.isArrayEmpty` / `Array.isArrayNonEmpty`, not `.length === 0` / `.length > 0`. Prefer `Array.match` when handling both cases.
 - Never cast Schema values with `as Type`. Use callable constructors.
+- Never destructure constructors from a Message or OutMessage union. Keep the
+  owning namespace at every call site: `Message.ClickedSubmit()` and
+  `OutMessage.SucceededLogin({ user })`.
 - Capitalize Schema literal strings: `S.Literals(['Horizontal', 'Vertical'])`.
 - Capitalize namespace imports: `import * as Command from './command'`.
 - Use `const`. Only use `let` when mutation is truly unavoidable. Always brace control flow.

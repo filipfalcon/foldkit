@@ -16,8 +16,6 @@ export const Message = messages({
   ClickedCrash: {},
 })
 
-export const { ClickedCrash } = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

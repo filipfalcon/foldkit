@@ -105,7 +105,7 @@ const Message = messages({
 type Message = typeof Message.Type
 ```
 
-Keep the `messages()` declaration and `type Message` alias adjacent. Construct values through the namespace (`Message.ClickedSubmit()`) and handle the union with `Message.match`.
+Keep the `messages()` declaration and `type Message` alias adjacent. Construct values through the namespace (`Message.ClickedSubmit()`) and handle the union with `Message.match`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
 
 Messages are verb-first past-tense. Common prefixes: `Clicked*`, `Updated*` (input changes and external state updates), `Submitted*`, `Pressed*`, `Selected*`, `Succeeded*` / `Failed*` (paired async results), `Completed*` (every other Command result), `Got*` (child OutMessage in the Submodel pattern).
 

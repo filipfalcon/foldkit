@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { products } from './data/products'
 import { Message, type Model, update } from './main'
 import { Products } from './page'
+import { Message as ProductsMessage } from './page/products'
 import { ProductsRoute } from './route'
 
 const apple = { id: '1', name: 'Apple', price: 1.5 }
@@ -89,7 +90,7 @@ describe('update', () => {
         given(baseModel),
         message(
           Message.GotProductsMessage({
-            message: Products.ClickedAddToCart({ item: apple }),
+            message: ProductsMessage.ClickedAddToCart({ item: apple }),
           }),
         ),
         model(model => {
@@ -106,12 +107,12 @@ describe('update', () => {
         given(baseModel),
         message(
           Message.GotProductsMessage({
-            message: Products.ClickedAddToCart({ item: apple }),
+            message: ProductsMessage.ClickedAddToCart({ item: apple }),
           }),
         ),
         message(
           Message.GotProductsMessage({
-            message: Products.ClickedAddToCart({ item: apple }),
+            message: ProductsMessage.ClickedAddToCart({ item: apple }),
           }),
         ),
         model(model => {

@@ -75,51 +75,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when the popover should open via button click or keyboard activation. */
-export const { RequestedOpen } = Message
-
-/** Sent when the popover should close via Escape key or backdrop click. Returns focus to the button. */
-export const { RequestedClose } = Message
-
-/** Sent when the popover panel loses focus. Does NOT return focus to the button. */
-export const { BlurredPanel } = Message
-
-/** Sent when the user presses a pointer device on the popover button. Records pointer type and toggles for mouse. */
-export const { PressedPointerOnButton } = Message
-
-/** Sent when the focus-panel command completes after opening the popover. */
-export const { CompletedFocusPanel } = Message
-
-/** Sent when the focus-button command completes after closing. */
-export const { CompletedFocusButton } = Message
-
-/** Sent when the scroll lock command completes. */
-export const { CompletedLockScroll } = Message
-
-/** Sent when the scroll unlock command completes. */
-export const { CompletedUnlockScroll } = Message
-
-/** Sent when the inert-others command completes. */
-export const { CompletedInertOthers } = Message
-
-/** Sent when the restore-inert command completes. */
-export const { CompletedRestoreInert } = Message
-
-/** Sent when a mouse click on the button is ignored because pointer-down already handled the toggle. */
-export const { IgnoredMouseClick } = Message
-
-/** Sent when a Space key-up is captured to prevent page scrolling. */
-export const { SuppressedSpaceScroll } = Message
-
-/** Sent when the popover panel mounts and Floating UI has positioned it. Update no-ops; the side effect is the act of positioning, surfaced for DevTools observability. */
-export const { CompletedAnchorPopover } = Message
-
-/** Sent when the popover backdrop mounts and is portaled to the document body. Update no-ops; surfaces the portal side effect for DevTools. */
-export const { CompletedPortalPopoverBackdrop } = Message
-
-/** Wraps an Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-
 export type RequestedOpen = typeof Message.RequestedOpen.Type
 export type RequestedClose = typeof Message.RequestedClose.Type
 export type BlurredPanel = typeof Message.BlurredPanel.Type
@@ -136,12 +91,6 @@ export const OutMessage = messages({
   Opened: {},
   Closed: {},
 })
-
-/** Sent to the parent after the popover transitions to its open state. Fires once `update` has processed `RequestedOpen` and `isOpen` reflects the new state. */
-export const { Opened } = OutMessage
-
-/** Sent to the parent after the popover transitions to its closed state. */
-export const { Closed } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 export type Opened = typeof OutMessage.Opened.Type

@@ -24,12 +24,6 @@ export const Message = messages({
     message: Dialog.Message,
   },
 })
-
-export const { ClickedToggle } = Message
-
-export const { ClickedSubmit } = Message
-
-export const { GotDialogMessage } = Message
 export type Message = typeof Message.Type
 
 // INIT

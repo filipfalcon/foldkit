@@ -4,6 +4,7 @@ import { fromString } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
 
 import { Counter } from './island'
+import { Message as CounterMessage } from './island/counter'
 import { HomeRoute, Message, Model, update } from './main'
 
 const home = Model.make({ route: HomeRoute(), counter: Counter.init })
@@ -84,12 +85,12 @@ describe('update', () => {
         given(home),
         message(
           Message.GotCounterMessage({
-            message: Counter.ClickedIncrement(),
+            message: CounterMessage.ClickedIncrement(),
           }),
         ),
         message(
           Message.GotCounterMessage({
-            message: Counter.ClickedIncrement(),
+            message: CounterMessage.ClickedIncrement(),
           }),
         ),
         Command.expectNone(),
@@ -105,7 +106,7 @@ describe('update', () => {
         given(home),
         message(
           Message.GotCounterMessage({
-            message: Counter.ClickedIncrement(),
+            message: CounterMessage.ClickedIncrement(),
           }),
         ),
         message(

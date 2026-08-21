@@ -238,8 +238,11 @@ describe('Dialog', () => {
           Story.Command.expectHas(ShowDialog, Animation.WaitForPaint),
           Story.Command.resolveAll(
             [ShowDialog, Message.CompletedShowDialog()],
-            [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-            [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+            [Animation.WaitForPaint, Animation.Message.CompletedWaitForPaint()],
+            [
+              Animation.WaitForAnimationSettled,
+              Animation.Message.EndedAnimation(),
+            ],
           ),
           Story.model(model => {
             expect(model.isOpen).toBe(true)
@@ -258,8 +261,11 @@ describe('Dialog', () => {
             expect(model.animation.transitionState).toBe('LeaveStart')
           }),
           Story.Command.resolveAll(
-            [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-            [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+            [Animation.WaitForPaint, Animation.Message.CompletedWaitForPaint()],
+            [
+              Animation.WaitForAnimationSettled,
+              Animation.Message.EndedAnimation(),
+            ],
             [CloseDialog, Message.CompletedCloseDialog()],
           ),
           Story.model(model => {

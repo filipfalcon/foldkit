@@ -14,8 +14,6 @@ export const Message = messages({
   ClickedFallback: {},
 })
 
-export const { ClickedFallback } = Message
-
 export type Message = typeof Message.Type
 
 // INIT

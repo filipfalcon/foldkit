@@ -28,13 +28,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  GotResumeDropMessage,
-  GotAdditionalFilesDropMessage,
-  RemovedResume,
-  RemovedAdditionalFile,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

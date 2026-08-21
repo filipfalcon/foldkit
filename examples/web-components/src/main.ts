@@ -28,9 +28,6 @@ export const Message = messages({
   },
 })
 
-export const { UpdatedContent, ChangedFillColor, ChangedBackgroundColor } =
-  Message
-
 export type Message = typeof Message.Type
 
 // INIT

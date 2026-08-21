@@ -13,11 +13,11 @@ import { Message, init, triggerId, update, view } from './index.js'
 
 const acknowledgeAnchorPopover = Scene.Mount.resolve(
   Popover.AnchorPopover,
-  Popover.CompletedAnchorPopover(),
+  Popover.Message.CompletedAnchorPopover(),
 )
 const acknowledgePopoverBackdrop = Scene.Mount.resolve(
   Popover.PortalPopoverBackdrop,
-  Popover.CompletedPortalPopoverBackdrop(),
+  Popover.Message.CompletedPortalPopoverBackdrop(),
 )
 
 const today = Calendar.make(2026, 4, 13)

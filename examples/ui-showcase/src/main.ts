@@ -180,14 +180,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  ClickedLink,
-  ChangedUrl,
-  GotUiMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

@@ -44,27 +44,6 @@ export const Message = messages({
   Opened: {},
   Closed: {},
 })
-
-/** Wraps a Calendar submodel message for delegation. */
-export const { GotCalendarMessage } = Message
-
-/** Wraps a Popover submodel message for delegation. */
-export const { GotPopoverMessage } = Message
-
-/** Sent when the user commits a date via click or keyboard. Updates the
- * selected date, syncs the calendar, and closes the popover. */
-export const { RequestedSelectDate } = Message
-
-/** Sent when the user clears the selected date. Does not close the popover. */
-export const { Cleared } = Message
-
-/** Sent when the popover should open. Triggers focus-grid on the embedded
- * Calendar so keyboard focus lands inside the grid instead of the panel. */
-export const { Opened } = Message
-
-/** Sent when the popover should close. Delegates to Popover which returns
- * focus to the trigger button. */
-export const { Closed } = Message
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -80,19 +59,6 @@ export const OutMessage = messages({
   },
   ClearedDate: {},
 })
-
-/** Emitted when the visible month changes (propagated from the embedded
- * Calendar). Useful for month-scoped data loading. */
-export const { ChangedViewMonth } = OutMessage
-
-/** Emitted when the user commits a date selection (propagated from the
- * embedded Calendar). The popover has already closed; the parent stores the
- * committed date and passes it back in as `maybeSelectedDate`. */
-export const { SelectedDate } = OutMessage
-
-/** Emitted when the user clears the selected date. The parent clears its own
- * value field. */
-export const { ClearedDate } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 export type ChangedViewMonth = typeof OutMessage.ChangedViewMonth.Type

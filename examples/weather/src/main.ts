@@ -41,13 +41,6 @@ export const Message = messages({
   FailedFetchWeather: { error: S.String },
 })
 
-export const {
-  UpdatedZipCodeInput,
-  SubmittedWeatherForm,
-  SucceededFetchWeather,
-  FailedFetchWeather,
-} = Message
-
 export type Message = typeof Message.Type
 
 export const update = (model: Model, message: Message) =>

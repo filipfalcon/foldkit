@@ -25,15 +25,6 @@ export const Message = messages({
   ChangedSelect: { value: S.String },
 })
 
-export const {
-  ClickedButton,
-  DoubleClickedButton,
-  HoveredTarget,
-  FocusedInput,
-  BlurredInput,
-  ChangedSelect,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

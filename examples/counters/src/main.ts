@@ -33,8 +33,6 @@ export const Message = messages({
   },
 })
 
-export const { ClickedAddRow, ClickedRemoveRow, GotCounterMessage } = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

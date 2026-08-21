@@ -4,6 +4,7 @@ import { fromString } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
 
 import { Listbox } from '@foldkit/ui'
+import { Message as ListboxMessage } from '@foldkit/ui/listbox'
 
 import {
   Ascending,
@@ -124,18 +125,24 @@ describe('update', () => {
         given(browseModel),
         message(
           Message.GotDietListboxMessage({
-            message: Listbox.Opened({
+            message: ListboxMessage.Opened({
               maybeActiveItemIndex: Option.none(),
             }),
           }),
         ),
-        Command.resolve(Listbox.FocusItems, Listbox.CompletedFocusItems()),
+        Command.resolve(
+          Listbox.FocusItems,
+          ListboxMessage.CompletedFocusItems(),
+        ),
         message(
           Message.GotDietListboxMessage({
-            message: Listbox.SelectedItem({ item: 'Carnivore' }),
+            message: ListboxMessage.SelectedItem({ item: 'Carnivore' }),
           }),
         ),
-        Command.resolve(Listbox.FocusButton, Listbox.CompletedFocusButton()),
+        Command.resolve(
+          Listbox.FocusButton,
+          ListboxMessage.CompletedFocusButton(),
+        ),
         Command.expectHas(ReplaceFilters),
         Command.resolve(ReplaceFilters, Message.CompletedReplaceFilters()),
       )

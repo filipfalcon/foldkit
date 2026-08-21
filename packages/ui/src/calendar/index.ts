@@ -78,49 +78,6 @@ export const Message = messages({
   },
   CompletedFocusGrid: {},
 })
-
-/** Sent when the user clicks a day cell in the grid. */
-export const { ClickedDay } = Message
-
-/** Sent when the user presses a key on the grid container. The update maps
- * the key to a navigation or selection action. */
-export const { PressedKeyOnGrid } = Message
-
-/** Sent when the user clicks the previous-month navigation button in Days
- * mode. (The Years mode prev/next-page buttons dispatch `PagedYears`.) */
-export const { ClickedPreviousMonthButton } = Message
-
-/** Sent when the user clicks the next-month navigation button in Days
- * mode. (The Years mode prev/next-page buttons dispatch `PagedYears`.) */
-export const { ClickedNextMonthButton } = Message
-
-/** Sent when the user clicks the calendar heading. Zooms out one mode
- * level: Days → Months, Months → Years. Terminal in Years mode. */
-export const { ClickedHeading } = Message
-
-/** Sent when the user picks a month from the months grid. Jumps the view
- * to that month and returns the calendar to Days mode. */
-export const { SelectedMonth } = Message
-
-/** Sent when the user picks a year from the years grid. Jumps the view to
- * that year and transitions the calendar to Months mode for further drilling. */
-export const { SelectedYear } = Message
-
-/** Sent when the user pages the years grid forward or backward by one
- * window. Direction is `1` for next, `-1` for previous. */
-export const { PagedYears } = Message
-
-/** Sent when the grid container receives DOM focus. */
-export const { FocusedGrid } = Message
-
-/** Sent when the grid container loses DOM focus. */
-export const { BlurredGrid } = Message
-
-/** Sent when a long-lived session's "today" reference should be refreshed. */
-export const { RefreshedToday } = Message
-
-/** Sent when a FocusGrid command completes. */
-export const { CompletedFocusGrid } = Message
 export type Message = typeof Message.Type
 
 export type ClickedDay = typeof Message.ClickedDay.Type
@@ -140,18 +97,6 @@ export const OutMessage = messages({
     date: Calendar.CalendarDate,
   },
 })
-
-/** Emitted when the visible month changes due to navigation. Consumers of an
- * inline calendar may use this to load month-scoped data (holidays, events).
- * A click that commits a date in a different month emits `SelectedDate`, not
- * `ChangedViewMonth`. The parent infers the month change from the date. */
-export const { ChangedViewMonth } = OutMessage
-
-/** Emitted when the user commits a date selection via click or keyboard. The
- * calendar's internal state already reflects the new selection by the time
- * this fires; consumers react by lifting the date into their domain state
- * (closing a popover, advancing a form step, etc.). */
-export const { SelectedDate } = OutMessage
 export type OutMessage = typeof OutMessage.Type
 
 export type ChangedViewMonth = typeof OutMessage.ChangedViewMonth.Type

@@ -17,11 +17,4 @@ export const Message = messages({
   },
 })
 
-export const {
-  RequestedApiData,
-  SucceededLoadApiData,
-  FailedLoadApiData,
-  ToggledSignature,
-} = Message
-
 export type Message = typeof Message.Type

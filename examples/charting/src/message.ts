@@ -32,19 +32,4 @@ export const Message = messages({
   FailedSyncChart: { reason: S.String },
 })
 
-export const {
-  GotChartModeRadioGroupMessage,
-  GotPackageRadioGroupMessage,
-  GotPeriodRadioGroupMessage,
-  ClickedRefresh,
-  ClickedRetry,
-  ClickedChartDatum,
-  SucceededFetchTelemetry,
-  FailedFetchTelemetry,
-  SucceededMountChart,
-  FailedMountChart,
-  SucceededSyncChart,
-  FailedSyncChart,
-} = Message
-
 export type Message = typeof Message.Type

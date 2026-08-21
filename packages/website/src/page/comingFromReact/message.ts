@@ -8,6 +8,4 @@ export const Message = messages({
   },
 })
 
-export const { ToggledFaq } = Message
-
 export type Message = typeof Message.Type

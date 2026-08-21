@@ -56,20 +56,6 @@ export const Message = messages({
   ClickedPlaceOrder: {},
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  ClickedLink,
-  ChangedUrl,
-  GotProductsMessage,
-  ClickedIncrementQuantity,
-  ClickedDecrementQuantity,
-  ClickedRemoveCartItem,
-  ClickedClearCart,
-  UpdatedDeliveryInstructions,
-  ClickedPlaceOrder,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

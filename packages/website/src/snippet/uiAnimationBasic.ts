@@ -8,6 +8,7 @@ import { messages } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Animation } from '@foldkit/ui'
+import { Message as AnimationMessage } from '@foldkit/ui/animation'
 
 // Add a field to your Model for the Animation Submodel. Animation tracks
 // its own visibility and lifecycle state. No need for a separate flag:
@@ -80,8 +81,9 @@ const foldAnimation = Update.foldChild({
 // Inside your update function's Message.match({...}), call the fold:
 GotAnimationMessage: ({ message }) => foldAnimation(model, message)
 
-// Inside your view function, toggle visibility by dispatching Animation.Showed()
-// or Hid() wrapped in your parent Message. model.animation.isShowing is your
+// Inside your view function, toggle visibility by dispatching
+// AnimationMessage.Showed() or AnimationMessage.Hid() wrapped in your parent
+// Message. model.animation.isShowing is your
 // source of truth for whether content is currently visible. The Animation
 // view wraps your content. Data attributes drive the CSS transitions or
 // keyframe animations defined in className:
@@ -94,8 +96,8 @@ const view = (h: HtmlBuilder<Message>) =>
           h.OnClick(
             Message.GotAnimationMessage({
               message: model.animation.isShowing
-                ? Animation.Hid()
-                : Animation.Showed(),
+                ? AnimationMessage.Hid()
+                : AnimationMessage.Showed(),
             }),
           ),
         ],

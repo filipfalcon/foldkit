@@ -92,21 +92,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  GotTabsMessage,
-  ClickedPost,
-  ClickedBackToPosts,
-  ClickedInvalidatePosts,
-  ClickedRetryPosts,
-  ClickedRetryPostDetail,
-  ClickedRefreshStats,
-  ClickedRetryStats,
-  TickedRevalidateStats,
-  SettledFetchPosts,
-  SettledFetchPostDetail,
-  SettledFetchStats,
-} = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

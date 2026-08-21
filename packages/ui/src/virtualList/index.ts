@@ -73,18 +73,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when the user scrolls the container. Carries the new scroll position
- *  read from the scroll event. */
-export const { ScrolledContainer } = Message
-
-/** Sent when the container resizes. Carries the new container height read
- *  from the `ResizeObserver` entry. */
-export const { MeasuredContainer } = Message
-
-/** Sent when a `scrollToIndex` Command completes. Carries the version it was
- *  issued with so the update can ignore stale completions. */
-export const { CompletedApplyScroll } = Message
-
 export type ScrolledContainer = typeof Message.ScrolledContainer.Type
 export type MeasuredContainer = typeof Message.MeasuredContainer.Type
 

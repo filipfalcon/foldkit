@@ -3,6 +3,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 
 import { Dialog, Listbox, RadioGroup } from '@foldkit/ui'
+import { Message as DialogMessage } from '@foldkit/ui/dialog'
 
 import { ExportPng, SaveCanvas } from './command'
 import { createEmptyGrid } from './grid'
@@ -303,7 +304,7 @@ describe('grid size', () => {
       update,
       given(paintedModel),
       message(Message.SelectedGridSize({ size: 8 })),
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       model(model => {
         expect(model.maybePendingGridSize).toEqual(Option.some(8))
         expect(model.gridSizeConfirmDialog.isOpen).toBe(true)
@@ -327,7 +328,7 @@ describe('grid size', () => {
       update,
       given(modelWithPending),
       message(Message.ConfirmedGridSizeChange()),
-      Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+      Command.resolve(Dialog.CloseDialog, DialogMessage.CompletedCloseDialog()),
       Command.resolve(SaveCanvas, Message.CompletedSaveCanvas()),
       model(model => {
         expect(model.gridSize).toBe(8)
@@ -448,7 +449,7 @@ describe('export failure', () => {
       message(
         Message.FailedExportPng({ error: 'Canvas 2D context not available' }),
       ),
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       model(model => {
         expect(model.maybeExportError).toEqual(
           Option.some('Canvas 2D context not available'),
@@ -465,13 +466,13 @@ describe('export failure', () => {
       message(
         Message.FailedExportPng({ error: 'Canvas 2D context not available' }),
       ),
-      Command.resolve(Dialog.ShowDialog, Dialog.CompletedShowDialog()),
+      Command.resolve(Dialog.ShowDialog, DialogMessage.CompletedShowDialog()),
       message(
         Message.GotErrorDialogMessage({
-          message: Dialog.RequestedClose(),
+          message: DialogMessage.RequestedClose(),
         }),
       ),
-      Command.resolve(Dialog.CloseDialog, Dialog.CompletedCloseDialog()),
+      Command.resolve(Dialog.CloseDialog, DialogMessage.CompletedCloseDialog()),
       model(model => {
         expect(model.maybeExportError).toEqual(Option.none())
         expect(model.errorDialog.isOpen).toBe(false)

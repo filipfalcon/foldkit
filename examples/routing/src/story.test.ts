@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 
 import { HomeRoute, Message, Model, PeopleRoute, update } from './main'
 import { People } from './page'
+import { Message as PeopleMessage } from './page/people'
 
 const peoplePageWith = (searchInput: string) =>
   People.Model.make({
@@ -37,7 +38,7 @@ const urlOrThrow = (raw: string) =>
 const resolveFetch = (searchText: string) =>
   Command.resolve(
     People.FetchPeople,
-    People.SucceededFetchPeople({
+    PeopleMessage.SucceededFetchPeople({
       query: searchText,
       people: People.searchPeople(searchText),
     }),
@@ -200,17 +201,17 @@ describe('update', () => {
         given(onPeople('')),
         message(
           Message.GotPeopleMessage({
-            message: People.ChangedSearchInput({ value: 'd' }),
+            message: PeopleMessage.ChangedSearchInput({ value: 'd' }),
           }),
         ),
         message(
           Message.GotPeopleMessage({
-            message: People.ChangedSearchInput({ value: 'de' }),
+            message: PeopleMessage.ChangedSearchInput({ value: 'de' }),
           }),
         ),
         message(
           Message.GotPeopleMessage({
-            message: People.ChangedSearchInput({ value: 'designer' }),
+            message: PeopleMessage.ChangedSearchInput({ value: 'designer' }),
           }),
         ),
         Command.expectNone(),
@@ -227,11 +228,14 @@ describe('update', () => {
         given(onPeople('designer')),
         message(
           Message.GotPeopleMessage({
-            message: People.SubmittedSearch(),
+            message: PeopleMessage.SubmittedSearch(),
           }),
         ),
         Command.expectHas(People.PushSearchUrl),
-        Command.resolve(People.PushSearchUrl, People.CompletedPushSearchUrl()),
+        Command.resolve(
+          People.PushSearchUrl,
+          PeopleMessage.CompletedPushSearchUrl(),
+        ),
       )
     })
   })

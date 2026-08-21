@@ -282,6 +282,7 @@ Foldkit ships these; reaching past them is a finding, not a style choice.
 - [ ] `Array.match({ onEmpty, onNonEmpty })` for branching on a Model array (not `.length === 0` / `.length > 0`, and not `Array.isArrayEmpty` / `Array.isArrayNonEmpty`, which take a mutable `Array<A>` and reject the `ReadonlyArray` that `S.Array(...)` decodes to)
 - [ ] `evo()` for Model updates (not spread)
 - [ ] Callable constructors (not `as` casts or manual `_tag` objects)
+- [ ] Message and OutMessage constructors stay on their owning namespace; no constructor destructuring
 - [ ] No-field tagged structs called with NO argument: `Idle()`, `Work()`, `Message.ClickedSubmit()`. Never `Idle({})`, `Work({})`, `Message.ClickedSubmit({})`
 - [ ] `Option.match` preferred over `Option.map` + `Option.getOrElse`
 

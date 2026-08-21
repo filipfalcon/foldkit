@@ -38,13 +38,6 @@ export const Message = messages({
   SubmittedNewSourceId: { id: S.String },
 })
 
-export const {
-  ClickedReload,
-  CompletedReloadSources,
-  SelectedSource,
-  SubmittedNewSourceId,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

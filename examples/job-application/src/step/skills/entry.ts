@@ -48,12 +48,6 @@ export const Message = messages({
   ClickedRemoveSelf: {},
 })
 
-export const {
-  UpdatedName,
-  GotProficiencyRadioGroupMessage,
-  ClickedRemoveSelf,
-} = Message
-
 export type Message = typeof Message.Type
 
 // OUT MESSAGE
@@ -61,8 +55,6 @@ export type Message = typeof Message.Type
 export const OutMessage = messages({
   Removed: {},
 })
-
-export const { Removed } = OutMessage
 
 export type OutMessage = typeof OutMessage.Type
 

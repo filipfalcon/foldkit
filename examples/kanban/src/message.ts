@@ -22,15 +22,4 @@ export const Message = messages({
   CompletedFocusAddCardInput: {},
 })
 
-export const {
-  GotDragAndDropMessage,
-  ClickedAddCard,
-  ChangedNewCardTitle,
-  SubmittedNewCard,
-  CancelledNewCard,
-  CompletedGenerateCardId,
-  CompletedSaveBoard,
-  CompletedFocusAddCardInput,
-} = Message
-
 export type Message = typeof Message.Type

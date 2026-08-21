@@ -31,15 +31,6 @@ export const Message = messages({
   ClickedRemoveResume: {},
 })
 
-export const {
-  ClickedChooseResume,
-  CompletedSelectResume,
-  CancelledSelectResume,
-  SucceededReadPreview,
-  FailedReadPreview,
-  ClickedRemoveResume,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

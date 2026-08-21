@@ -361,6 +361,10 @@ Loading()
 Message.SucceededFetch({ data: response })
 ```
 
+Keep Message and OutMessage constructors on their owning namespace. Never
+destructure them into sibling bindings. `Message.ClickedSubmit()` preserves the
+domain at the call site in a way that `ClickedSubmit()` does not.
+
 **No-field tagged structs take no argument, not an empty object.** `ts('Work')` and Message constructors with empty field records produce callables that accept no argument:
 
 ```ts

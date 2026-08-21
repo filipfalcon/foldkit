@@ -48,15 +48,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedStartUpload,
-  ClickedRetryUpload,
-  ClickedCancelUpload,
-  SucceededUploadFile,
-  FailedUploadFile,
-  CompletedCancelUploadFile,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

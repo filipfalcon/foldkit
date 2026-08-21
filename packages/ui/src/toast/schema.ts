@@ -81,24 +81,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when an entry should begin dismissing. Starts the leave animation;
- *  the entry is removed from the stack when `TransitionedOut` fires. */
-export const { Dismissed } = Message
-/** Sent when every currently-visible entry should begin dismissing. */
-export const { DismissedAll } = Message
-/** Sent when an entry's auto-dismiss timer fires. Carries a version echoed
- *  from the scheduling moment so stale timers (from hover or manual dismiss)
- *  are discarded. */
-export const { CompletedWaitBeforeDismissal } = Message
-/** Sent when the pointer enters an entry. Pauses the auto-dismiss timer by
- *  advancing the entry's version. */
-export const { HoveredEntry } = Message
-/** Sent when the pointer leaves an entry. Restarts the auto-dismiss timer
- *  with the entry's full duration. */
-export const { LeftEntry } = Message
-/** Wraps a single entry's Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-
 export type Dismissed = typeof Message.Dismissed.Type
 export type DismissedAll = typeof Message.DismissedAll.Type
 export type CompletedWaitBeforeDismissal =

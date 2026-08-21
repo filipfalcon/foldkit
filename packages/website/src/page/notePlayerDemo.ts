@@ -142,19 +142,6 @@ export const Message = messages({
   FailedAcquireAudioContext: {},
   ReleasedAudioContext: {},
 })
-
-export const {
-  ChangedNoteInput,
-  GotNoteDurationMessage,
-  ClickedPlay,
-  ClickedPause,
-  ClickedStop,
-  CompletedPlayNote,
-  CompletedDelayAdvancePhase,
-  SucceededAcquireAudioContext,
-  FailedAcquireAudioContext,
-  ReleasedAudioContext,
-} = Message
 export type Message = typeof Message.Type
 
 // FIELD VALIDATION

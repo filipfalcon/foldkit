@@ -13,14 +13,4 @@ export const Message = messages({
   GotHomeMessage: { message: Home.Message },
   GotRoomMessage: { message: Room.Message },
 })
-
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  CompletedNavigateToRoom,
-  ClickedLink,
-  ChangedUrl,
-  GotHomeMessage,
-  GotRoomMessage,
-} = Message
 export type Message = typeof Message.Type

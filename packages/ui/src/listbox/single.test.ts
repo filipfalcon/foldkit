@@ -40,7 +40,7 @@ const acknowledgeBackdrop = Scene.Mount.resolve(
 )
 
 const animationEndMessage = Message.GotAnimationMessage({
-  message: Animation.EndedAnimation(),
+  message: Animation.Message.EndedAnimation(),
 })
 
 const STALE_CLEAR_SEARCH_VERSION = 9999
@@ -60,8 +60,8 @@ const givenOpenAnimated = flow(
   Story.message(Message.Opened({ maybeActiveItemIndex: Option.some(0) })),
   Story.Command.resolveAll(
     [FocusItems, Message.CompletedFocusItems()],
-    [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-    [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+    [Animation.WaitForPaint, Animation.Message.CompletedWaitForPaint()],
+    [Animation.WaitForAnimationSettled, Animation.Message.EndedAnimation()],
   ),
 )
 
@@ -865,8 +865,14 @@ describe('Listbox', () => {
             }),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
           )
         })
@@ -880,14 +886,17 @@ describe('Listbox', () => {
             ),
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('EnterAnimating')
             }),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
           )
         })
@@ -901,8 +910,14 @@ describe('Listbox', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('Idle')
@@ -937,8 +952,14 @@ describe('Listbox', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -954,8 +975,14 @@ describe('Listbox', () => {
               expect(model.animation.transitionState).toBe('LeaveStart')
             }),
             Story.Command.resolveAll(
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -972,8 +999,14 @@ describe('Listbox', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -986,14 +1019,17 @@ describe('Listbox', () => {
             Story.message(Message.Closed()),
             Story.Command.resolve(
               Animation.WaitForPaint,
-              Animation.CompletedWaitForPaint(),
+              Animation.Message.CompletedWaitForPaint(),
             ),
             Story.model(model => {
               expect(model.animation.transitionState).toBe('LeaveAnimating')
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1006,8 +1042,14 @@ describe('Listbox', () => {
             Story.message(Message.Closed()),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
             Story.model(model => {
@@ -1052,7 +1094,7 @@ describe('Listbox', () => {
             givenOpen,
             Story.message(
               Message.GotAnimationMessage({
-                message: Animation.CompletedWaitForPaint(),
+                message: Animation.Message.CompletedWaitForPaint(),
               }),
             ),
             Story.model(model => {
@@ -1085,8 +1127,14 @@ describe('Listbox', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
             Story.message(Message.Closed()),
             Story.model(model => {
@@ -1095,8 +1143,14 @@ describe('Listbox', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )
@@ -1111,8 +1165,14 @@ describe('Listbox', () => {
             ),
             Story.Command.resolveAll(
               [FocusItems, Message.CompletedFocusItems()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
             ),
             Story.message(Message.Closed()),
             Story.model(model => {
@@ -1121,8 +1181,14 @@ describe('Listbox', () => {
             }),
             Story.Command.resolveAll(
               [FocusButton, Message.CompletedFocusButton()],
-              [Animation.WaitForPaint, Animation.CompletedWaitForPaint()],
-              [Animation.WaitForAnimationSettled, Animation.EndedAnimation()],
+              [
+                Animation.WaitForPaint,
+                Animation.Message.CompletedWaitForPaint(),
+              ],
+              [
+                Animation.WaitForAnimationSettled,
+                Animation.Message.EndedAnimation(),
+              ],
               [DetectMovementOrAnimationEnd, animationEndMessage],
             ),
           )

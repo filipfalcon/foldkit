@@ -48,17 +48,6 @@ export const Message = messages({
   CompletedFocusOption: {},
 })
 
-/** Sent when an option is committed via click or keyboard. Commits the option
- *  as the new selection and moves focus onto it. */
-export const { SelectedOption } = Message
-
-/** Sent when an option receives keyboard focus without being committed, which
- *  is how a read-only group navigates. */
-export const { FocusedOption } = Message
-
-/** Sent when the focus-option command completes. */
-export const { CompletedFocusOption } = Message
-
 export type SelectedOption = typeof Message.SelectedOption.Type
 export type FocusedOption = typeof Message.FocusedOption.Type
 
@@ -79,9 +68,6 @@ export const OutMessage = messages({
     index: S.Number,
   },
 })
-
-/** Sent to the parent when an option is committed via click or keyboard. Carries both the option's value (typed as `Value` via `RadioGroup.create<Value>()`) and its index. Generic at the type level; the schema stores `value: string` and the factory's fenced cast types it as `Value`. */
-export const { Selected } = OutMessage
 
 /** Generic over `Value extends string` so consumers using
  *  `RadioGroup.create<MyUnion>()` receive `value: MyUnion` in the

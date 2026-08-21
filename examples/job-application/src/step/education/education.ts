@@ -31,14 +31,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedAddEntry,
-  SucceededGenerateEntryId,
-  FailedGenerateEntryId,
-  RemovedEntry,
-  GotEntryMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

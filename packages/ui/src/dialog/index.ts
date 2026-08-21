@@ -50,32 +50,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when the dialog should open. Triggers the ShowDialog command. */
-export const { RequestedOpen } = Message
-
-/** Sent when the dialog should close (Escape key, backdrop click, or programmatic). */
-export const { RequestedClose } = Message
-
-/** Sent when the show-dialog command completes. */
-export const { CompletedShowDialog } = Message
-
-/** Sent when the close-dialog command completes. */
-export const { CompletedCloseDialog } = Message
-
-/** Sent when the native `<dialog>` element is removed from the DOM, the classic
- *  case being navigation away from a route-keyed subtree that contains the
- *  dialog. When the dialog still holds framework resources, `update` triggers
- *  the hygiene-only `ReleaseDialogResources` command and resets the model to a
- *  clean closed state. Does not emit `Closed` or run any consumer close
- *  Commands: it is a backstop, not the purposeful close. */
-export const { Unmounted } = Message
-
-/** Sent when the release-dialog-resources command completes. */
-export const { CompletedReleaseDialogResources } = Message
-
-/** Wraps an Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-
 export type RequestedOpen = typeof Message.RequestedOpen.Type
 export type RequestedClose = typeof Message.RequestedClose.Type
 export type CompletedShowDialog = typeof Message.CompletedShowDialog.Type
@@ -93,18 +67,6 @@ export const OutMessage = messages({
   Opened: {},
   Closed: {},
 })
-
-/** Sent once the dialog has transitioned to open. Fires after `update`
- *  has processed `RequestedOpen` and `isOpen` reflects the new state.
- *  Programmatic `Dialog.open` on an already-open model is a no-op that
- *  does not re-emit. */
-export const { Opened } = OutMessage
-
-/** Sent once the dialog has transitioned to closed. Programmatic
- *  `Dialog.close` on an already-closed model is a no-op that does not
- *  re-emit; calling close while a leave animation is in progress is
- *  also a no-op. */
-export const { Closed } = OutMessage
 
 export type Opened = typeof OutMessage.Opened.Type
 export type Closed = typeof OutMessage.Closed.Type

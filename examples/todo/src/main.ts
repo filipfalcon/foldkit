@@ -77,23 +77,6 @@ export const Message = messages({
   SucceededSaveTodos: { todos: Todos },
   FailedSaveTodos: {},
 })
-
-export const {
-  UpdatedNewTodo,
-  UpdatedEditingTodo,
-  AddedTodo,
-  CompletedGenerateTodo,
-  DeletedTodo,
-  ToggledTodo,
-  StartedEditing,
-  SavedEdit,
-  CancelledEdit,
-  ToggledAll,
-  ClearedCompleted,
-  SelectedFilter,
-  SucceededSaveTodos,
-  FailedSaveTodos,
-} = Message
 export type Message = typeof Message.Type
 
 // FLAGS

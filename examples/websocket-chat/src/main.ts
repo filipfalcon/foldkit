@@ -81,18 +81,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedConnect,
-  Connected,
-  Disconnected,
-  FailedConnect,
-  UpdatedMessageInput,
-  SubmittedMessage,
-  SucceededSendMessage,
-  ReceivedMessage,
-  TimestampedMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

@@ -75,13 +75,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  ClickedDemoIncrement,
-  ChangedDemoResetDuration,
-  ClickedDemoReset,
-  CompletedDelayAdvancePhase,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

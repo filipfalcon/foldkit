@@ -18,8 +18,6 @@ export const Message = messages({
   ReceivedFiles: { files: S.Array(File) },
 })
 
-export const { ReceivedFiles } = Message
-
 export type Message = typeof Message.Type
 
 // UPDATE

@@ -37,15 +37,6 @@ export const Message = messages({
     remaining: S.Number,
   },
 })
-
-export const {
-  ClickedTick,
-  ClickedDispatchLargeMessage,
-  ClickedFillLargeModel,
-  ClickedClearLargeModel,
-  ClickedFillHistory,
-  CompletedFillHistoryStep,
-} = Message
 type Message = typeof Message.Type
 
 // CONSTANTS

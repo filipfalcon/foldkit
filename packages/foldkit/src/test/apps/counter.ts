@@ -29,20 +29,6 @@ export const Message = messages({
   FailedFetchCount: { error: S.String },
 })
 
-export const {
-  ClickedIncrement,
-  ClickedDecrement,
-  ClickedFetch,
-  ClickedFetchById,
-  Ticked,
-  PolledCount,
-  StartedThreeFetches,
-  StartedTwoFetchesById,
-  StartedMixedFetches,
-  SucceededFetchCount,
-  FailedFetchCount,
-} = Message
-
 export type Message = typeof Message.Type
 
 // COMMAND

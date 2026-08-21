@@ -12,6 +12,7 @@ import {
 import { describe, test } from 'vitest'
 
 import { Tabs } from '@foldkit/ui'
+import { Message as TabsMessage } from '@foldkit/ui/tabs'
 
 import { FetchPostDetail, FetchStats, Message, update, view } from './main'
 import {
@@ -23,7 +24,10 @@ import {
   loadingPostsModel,
 } from './main.fixtures'
 
-const resolveFocusTab = Command.resolve(Tabs.FocusTab, Tabs.CompletedFocusTab())
+const resolveFocusTab = Command.resolve(
+  Tabs.FocusTab,
+  TabsMessage.CompletedFocusTab(),
+)
 
 describe('view', () => {
   test('posts load into clickable rows with an Invalidate button', () => {

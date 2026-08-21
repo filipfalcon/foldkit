@@ -150,81 +150,6 @@ export const Message = messages({
   },
 })
 
-/** Sent when the listbox opens via button click or keyboard. Contains an optional initial active item index: None for pointer, Some for keyboard. */
-export const { Opened } = Message
-
-/** Sent when the listbox closes via Escape key or backdrop click. */
-export const { Closed } = Message
-
-/** Sent when the listbox items container loses focus. */
-export const { BlurredItems } = Message
-
-/** Sent when an item is highlighted via arrow keys or mouse hover. Includes activation trigger. */
-export const { ActivatedItem } = Message
-
-/** Sent when the mouse leaves an enabled item. */
-export const { DeactivatedItem } = Message
-
-/** Sent when an item is selected via Enter, Space, or click. Contains the item's string value. */
-export const { SelectedItem } = Message
-
-/** Sent when the pointer moves over a listbox item, carrying screen coordinates for tracked-pointer comparison. */
-export const { MovedPointerOverItem } = Message
-
-/** Sent when Enter or Space is pressed on the active item, triggering a programmatic click on the DOM element. */
-export const { RequestedItemClick } = Message
-
-/** Sent when a printable character is typed for typeahead search. */
-export const { Searched } = Message
-
-/** Sent after the search debounce period to clear the accumulated query. */
-export const { CompletedDelayClearSearch } = Message
-
-/** Sent when the scroll lock command completes. */
-export const { CompletedLockScroll } = Message
-
-/** Sent when the scroll unlock command completes. */
-export const { CompletedUnlockScroll } = Message
-
-/** Sent when the inert-others command completes. */
-export const { CompletedInertOthers } = Message
-
-/** Sent when the restore-inert command completes. */
-export const { CompletedRestoreInert } = Message
-
-/** Sent when the focus-button command completes after closing. */
-export const { CompletedFocusButton } = Message
-
-/** Sent when the focus-items command completes after opening. */
-export const { CompletedFocusItems } = Message
-
-/** Sent when the scroll-into-view command completes after keyboard activation. */
-export const { CompletedScrollIntoView } = Message
-
-/** Sent when the programmatic item click command completes. */
-export const { CompletedClickItem } = Message
-
-/** Sent when a mouse click on the button is ignored because pointer-down already handled the toggle. */
-export const { IgnoredMouseClick } = Message
-
-/** Sent when a Space key-up is captured to prevent page scrolling. */
-export const { SuppressedSpaceScroll } = Message
-
-/** Sent when Enter or Space would commit the active item but the listbox is read-only. Update no-ops; the Message keeps the keypress visible and lets the view prevent the browser's default Space scroll. */
-export const { SuppressedItemCommit } = Message
-
-/** Sent when the listbox items panel mounts and Floating UI has positioned it. Update no-ops; surfaces the positioning side effect for DevTools. */
-export const { CompletedAnchorListbox } = Message
-
-/** Sent when the listbox backdrop mounts and is portaled to the document body. Update no-ops; surfaces the portal side effect for DevTools. */
-export const { CompletedPortalListboxBackdrop } = Message
-
-/** Wraps an Animation submodel message for delegation. */
-export const { GotAnimationMessage } = Message
-
-/** Sent when the user presses a pointer device on the listbox button. Records pointer type for click handling. */
-export const { PressedPointerOnButton } = Message
-
 export type Opened = typeof Message.Opened.Type
 export type Closed = typeof Message.Closed.Type
 export type BlurredItems = typeof Message.BlurredItems.Type
@@ -256,9 +181,6 @@ export const OutMessage = messages({
     value: S.String,
   },
 })
-
-/** Sent when the user activates an item (single-select commit or multi-select toggle). Carries the neutral fact that the item was activated; the parent owns the selection and decides what it means (single-select sets it, multi-select toggles membership). Generic over `Value extends string`: the runtime schema stores `value: string`, but the type-level OutMessage exposes `value: Value` so consumers who supply `items: ReadonlyArray<MyUnion>` receive `value: MyUnion` from `update<MyUnion>` without casting. The cast is fenced inside this module's `update` return, sound because the value was extracted from the items array the consumer supplied. */
-export const { Selected } = OutMessage
 
 /** Generic over `Value extends string` so consumers who create the listbox
  *  via `Listbox.create<MyUnion>()` receive `value: MyUnion` in the

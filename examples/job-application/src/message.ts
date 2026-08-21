@@ -59,22 +59,4 @@ export const Message = messages({
   },
 })
 
-export const {
-  GotPersonalInfoMessage,
-  GotWorkHistoryMessage,
-  GotEducationMessage,
-  GotSkillsMessage,
-  GotCoverLetterMessage,
-  GotAttachmentsMessage,
-  GotStepMenuMessage,
-  GotStepTabsMessage,
-  NavigatedToStep,
-  ClickedNext,
-  ClickedPrevious,
-  ToggledPreview,
-  ClickedSubmit,
-  SucceededSubmitApplication,
-  FailedSubmitApplication,
-} = Message
-
 export type Message = typeof Message.Type

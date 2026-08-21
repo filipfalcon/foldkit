@@ -23,18 +23,4 @@ export const Message = messages({
   },
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  CompletedLogError,
-  ClickedLink,
-  ChangedUrl,
-  SucceededSaveSession,
-  FailedSaveSession,
-  SucceededClearSession,
-  FailedClearSession,
-  GotLoggedOutMessage,
-  GotLoggedInMessage,
-} = Message
-
 export type Message = typeof Message.Type

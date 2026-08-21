@@ -20,9 +20,6 @@ export const Message = messages({
   CompletedReportCount: {},
 })
 
-export const { Ticked, ClickedAdvance, ChangedStep, CompletedReportCount } =
-  Message
-
 export type Message = typeof Message.Type
 
 // PORT

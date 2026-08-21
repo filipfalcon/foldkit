@@ -1,8 +1,7 @@
 import * as Story from 'foldkit/story'
 
 import {
-  CompletedWaitForPaint,
-  EndedAnimation,
+  Message as AnimationMessage,
   WaitForAnimationSettled,
   WaitForPaint,
 } from '../animation/index.js'
@@ -56,12 +55,12 @@ export const drainEntry = ({
   version = DEFAULT_VERSION,
 }: DrainEntryInput) =>
   Story.Command.resolveAll(
-    [WaitForPaint, CompletedWaitForPaint()],
-    [WaitForAnimationSettled, EndedAnimation()],
+    [WaitForPaint, AnimationMessage.CompletedWaitForPaint()],
+    [WaitForAnimationSettled, AnimationMessage.EndedAnimation()],
     [
       WaitBeforeDismissal,
       Message.CompletedWaitBeforeDismissal({ entryId, version }),
     ],
-    [WaitForPaint, CompletedWaitForPaint()],
-    [WaitForAnimationSettled, EndedAnimation()],
+    [WaitForPaint, AnimationMessage.CompletedWaitForPaint()],
+    [WaitForAnimationSettled, AnimationMessage.EndedAnimation()],
   )

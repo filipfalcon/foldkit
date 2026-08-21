@@ -172,18 +172,6 @@ export const Message = messages({
   },
 })
 
-export const {
-  CompletedNavigateInternal,
-  CompletedLoadExternal,
-  CompletedReplaceFilters,
-  ClickedLink,
-  ChangedUrl,
-  ChangedSearchInput,
-  ClickedColumnHeader,
-  GotDietListboxMessage,
-  GotPeriodListboxMessage,
-} = Message
-
 export type Message = typeof Message.Type
 
 // INIT

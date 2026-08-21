@@ -1,6 +1,7 @@
 import type { HtmlBuilder } from 'foldkit/html'
 
 import { Animation } from '@foldkit/ui'
+import { Message as AnimationMessage } from '@foldkit/ui/animation'
 
 import { Message } from './message'
 
@@ -19,8 +20,8 @@ export const animationDemo = (
   h: HtmlBuilder<Message>,
 ) => {
   const toggleMessage = animationModel.isShowing
-    ? Animation.Hid()
-    : Animation.Showed()
+    ? AnimationMessage.Hid()
+    : AnimationMessage.Showed()
 
   return [
     h.div(

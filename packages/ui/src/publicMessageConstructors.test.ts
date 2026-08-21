@@ -32,6 +32,7 @@ type BarrelAudit = Readonly<{
   memberCount: number
   tags: ReadonlyArray<string>
   unreachableTags: ReadonlyArray<string>
+  siblingConstructorTags: ReadonlyArray<string>
 }>
 
 const barrelsByComponent: Readonly<Record<string, Record<string, unknown>>> = {
@@ -76,6 +77,7 @@ const COMPONENTS_WITH_A_MESSAGE_UNION = [
   'radioGroup',
   'slider',
   'tabs',
+  'toast',
   'tooltip',
   'virtualList',
 ]
@@ -119,6 +121,7 @@ const toAudit = (
   barrel: Record<string, unknown>,
 ): BarrelAudit => {
   const tags = pipe(members, Array.map(maybeTagOf), Array.getSomes)
+  const message = barrel['Message']
 
   return {
     component,
@@ -126,7 +129,11 @@ const toAudit = (
     tags,
     unreachableTags: Array.filter(
       tags,
-      tag => typeof barrel[tag] !== 'function',
+      tag => !isIndexable(message) || typeof message[tag] !== 'function',
+    ),
+    siblingConstructorTags: Array.filter(
+      tags,
+      tag => typeof barrel[tag] === 'function',
     ),
   }
 }
@@ -157,7 +164,7 @@ describe('public Message constructors', () => {
     expect(incomplete).toEqual([])
   })
 
-  it('exports a callable constructor for every tag its Message union declares', () => {
+  it('exposes every callable constructor through its Message union', () => {
     const shortfalls = pipe(
       audits,
       Array.filter(({ unreachableTags }) =>
@@ -170,5 +177,20 @@ describe('public Message constructors', () => {
     )
 
     expect(shortfalls).toEqual([])
+  })
+
+  it('does not export Message constructors as sibling bindings', () => {
+    const leaks = pipe(
+      audits,
+      Array.filter(({ siblingConstructorTags }) =>
+        Array.isReadonlyArrayNonEmpty(siblingConstructorTags),
+      ),
+      Array.map(({ component, siblingConstructorTags }) => ({
+        component,
+        siblingConstructorTags,
+      })),
+    )
+
+    expect(leaks).toEqual([])
   })
 })

@@ -16,8 +16,6 @@ export const Message = messages({
   ClickedIncrement: {},
 })
 
-export const { ClickedIncrement } = Message
-
 export type Message = typeof Message.Type
 
 // INIT

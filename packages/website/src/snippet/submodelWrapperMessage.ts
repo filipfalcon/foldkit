@@ -9,6 +9,4 @@ export const Message = messages({
   },
 })
 
-export const { GotSettingsMessage } = Message
-
 export type Message = typeof Message.Type
