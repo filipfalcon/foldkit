@@ -5,7 +5,7 @@ import { isCallExpression } from '../guards.ts'
 import {
   hasMessagePayloadProperty,
   messageCases,
-  recordFoldkitMessagesBindings,
+  recordFoldkitMessageUnionBindings,
 } from '../message.ts'
 
 /**
@@ -21,17 +21,17 @@ export const gotSubmodelMessageName = Rule.define({
   }),
   create: function* () {
     const ctx = yield* RuleContext
-    const messagesBindings = new Set<string>()
+    const messageUnionBindings = new Set<string>()
     return {
       Program: (node: ESTree.Node) => {
-        recordFoldkitMessagesBindings(messagesBindings, node)
+        recordFoldkitMessageUnionBindings(messageUnionBindings, node)
         return Effect.void
       },
       CallExpression: (node: ESTree.Node) => {
         if (!isCallExpression(node)) return Effect.void
 
         return Effect.forEach(
-          messageCases(node, messagesBindings),
+          messageCases(node, messageUnionBindings),
           messageCase =>
             hasMessagePayloadProperty(messageCase.fields) &&
             !/^Got[A-Z].*Message$/.test(messageCase.name)

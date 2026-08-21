@@ -4,7 +4,7 @@
 import { Array, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Listbox } from '@foldkit/ui'
@@ -35,7 +35,7 @@ const init = () => [
 ]
 
 // Wrap Listbox's Messages so they can flow through your update:
-const Message = messages({
+const Message = defineMessageUnion({
   GotListboxMultiMessage: {
     message: Listbox.Message,
   },

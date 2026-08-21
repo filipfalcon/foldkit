@@ -1,7 +1,7 @@
 import { Array, Option, Schema as S, pipe } from 'effect'
 import { Command, Runtime, Update } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -24,7 +24,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedAddRow: {},
   ClickedRemoveRow: { id: S.String },
   GotCounterMessage: {

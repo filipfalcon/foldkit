@@ -1,10 +1,10 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { Counter } from './counter'
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   GotCounterMessage: {
   id: S.String,
   message: Counter.Message,

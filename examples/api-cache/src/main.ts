@@ -12,7 +12,7 @@ import {
 } from 'effect'
 import { AsyncData, Command, Runtime, Subscription, Update } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button, Tabs } from '@foldkit/ui'
@@ -68,7 +68,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotTabsMessage: { message: Tabs.Message },
   ClickedPost: { postId: S.String },
   ClickedBackToPosts: {},

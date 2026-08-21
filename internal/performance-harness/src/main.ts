@@ -1,7 +1,7 @@
 import { Array, Effect, Number, Schema as S } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { Document, type HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 // MODEL
@@ -23,7 +23,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedTick: {},
   ClickedDispatchLargeMessage: {
     payload: S.Array(HeavyItem),

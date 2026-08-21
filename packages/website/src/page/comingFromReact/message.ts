@@ -1,7 +1,7 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ToggledFaq: {
     id: S.String,
     isOpen: S.Boolean,

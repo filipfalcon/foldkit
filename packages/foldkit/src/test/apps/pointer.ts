@@ -1,7 +1,7 @@
 import { Option, Schema as S } from 'effect'
 
 import type { Html, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 
 // MODEL
 
@@ -14,7 +14,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   PressedPointerDown: { pointerType: S.String },
   ReleasedPointerUp: { pointerType: S.String },
 })

@@ -10,7 +10,7 @@ import {
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import * as Mount from 'foldkit/mount'
 import { evo } from 'foldkit/struct'
 import { defineView } from 'foldkit/submodel'
@@ -52,7 +52,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the popover component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   RequestedOpen: {},
   RequestedClose: {},
   BlurredPanel: {},
@@ -87,7 +87,7 @@ export type Message = typeof Message.Type
 // OUT MESSAGE
 
 /** Union of out-messages the popover component can produce. Parents reacting to open/close transitions (e.g. to reset related state, fire analytics) read this from the third element of `update`'s return tuple. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Opened: {},
   Closed: {},
 })

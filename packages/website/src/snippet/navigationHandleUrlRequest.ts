@@ -1,6 +1,6 @@
 import { Effect, Match as M, Schema as S, pipe } from 'effect'
 import { Command, Navigation, Route, Url } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { int, literal, r, slash } from 'foldkit/route'
 import { evo } from 'foldkit/struct'
 
@@ -28,7 +28,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   CompletedNavigateInternal: {},
   CompletedLoadExternal: {},
   ClickedLink: { request: Navigation.UrlRequest },

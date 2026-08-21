@@ -2,11 +2,11 @@ import { Effect } from 'effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 
 import { isCallExpression } from '../guards.ts'
-import { messageCases, recordFoldkitMessagesBindings } from '../message.ts'
+import { messageCases, recordFoldkitMessageUnionBindings } from '../message.ts'
 
 /**
  * Flags generic NoOp Messages (NoOp, Noop, NoOperation) declared with
- * `messages`, steering toward Messages that describe what happened.
+ * `defineMessageUnion`, steering toward Messages that describe what happened.
  */
 export const noNoopMessage = Rule.define({
   name: 'no-noop-message',
@@ -17,17 +17,17 @@ export const noNoopMessage = Rule.define({
   }),
   create: function* () {
     const ctx = yield* RuleContext
-    const messagesBindings = new Set<string>()
+    const messageUnionBindings = new Set<string>()
     return {
       Program: (node: ESTree.Node) => {
-        recordFoldkitMessagesBindings(messagesBindings, node)
+        recordFoldkitMessageUnionBindings(messageUnionBindings, node)
         return Effect.void
       },
       CallExpression: (node: ESTree.Node) => {
         if (!isCallExpression(node)) return Effect.void
 
         return Effect.forEach(
-          messageCases(node, messagesBindings),
+          messageCases(node, messageUnionBindings),
           messageCase =>
             ['NoOp', 'Noop', 'NoOperation'].includes(messageCase.name)
               ? ctx.report(

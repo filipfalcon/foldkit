@@ -1,9 +1,9 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { ApiData } from './model'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   RequestedApiData: {},
   SucceededLoadApiData: {
     apiData: ApiData,

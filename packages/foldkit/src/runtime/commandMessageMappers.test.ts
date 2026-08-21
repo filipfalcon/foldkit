@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as Command from '../command/index.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { makeElement } from './runtime.js'
 
 // CHILD
 
-const ChildMessage = messages({
+const ChildMessage = defineMessageUnion({
   CompletedDoChildWork: {},
 })
 type ChildMessage = typeof ChildMessage.Type
@@ -20,7 +20,7 @@ const DoChildWork = Command.define('DoChildWork', {
 
 // PARENT
 
-const Message = messages({
+const Message = defineMessageUnion({
   GotChildMessage: { message: ChildMessage },
 })
 type Message = typeof Message.Type

@@ -2,7 +2,7 @@ import { Schema as S } from 'effect'
 
 import { File } from '../../file/index.js'
 import type { Html, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 
 // MODEL
 
@@ -14,7 +14,7 @@ export const initialModel: Model = { receivedFiles: [] }
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ReceivedFiles: { files: S.Array(File) },
 })
 

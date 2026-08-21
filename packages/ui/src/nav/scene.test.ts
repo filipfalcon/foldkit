@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import * as Scene from 'foldkit/scene'
 import { evo } from 'foldkit/struct'
 
@@ -16,7 +16,7 @@ const sections: ReadonlyArray<Section> = ['Dashboard', 'Projects', 'Settings']
 const Model = S.Struct({ current: Section })
 type Model = typeof Model.Type
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedSection: { section: Section },
 })
 

@@ -8,8 +8,9 @@ const message = (name: string, fields: unknown = Testing.objectExpr([])) => ({
   value: fields,
 })
 
-const messages = (...cases: ReadonlyArray<ReturnType<typeof message>>) =>
-  Testing.callExpr('messages', [Testing.objectExpr(cases)])
+const defineMessageUnion = (
+  ...cases: ReadonlyArray<ReturnType<typeof message>>
+) => Testing.callExpr('defineMessageUnion', [Testing.objectExpr(cases)])
 
 const runRule = (node: unknown) =>
   Testing.runRuleMulti(gotSubmodelMessageName, [
@@ -17,7 +18,7 @@ const runRule = (node: unknown) =>
       'Program',
       Testing.program([
         Testing.importDeclWithSpecifiers('foldkit/message', [
-          Testing.importSpecifier('messages'),
+          Testing.importSpecifier('defineMessageUnion'),
         ]),
       ]),
     ],
@@ -27,7 +28,7 @@ const runRule = (node: unknown) =>
 describe('got-submodel-message-name', () => {
   it('requires Message payload wrappers to use Got*Message names', () => {
     const result = runRule(
-      messages(
+      defineMessageUnion(
         message('ReceivedChild', Testing.objectExpr([{ key: 'message' }])),
       ),
     )
@@ -38,7 +39,7 @@ describe('got-submodel-message-name', () => {
 
   it('allows Got*Message wrappers around Submodel Messages', () => {
     const result = runRule(
-      messages(
+      defineMessageUnion(
         message(
           'GotChildMessage',
           Testing.objectExpr([

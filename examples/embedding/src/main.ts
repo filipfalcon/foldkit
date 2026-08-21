@@ -1,7 +1,7 @@
 import { Duration, Effect, Schema as S, Stream } from 'effect'
 import { Command, Port, Runtime, Subscription } from 'foldkit'
 import { Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -13,7 +13,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   Ticked: {},
   ClickedAdvance: {},
   ChangedStep: { step: S.Number },

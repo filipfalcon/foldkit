@@ -1,7 +1,7 @@
 import { Duration, Effect, Schema as S, Stream } from 'effect'
 import { Command, Subscription } from 'foldkit'
 import type { Document, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 const TICK_INTERVAL_MS = 1000
@@ -16,7 +16,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
   ClickedToggleAutoCount: {},
   Ticked: {},

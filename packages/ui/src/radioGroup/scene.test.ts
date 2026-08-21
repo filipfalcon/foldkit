@@ -1,7 +1,7 @@
 import { Match as M, Option } from 'effect'
 import * as Command from 'foldkit/command'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import * as Scene from 'foldkit/scene'
 import { evo } from 'foldkit/struct'
 import * as Update from 'foldkit/update'
@@ -25,7 +25,7 @@ const options: ReadonlyArray<string> = ['Brush', 'Fill', 'Eraser']
 
 const TestRadioGroup = create()
 
-const Message = messages({
+const Message = defineMessageUnion({
   GotRadioGroupMessage: {
     message: RadioGroupMessage,
   },

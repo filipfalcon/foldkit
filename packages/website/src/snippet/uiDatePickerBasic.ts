@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { Calendar, Update } from 'foldkit'
 import type { ChildAttribute, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { DatePicker, Calendar as UiCalendar } from '@foldkit/ui'
@@ -47,7 +47,7 @@ const init = (flags: Flags) => [
 
 // Embed the DatePicker Message in your parent Message. DatePicker handles
 // Calendar + Popover routing internally. You only need one wrapper:
-const Message = messages({
+const Message = defineMessageUnion({
   GotDatePickerMessage: {
     message: DatePicker.Message,
   },

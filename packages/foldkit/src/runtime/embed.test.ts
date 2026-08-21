@@ -3,14 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as Command from '../command/index.js'
 import { type Html, __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import * as Mount from '../mount/index.js'
 import * as Port from '../port/index.js'
 import { evo } from '../struct/index.js'
 import * as Subscription from '../subscription/subscription.js'
 import { embed, makeApplication, makeElement } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ChangedStep: { step: S.Number },
   ClickedIncrement: {},
   CompletedReportCount: {},

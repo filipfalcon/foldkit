@@ -1,6 +1,6 @@
 import { Array, Schema as S } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // MODEL
 
@@ -14,7 +14,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   AddedTodo: {},
   ClearedDoneTodos: {},
   SelectedFilter: { filter: Filter },

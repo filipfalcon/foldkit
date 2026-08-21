@@ -66,9 +66,9 @@ type ValidateMessageVariantNames<
       : MessageVariantNameCollision<Name & PropertyKey>
     : never
 
-/** The union `messages` returns. A `Schema.TaggedUnion` that also carries one
- *  callable constructor per variant, reachable by tag. */
-export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
+/** The union `defineMessageUnion` returns. A `Schema.TaggedUnion` that also
+ * carries one callable constructor per variant, reachable by tag. */
+export type MessageUnion<CasesByTag extends Record<string, S.Struct.Fields>> =
   S.TaggedUnion<{
     readonly [Tag in keyof CasesByTag & string]: S.TaggedStruct<
       Tag,
@@ -106,7 +106,7 @@ export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
  *
  * @example
  * ```typescript
- * export const Message = messages({
+ * export const Message = defineMessageUnion({
  *   ClickedReset: {},
  *   ChangedCount: { count: S.Number },
  * })
@@ -116,11 +116,11 @@ export type Messages<CasesByTag extends Record<string, S.Struct.Fields>> =
  * Message.ChangedCount({ count: 1 }) // { _tag: 'ChangedCount', count: 1 }
  * ```
  */
-export function messages<
+export function defineMessageUnion<
   const CasesByTag extends Record<string, S.Struct.Fields>,
 >(
   casesByTag: CasesByTag & ValidateMessageVariantNames<CasesByTag>,
-): Messages<CasesByTag> {
+): MessageUnion<CasesByTag> {
   const union = S.TaggedUnion(casesByTag)
 
   const conflictingNames = Array.filter(
@@ -146,7 +146,7 @@ export function messages<
   }
 
   /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  return Object.assign(union, callables) as unknown as Messages<CasesByTag>
+  return Object.assign(union, callables) as unknown as MessageUnion<CasesByTag>
 }
 
 /**

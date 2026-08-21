@@ -3,7 +3,7 @@ import * as Calendar from 'foldkit/calendar'
 import type { CalendarDate } from 'foldkit/calendar'
 import * as Command from 'foldkit/command'
 import type { ChildAttribute, Html } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { type Reflect, defineView } from 'foldkit/submodel'
 import * as Update from 'foldkit/update'
@@ -30,7 +30,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the date picker component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotCalendarMessage: {
     message: UiCalendar.Message,
   },
@@ -49,7 +49,7 @@ export type Message = typeof Message.Type
 // OUT MESSAGE
 
 /** Union of out-messages the date picker can produce. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   ChangedViewMonth: {
     year: S.Int,
     month: S.Int,

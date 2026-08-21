@@ -4,7 +4,7 @@
 import { Option, Schema as S } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Animation } from '@foldkit/ui'
@@ -27,7 +27,7 @@ const init = () => [
 ]
 
 // Embed the Animation Message in your parent Message:
-const Message = messages({
+const Message = defineMessageUnion({
   GotAnimationMessage: { message: Animation.Message },
 })
 type Message = typeof Message.Type

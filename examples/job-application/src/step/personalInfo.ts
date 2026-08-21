@@ -21,7 +21,7 @@ import {
   makeRules,
   validate,
 } from 'foldkit/fieldValidation'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { DatePicker, Listbox } from '@foldkit/ui'
@@ -49,7 +49,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   UpdatedFirstName: { value: S.String },
   UpdatedLastName: { value: S.String },
   UpdatedEmail: { value: S.String },

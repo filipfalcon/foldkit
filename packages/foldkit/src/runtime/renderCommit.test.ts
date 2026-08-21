@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as Command from '../command/index.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { RenderCommit, createCommitNotifier } from '../render/commit.js'
 import { afterCommit } from '../render/render.js'
 import { makeElement } from './runtime.js'
@@ -122,7 +122,7 @@ const LABEL_ELEMENT_ID = 'render-commit-label'
 // test is precisely "a waiter never observes the pre-patch tree".
 let observedLabels: Array<string> = []
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedTransition: {},
   CompletedProbeCommittedDom: {},
 })

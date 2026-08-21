@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 
 import { describe, it } from '@effect/vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import * as Mount from '../mount/index.js'
 import type { MountAction } from '../mount/index.js'
 import { MountTracker } from '../mount/index.js'
@@ -35,7 +35,7 @@ const patch = init([
   styleModule,
 ])
 
-const Message = messages({
+const Message = defineMessageUnion({
   MountedRoot: {},
 })
 

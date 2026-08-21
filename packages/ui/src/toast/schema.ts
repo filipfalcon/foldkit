@@ -1,5 +1,5 @@
 import { Duration, Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import {
   Message as AnimationMessage,
@@ -66,7 +66,7 @@ export const makeModel = <A, I>(payloadSchema: S.Codec<A, I>) =>
 // MESSAGE
 
 /** Payload-independent Message variants shared by every bound Toast module. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   Dismissed: { entryId: S.String },
   DismissedAll: {},
   CompletedWaitBeforeDismissal: {
@@ -91,7 +91,7 @@ export type GotAnimationMessage = typeof Message.GotAnimationMessage.Type
 
 /** Factory for the union of all messages the toast component can produce. */
 export const makeMessage = <A, I>(payloadSchema: S.Codec<A, I>) =>
-  messages({
+  defineMessageUnion({
     Added: { entry: makeEntry(payloadSchema) },
     Dismissed: { entryId: S.String },
     DismissedAll: {},
@@ -109,7 +109,7 @@ export const makeMessage = <A, I>(payloadSchema: S.Codec<A, I>) =>
 
 /** Factory for the union of out-messages the toast component can produce. */
 export const makeOutMessage = <A, I>(payloadSchema: S.Codec<A, I>) =>
-  messages({ DismissedToast: { payload: payloadSchema } })
+  defineMessageUnion({ DismissedToast: { payload: payloadSchema } })
 
 // INIT
 

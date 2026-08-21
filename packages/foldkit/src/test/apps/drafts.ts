@@ -2,7 +2,7 @@ import { Effect, Schema as S } from 'effect'
 
 import * as Command from '../../command/index.js'
 import type { Document, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 import { evo } from '../../struct/index.js'
 
 // MODEL
@@ -18,7 +18,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedSaveDraft: {},
   SucceededSaveDraft: {
     revision: S.Number,

@@ -44,7 +44,7 @@ A complete Foldkit program. State lives in a single Model, events become Message
 import { Schema as S } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { Document, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 // MODEL
@@ -54,7 +54,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedDecrement: {},
   ClickedIncrement: {},
   ClickedReset: {},

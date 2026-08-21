@@ -1,7 +1,7 @@
 import { Number, Schema as S } from 'effect'
 
 import type { Html } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 import { evo } from '../../struct/index.js'
 import { defineView } from '../../submodel/public.js'
 
@@ -12,7 +12,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedIncrement: {},
 })
 

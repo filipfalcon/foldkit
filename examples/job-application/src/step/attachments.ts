@@ -1,6 +1,6 @@
 import { Array, Match as M, Option, Schema as S, pipe } from 'effect'
 import { Command, File, Update } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { FileDrop } from '@foldkit/ui'
@@ -17,7 +17,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotResumeDropMessage: {
     message: FileDrop.Message,
   },

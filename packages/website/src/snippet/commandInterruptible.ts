@@ -1,9 +1,9 @@
 import { Array, Effect, Match as M, Schema as S } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedCancelUpload: { uploadId: S.Number },
   SucceededUploadFile: { uploadId: S.Number },
   FailedUploadFile: { uploadId: S.Number },

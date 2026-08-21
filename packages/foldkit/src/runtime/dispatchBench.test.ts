@@ -2,7 +2,7 @@ import { Effect, Number, Predicate, Schema as S } from 'effect'
 import { describe, it } from 'vitest'
 
 import { Document, __htmlBuilder, __requireDispatch } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import { makeApplication } from './runtime.js'
 
@@ -38,7 +38,7 @@ const isBenchEnabled = readBenchFlag() === '1'
 const Model = S.Struct({ count: S.Number })
 type Model = typeof Model.Type
 
-const Message = messages({
+const Message = defineMessageUnion({
   Increment: {},
   Done: {},
 })

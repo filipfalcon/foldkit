@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Schema as S } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Disclosure } from '@foldkit/ui'
@@ -25,7 +25,7 @@ const init = () => [
 
 // A verb-first, past-tense Message carries the new open state:
 
-const Message = messages({
+const Message = defineMessageUnion({
   ToggledFaq: { isOpen: S.Boolean },
 })
 

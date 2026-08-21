@@ -122,7 +122,7 @@ const COUNTER_DEMO_CODE_ID = 'virtual:counter-demo-code'
 
 const DEMO_IMPORTS = `import { Effect, Schema as S } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'`
 
 const DEMO_CODE = `// MODEL
@@ -136,7 +136,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
   ChangedResetDuration: { seconds: S.Number },
   ClickedResetAfterDelay: {},
@@ -229,7 +229,7 @@ const NOTE_PLAYER_DEMO_IMPORTS = `import {
   Schema as S,
 } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'`
 
@@ -252,7 +252,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedPlay: {},
   ClickedPause: {},
   CompletedPlayNote: { noteIndex: S.Number },

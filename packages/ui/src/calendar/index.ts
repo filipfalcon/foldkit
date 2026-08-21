@@ -18,7 +18,7 @@ import {
   type HtmlBuilder,
   childAttributes,
 } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { type Reflect, defineView } from 'foldkit/submodel'
 
@@ -57,7 +57,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the calendar component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedDay: { date: Calendar.CalendarDate },
   PressedKeyOnGrid: {
     key: S.String,
@@ -88,7 +88,7 @@ export type SelectedYear = typeof Message.SelectedYear.Type
 // OUT MESSAGE
 
 /** Union of the calendar's OutMessages. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   ChangedViewMonth: {
     year: S.Int,
     month: S.Int,

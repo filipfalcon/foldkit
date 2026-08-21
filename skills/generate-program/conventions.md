@@ -97,7 +97,7 @@ The exception is a Message with more than one cause. When several Commands resol
 Every `Succeeded*` must have a corresponding `Failed*`:
 
 ```ts
-const Message = messages({
+const Message = defineMessageUnion({
   SucceededFetchWeather: { weather: Weather },
   FailedFetchWeather: { error: S.String },
 })
@@ -370,7 +370,7 @@ domain at the call site in a way that `ClickedSubmit()` does not.
 ```ts
 const Work = ts('Work')
 const Idle = ts('Idle')
-const Message = messages({ ClickedSubmit: {} })
+const Message = defineMessageUnion({ ClickedSubmit: {} })
 
 // WRONG: empty object is redundant and non-idiomatic
 Work({})
@@ -520,7 +520,7 @@ import {
   Url,
 } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { r } from 'foldkit/route'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
@@ -564,7 +564,7 @@ Notes:
 - Module-by-module reminders, for example: `Calendar` for `Calendar.CalendarDate`, `Calendar.today.local`, `Calendar.make`, `Calendar.addDays` etc., paired with the `Calendar` or `DatePicker` component from `@foldkit/ui` (the component and the `foldkit` date module share the name `Calendar`; they are different things). `Dom` for DOM-side-effect helpers (`Dom.focus`, `Dom.scrollIntoView`, `Dom.showDialog`, `Dom.closeDialog`, `Dom.lockScroll`, `Dom.unlockScroll`, `Dom.waitForAnimationSettled`, etc.). `File` for file upload primitives paired with `FileDrop` from `@foldkit/ui`. `foldkit/fieldValidation` for form validation.
 - For time, randomness, UUIDs, or delays, use Effect's built-ins directly rather than reaching for a Foldkit module: `Clock.currentTimeMillis`, `Random.nextIntBetween`, `Effect.uuid`, `Effect.sleep(Duration.millis(...))`.
 - When an Effect module name collides with a global, alias the Effect import with a trailing underscore: `String as String_`, `Array as Array_`, `Number as Number_`.
-- `Message.match` is the exhaustive matcher on a union returned by `messages()`. `Match as M` is Effect's Match module for other tagged unions, partial matching, fallbacks, and handlers shared by several tags.
+- `Message.match` is the exhaustive matcher on a union returned by `defineMessageUnion()`. `Match as M` is Effect's Match module for other tagged unions, partial matching, fallbacks, and handlers shared by several tags.
 - **UI components live in a separate package.** Import them by name from `@foldkit/ui`: `import { Dialog, DatePicker, FileDrop, Toast, Tooltip } from '@foldkit/ui'`. Deep imports (`@foldkit/ui/dialog`) work too. There is no `Ui` export on the `foldkit` package, so `Ui.Dialog.view` does not resolve.
 - **`empty` and `keyed` are properties on `h`**, the builder every view receives as its last parameter. They are not top-level exports of `foldkit/html`, so they never belong in that import list. Same for `h.submodel`.
 - `AsyncData` for remote data state, `Update` for the update return type and the `combine` / `refresh` combinators, `Http` for the `layer` that provides `HttpClient` to a Command.

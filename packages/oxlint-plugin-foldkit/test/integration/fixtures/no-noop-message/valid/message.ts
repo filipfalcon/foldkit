@@ -1,5 +1,5 @@
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
-const Message = messages({
+const Message = defineMessageUnion({
   IgnoredMouseClick: {},
 })

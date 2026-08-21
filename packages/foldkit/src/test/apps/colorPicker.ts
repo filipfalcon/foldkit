@@ -2,7 +2,7 @@ import { Schema as S } from 'effect'
 
 import * as CustomElement from '../../customElement/index.js'
 import type { Html, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 import { evo } from '../../struct/index.js'
 
 // CUSTOM ELEMENT
@@ -24,7 +24,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ChangedColor: { value: S.String },
 })
 

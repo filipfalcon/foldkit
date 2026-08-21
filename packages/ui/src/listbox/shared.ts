@@ -12,7 +12,7 @@ import {
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import type { ChildAttribute, Html } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import * as Mount from 'foldkit/mount'
 import { makeConstrainedEvo } from 'foldkit/struct'
 import { type View as SubmodelView, defineView } from 'foldkit/submodel'
@@ -101,7 +101,7 @@ export const baseInit = (config: BaseInitConfig): BaseModel => ({
 // MESSAGE
 
 /** Union of all messages the listbox component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   Opened: {
     maybeActiveItemIndex: S.Option(S.Number),
   },
@@ -176,7 +176,7 @@ export type Selected<Value extends string = string> = Readonly<{
 }>
 
 /** Union of out-messages the listbox component can produce. The parent folds `Selected` into the selection it owns: single-select stores the value, multi-select toggles the value's membership. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Selected: {
     value: S.String,
   },

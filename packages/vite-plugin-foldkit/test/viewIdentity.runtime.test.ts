@@ -3,7 +3,7 @@ import { Effect, Fiber, Schema as S } from 'effect'
 import { brandViewResult } from 'foldkit/brand'
 import type { Command } from 'foldkit/command'
 import { type Html, inertHtml } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { makeElement } from 'foldkit/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -12,7 +12,7 @@ import { transformViewIdentity } from '../src/viewIdentity.ts'
 const Model = S.Struct({ mode: S.Literals(['Viewing', 'Editing']) })
 type Model = typeof Model.Type
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedToggle: {},
 })
 

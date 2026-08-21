@@ -4,7 +4,7 @@
 import { Effect, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Menu } from '@foldkit/ui'
@@ -25,7 +25,7 @@ const init = () => [
 ]
 
 // Embed the Menu Message in your parent Message:
-const Message = messages({
+const Message = defineMessageUnion({
   GotMenuMessage: {
     message: Menu.Message,
   },

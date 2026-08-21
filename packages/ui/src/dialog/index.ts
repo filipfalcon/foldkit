@@ -2,7 +2,7 @@ import { Effect, Match as M, Option, Schema as S } from 'effect'
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { defineView } from 'foldkit/submodel'
 import * as Update from 'foldkit/update'
@@ -38,7 +38,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the dialog component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   RequestedOpen: {},
   RequestedClose: {},
   CompletedShowDialog: {},
@@ -63,7 +63,7 @@ export type Message = typeof Message.Type
 // OUT MESSAGE
 
 /** Union of out-messages the dialog component can produce. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Opened: {},
   Closed: {},
 })

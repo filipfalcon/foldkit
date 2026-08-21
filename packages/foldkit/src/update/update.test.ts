@@ -5,7 +5,7 @@ import { describe, it } from '@effect/vitest'
 
 import * as AsyncData from '../asyncData/index.js'
 import { type Command } from '../command/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import * as Story from '../test/story.js'
 import {
@@ -22,7 +22,7 @@ import {
   refresh,
 } from './update.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   IncrementedCount: {},
   CompletedLoad: {},
   BumpedValue: {},

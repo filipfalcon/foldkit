@@ -3,11 +3,11 @@ import { expect } from 'vitest'
 
 import { describe, it } from '@effect/vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import * as Command from './index.js'
 import { __CurrentRegistry, __makeRegistry } from './interruptible/index.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   CompletedRunTask: { taskId: S.Number },
   CompletedReadBrowserGlobal: {},
   CompletedMeasureElement: {},

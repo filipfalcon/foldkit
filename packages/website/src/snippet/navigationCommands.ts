@@ -1,8 +1,8 @@
 import { Effect, Schema as S } from 'effect'
 import { Command, Navigation } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
-const Message = messages({
+const Message = defineMessageUnion({
   CompletedNavigateInternal: {},
   CompletedReplaceUrl: {},
   CompletedGoBack: {},

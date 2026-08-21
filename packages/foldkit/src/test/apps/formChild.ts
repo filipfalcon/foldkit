@@ -1,7 +1,7 @@
 import { Effect, Option, Schema as S } from 'effect'
 
 import * as Command from '../../command/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 
 // CHILD MODEL
 
@@ -12,7 +12,7 @@ export type ChildModel = typeof ChildModel.Type
 
 // CHILD MESSAGE
 
-export const ChildMessage = messages({
+export const ChildMessage = defineMessageUnion({
   SubmittedForm: {},
   SucceededSubmitForm: { id: S.String },
   CancelledForm: {},
@@ -30,7 +30,7 @@ export type ChildMessage = typeof ChildMessage.Type
 
 // CHILD OUT MESSAGE
 
-export const ChildOutMessage = messages({
+export const ChildOutMessage = defineMessageUnion({
   RequestedSave: { id: S.String },
   RequestedCancel: {},
 })
@@ -101,7 +101,7 @@ export type ParentModel = typeof ParentModel.Type
 
 // PARENT MESSAGE
 
-export const ParentMessage = messages({
+export const ParentMessage = defineMessageUnion({
   GotChildMessage: {
     message: ChildMessage,
   },

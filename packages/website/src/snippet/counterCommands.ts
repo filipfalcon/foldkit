@@ -1,9 +1,9 @@
 import { Effect } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedResetAfterDelay: {},
   CompletedDelayReset: {},
 })

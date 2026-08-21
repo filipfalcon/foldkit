@@ -4,7 +4,7 @@
 import { Match as M, Option, Schema as S } from 'effect'
 import { Subscription, Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Slider } from '@foldkit/ui'
@@ -34,7 +34,7 @@ const init = () => [
 ]
 
 // Embed the Slider Message in your parent Message:
-const Message = messages({
+const Message = defineMessageUnion({
   GotSliderMessage: {
     message: Slider.Message,
   },

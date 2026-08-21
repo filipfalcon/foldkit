@@ -1,2 +1,2 @@
-export { messages } from './index.js'
-export type { Messages } from './index.js'
+export { defineMessageUnion } from './index.js'
+export type { MessageUnion } from './index.js'

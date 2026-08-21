@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 
 import * as Command from '../../command/public.js'
 import * as ManagedResource from '../../managedResource/public.js'
-import { messages, ts } from '../../schema/index.js'
+import { defineMessageUnion, ts } from '../../schema/index.js'
 import { evo } from '../../struct/index.js'
 import * as Subscription from '../../subscription/public.js'
 import { define, otherwise, to, when } from './machine.js'
@@ -26,7 +26,7 @@ const Ok = ts('Ok', { data: S.String })
 const RemoteData = S.Union([Idle, Loading, Error, Ok])
 type RemoteData = typeof RemoteData.Type
 
-const RemoteDataMessage = messages({
+const RemoteDataMessage = defineMessageUnion({
   ClickedFetch: {},
   SucceededFetch: { data: S.String },
   FailedFetch: { error: S.String },
@@ -94,7 +94,7 @@ const ConnectionState = S.Union([
 ])
 type ConnectionState = typeof ConnectionState.Type
 
-const ConnectionMessage = messages({
+const ConnectionMessage = defineMessageUnion({
   ClickedConnect: {},
   ClickedDisconnect: {},
   SocketOpened: { sessionId: S.String },
@@ -528,7 +528,7 @@ const Submitted = ts('Submitted')
 const SubmitState = S.Union([SubmitIdle, Presigning, Persisting, Submitted])
 type SubmitState = typeof SubmitState.Type
 
-const SubmitMessage = messages({
+const SubmitMessage = defineMessageUnion({
   ClickedSubmit: {},
   SucceededPresign: { url: S.String },
   SucceededPersist: { id: S.String },

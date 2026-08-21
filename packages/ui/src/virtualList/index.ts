@@ -16,7 +16,7 @@ import {
   type TagName,
   childAttributes,
 } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 import { type View as SubmodelView, defineView } from 'foldkit/submodel'
@@ -61,7 +61,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the virtual list component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   ScrolledContainer: {
     scrollTop: S.Number,
   },

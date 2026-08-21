@@ -8,7 +8,7 @@ import {
 } from 'effect-oxlint'
 
 import { isCallExpression, isIdentifier, isStringLiteral } from '../guards.ts'
-import { messageCases, recordFoldkitMessagesBindings } from '../message.ts'
+import { messageCases, recordFoldkitMessageUnionBindings } from '../message.ts'
 
 const gotWrapperTagPattern = /^Got[A-Z]/
 
@@ -55,10 +55,10 @@ export const gotWrapperCarriesOnlyRouting = Rule.define({
   }),
   create: function* () {
     const ctx = yield* RuleContext
-    const messagesBindings = new Set<string>()
+    const messageUnionBindings = new Set<string>()
     return {
       Program: (node: ESTree.Node) => {
-        recordFoldkitMessagesBindings(messagesBindings, node)
+        recordFoldkitMessageUnionBindings(messageUnionBindings, node)
         return Effect.void
       },
       CallExpression: (node: ESTree.Node) => {
@@ -67,7 +67,7 @@ export const gotWrapperCarriesOnlyRouting = Rule.define({
         }
 
         return Effect.forEach(
-          messageCases(node, messagesBindings),
+          messageCases(node, messageUnionBindings),
           messageCase =>
             gotWrapperTagPattern.test(messageCase.name)
               ? Effect.forEach(

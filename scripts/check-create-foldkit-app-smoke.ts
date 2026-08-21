@@ -33,9 +33,9 @@ const LINT_SMOKE_SOURCE = `const Command = {
   define: (name: string) => () => ({ name }),
 }
 
-const messages = <Cases>(cases: Cases): Cases => cases
+const defineMessageUnion = <Cases>(cases: Cases): Cases => cases
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedSave: {},
   GotChildMessage: { message: {} },
 })

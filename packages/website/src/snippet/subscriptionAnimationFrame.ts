@@ -1,10 +1,10 @@
 import { Schema as S } from 'effect'
 import { Subscription } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   TickedFrame: { deltaTime: S.Number },
   ClickedTogglePlay: {},
 })

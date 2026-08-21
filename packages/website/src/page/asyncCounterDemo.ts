@@ -10,7 +10,7 @@ import {
 } from 'effect'
 import { Command, Submodel } from 'foldkit'
 import { Html, type HtmlBuilder, inertHtml as ih } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import demoCodeHtml from 'virtual:counter-demo-code'
 
@@ -64,7 +64,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedDemoIncrement: {},
   ChangedDemoResetDuration: {
     seconds: S.Number,

@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Command } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Dialog } from '@foldkit/ui'
@@ -26,7 +26,7 @@ const init = () => [
 // Embed the Dialog Message in your parent Message and delegate to
 // Dialog.update (open from a trigger with a fact and Dialog.open, as in
 // the basic Dialog example):
-const Message = messages({
+const Message = defineMessageUnion({
   GotDialogMessage: {
     message: Dialog.Message,
   },

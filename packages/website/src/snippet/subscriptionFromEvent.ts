@@ -1,10 +1,10 @@
 import { Effect, Schema as S, Stream } from 'effect'
 import { Subscription } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   PressedKey: { key: S.String },
 })
 type Message = typeof Message.Type

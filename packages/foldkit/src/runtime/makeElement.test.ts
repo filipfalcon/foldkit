@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Command } from '../command/index.js'
 import { TextDirection, __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import {
   __setDevToolsOverlay,
@@ -11,7 +11,7 @@ import {
   makeElement,
 } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   Rendered: {},
   ClickedBump: {},
 })
@@ -42,7 +42,7 @@ const FRENCH_AUTO = LocaleModel.make({
   revision: 0,
 })
 
-const LocaleMessage = messages({
+const LocaleMessage = defineMessageUnion({
   ClickedArabic: {},
   ClickedRerender: {},
 })

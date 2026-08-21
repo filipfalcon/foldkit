@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Option } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { Combobox, Dialog } from '@foldkit/ui'
 
@@ -29,7 +29,7 @@ const init = () => [
 
 // Embed each submodel's Message in your parent Message and delegate both to
 // their own update (see the Dialog and Combobox examples for the delegation).
-const Message = messages({
+const Message = defineMessageUnion({
   GotDialogMessage: { message: Dialog.Message },
   GotComboboxMessage: {
     message: Combobox.Message,

@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Command } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Dialog } from '@foldkit/ui'
@@ -26,7 +26,7 @@ const init = () => [
 
 // Embed each Dialog Message in your parent Message and delegate each to its
 // own Dialog.update (see the basic Dialog example for the delegation).
-const Message = messages({
+const Message = defineMessageUnion({
   GotSettingsDialogMessage: {
     message: Dialog.Message,
   },

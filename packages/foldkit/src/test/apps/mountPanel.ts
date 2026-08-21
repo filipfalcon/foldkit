@@ -1,7 +1,7 @@
 import { Effect, Option, Schema as S } from 'effect'
 
 import type { Html, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 import * as Mount from '../../mount/index.js'
 
 // MODEL
@@ -15,7 +15,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedToggle: {},
   MeasuredPanel: { width: S.Number },
   CompletedFocusButton: {},

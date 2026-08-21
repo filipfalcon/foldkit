@@ -1,10 +1,10 @@
 import { Url } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { UrlRequest } from 'foldkit/navigation'
 
 import { Home, Room } from './page'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   CompletedNavigateInternal: {},
   CompletedLoadExternal: {},
   CompletedNavigateToRoom: {},

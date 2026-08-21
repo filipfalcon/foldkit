@@ -10,7 +10,7 @@ import {
 } from 'effect'
 import { AsyncData, Command, Mount, Submodel } from 'foldkit'
 import { Html, type HtmlBuilder, inertHtml as ih } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Disclosure, Tabs } from '@foldkit/ui'
@@ -49,7 +49,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotSourceFileTabsMessage: {
     message: Tabs.Message,
   },

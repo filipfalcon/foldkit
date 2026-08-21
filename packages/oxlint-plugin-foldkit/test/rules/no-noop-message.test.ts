@@ -8,17 +8,18 @@ const message = (name: string, fields: unknown = Testing.objectExpr([])) => ({
   value: fields,
 })
 
-const messages = (...cases: ReadonlyArray<ReturnType<typeof message>>) =>
-  Testing.callExpr('messages', [Testing.objectExpr(cases)])
+const defineMessageUnion = (
+  ...cases: ReadonlyArray<ReturnType<typeof message>>
+) => Testing.callExpr('defineMessageUnion', [Testing.objectExpr(cases)])
 
-const foldkitMessagesProgram = (local = 'messages') =>
+const foldkitMessageUnionProgram = (local = 'defineMessageUnion') =>
   Testing.program([
     Testing.importDeclWithSpecifiers('foldkit/message', [
-      Testing.importSpecifier('messages', local),
+      Testing.importSpecifier('defineMessageUnion', local),
     ]),
   ])
 
-const runRule = (node: unknown, program = foldkitMessagesProgram()) =>
+const runRule = (node: unknown, program = foldkitMessageUnionProgram()) =>
   Testing.runRuleMulti(noNoopMessage, [
     ['Program', program],
     ['CallExpression', node],
@@ -26,38 +27,41 @@ const runRule = (node: unknown, program = foldkitMessagesProgram()) =>
 
 describe('no-noop-message', () => {
   it('flags generic NoOp Messages', () => {
-    const result = runRule(messages(message('NoOp')))
+    const result = runRule(defineMessageUnion(message('NoOp')))
 
     expect(result).toHaveLength(1)
     expect(result[0]?.diagnostic.message).toContain('avoid generic NoOp')
   })
 
   it('allows specific Message names', () => {
-    const result = runRule(messages(message('ClickedSave')))
+    const result = runRule(defineMessageUnion(message('ClickedSave')))
 
     expect(result).toHaveLength(0)
   })
 
-  it('follows an aliased Foldkit messages import', () => {
+  it('follows an aliased Foldkit defineMessageUnion import', () => {
     const result = runRule(
       Testing.callExpr('declareMessages', [
         Testing.objectExpr([message('NoOp')]),
       ]),
-      foldkitMessagesProgram('declareMessages'),
+      foldkitMessageUnionProgram('declareMessages'),
     )
 
     expect(result).toHaveLength(1)
   })
 
-  it('ignores an unrelated messages helper', () => {
-    const result = runRule(messages(message('NoOp')), Testing.program())
+  it('ignores an unrelated defineMessageUnion helper', () => {
+    const result = runRule(
+      defineMessageUnion(message('NoOp')),
+      Testing.program(),
+    )
 
     expect(result).toHaveLength(0)
   })
 
   it('recognizes a computed string variant name', () => {
     const result = runRule(
-      Testing.callExpr('messages', [
+      Testing.callExpr('defineMessageUnion', [
         {
           type: 'ObjectExpression',
           properties: [

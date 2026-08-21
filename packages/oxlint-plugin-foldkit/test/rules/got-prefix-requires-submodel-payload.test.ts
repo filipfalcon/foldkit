@@ -8,8 +8,9 @@ const message = (name: string, fields: unknown = Testing.objectExpr([])) => ({
   value: fields,
 })
 
-const messages = (...cases: ReadonlyArray<ReturnType<typeof message>>) =>
-  Testing.callExpr('messages', [Testing.objectExpr(cases)])
+const defineMessageUnion = (
+  ...cases: ReadonlyArray<ReturnType<typeof message>>
+) => Testing.callExpr('defineMessageUnion', [Testing.objectExpr(cases)])
 
 const runRule = (node: unknown) =>
   Testing.runRuleMulti(gotPrefixRequiresSubmodelPayload, [
@@ -17,7 +18,7 @@ const runRule = (node: unknown) =>
       'Program',
       Testing.program([
         Testing.importDeclWithSpecifiers('foldkit/message', [
-          Testing.importSpecifier('messages'),
+          Testing.importSpecifier('defineMessageUnion'),
         ]),
       ]),
     ],
@@ -27,7 +28,7 @@ const runRule = (node: unknown) =>
 describe('got-prefix-requires-submodel-payload', () => {
   it('allows Got*Message wrappers whose Message schema is indirect', () => {
     const unknownPayload = runRule(
-      messages(
+      defineMessageUnion(
         message(
           'GotInspectorTabsMessage',
           Testing.objectExpr([
@@ -37,7 +38,7 @@ describe('got-prefix-requires-submodel-payload', () => {
       ),
     )
     const suspendedPayload = runRule(
-      messages(
+      defineMessageUnion(
         message(
           'GotSliderMessage',
           Testing.objectExpr([
@@ -58,7 +59,7 @@ describe('got-prefix-requires-submodel-payload', () => {
 
   it('reserves Got-prefixed Messages for Submodel wrappers', () => {
     const result = runRule(
-      messages(
+      defineMessageUnion(
         message('GotWeather', Testing.objectExpr([{ key: 'temperature' }])),
       ),
     )
@@ -71,7 +72,9 @@ describe('got-prefix-requires-submodel-payload', () => {
 
   it('requires Got-prefixed Submodel wrappers to carry a Message payload', () => {
     const result = runRule(
-      messages(message('GotChildMessage', Testing.objectExpr([{ key: 'id' }]))),
+      defineMessageUnion(
+        message('GotChildMessage', Testing.objectExpr([{ key: 'id' }])),
+      ),
     )
 
     expect(result).toHaveLength(1)

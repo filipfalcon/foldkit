@@ -2,7 +2,7 @@ import { clsx } from 'clsx'
 import { Schema as S } from 'effect'
 import { Command, CustomElement, Runtime } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import 'vanilla-colorful/hex-color-picker.js'
 
@@ -20,7 +20,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   UpdatedContent: { value: S.String },
   ChangedFillColor: { value: S.String },
   ChangedBackgroundColor: {

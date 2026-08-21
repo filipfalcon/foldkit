@@ -2,11 +2,11 @@
 // as the basic tabs; only the view config changes to set orientation and
 // use flex + flex-col for layout.
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { Tabs } from '@foldkit/ui'
 
-const Message = messages({
+const Message = defineMessageUnion({
   GotTabsMessage: {
     message: Tabs.Message,
   },

@@ -1,10 +1,10 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // MESSAGE
 
 /** Union of all messages the tooltip component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   EnteredTrigger: {},
   LeftTrigger: {},
   FocusedTrigger: {},
@@ -32,7 +32,7 @@ export type Message = typeof Message.Type
 // OUT MESSAGE
 
 /** Union of out-messages the tooltip component can produce. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Shown: {},
   Hidden: {},
 })

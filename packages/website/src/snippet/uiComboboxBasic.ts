@@ -4,7 +4,7 @@
 import { Array, Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import { type HtmlBuilder, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Combobox } from '@foldkit/ui'
@@ -35,7 +35,7 @@ const init = () => [
 ]
 
 // Wrap Combobox's Messages so they can flow through your update:
-const Message = messages({
+const Message = defineMessageUnion({
   GotComboboxMessage: {
     message: Combobox.Message,
   },

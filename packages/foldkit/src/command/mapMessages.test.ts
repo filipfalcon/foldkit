@@ -3,13 +3,13 @@ import { expect, expectTypeOf } from 'vitest'
 
 import { describe, it } from '@effect/vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import * as Command from './index.js'
 
-const ChildMessage = messages({
+const ChildMessage = defineMessageUnion({
   CompletedFetchNotes: { noteCount: S.Number },
 })
-const ParentMessage = messages({
+const ParentMessage = defineMessageUnion({
   GotNotesMessage: { message: ChildMessage },
 })
 

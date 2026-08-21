@@ -1,9 +1,9 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import * as Child from './child'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ReceivedWeather: {
   temperature: S.Number,
 },

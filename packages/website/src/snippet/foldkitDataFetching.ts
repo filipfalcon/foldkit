@@ -1,6 +1,6 @@
 import { Effect, Schema as S } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 
@@ -21,7 +21,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedFetchUser: { userId: S.String },
   SucceededFetchUser: {
     data: UserSchema,

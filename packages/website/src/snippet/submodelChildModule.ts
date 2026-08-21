@@ -1,7 +1,7 @@
 // page/settings.ts
 import { Schema as S } from 'effect'
 import { Command } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 // MODEL
@@ -22,7 +22,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ChangedTheme: { theme: Theme },
   ChangedFontSize: { fontSize: FontSize },
   ToggledNotifications: {},

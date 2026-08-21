@@ -1,10 +1,10 @@
 import { Effect, Schema as S } from 'effect'
 import { HttpClient, HttpClientRequest } from 'effect/unstable/http'
 import { Command, Http } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedFetchCount: {},
   SucceededFetchCount: {
     count: S.Number,

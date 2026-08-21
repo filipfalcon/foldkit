@@ -1,10 +1,10 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // ❌ Bad
 // A Got wrapper carries the child Message plus routing context only. Extra
 // payload like timestamp belongs on the child Message or a parent Message.
-const BadMessage = messages({
+const BadMessage = defineMessageUnion({
   GotSettingsMessage: {
     message: Settings.Message,
     timestamp: S.Number,
@@ -13,7 +13,7 @@ const BadMessage = messages({
 
 // ✅ Good
 // message plus routing keys (id, or keys ending in Id) only.
-const Message = messages({
+const Message = defineMessageUnion({
   GotCounterMessage: {
     id: S.String,
     message: Counter.Message,

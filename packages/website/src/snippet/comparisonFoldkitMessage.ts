@@ -1,4 +1,4 @@
-const Message = messages({
+const Message = defineMessageUnion({
   PressedCell: { x: S.Number, y: S.Number },
   EnteredCell: { x: S.Number, y: S.Number },
   LeftCanvas: {},

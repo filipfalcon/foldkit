@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { Menu, Tabs } from '@foldkit/ui'
 
@@ -23,7 +23,7 @@ import {
 
 // UNION
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotPersonalInfoMessage: {
     message: PersonalInfo.Message,
   },

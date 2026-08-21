@@ -1,9 +1,9 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import * as Shared from '@typing-game/shared'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   CompletedFocusUsernameInput: {},
   CompletedFocusRoomIdInput: {},
   SubmittedUsernameForm: {},
@@ -22,7 +22,7 @@ export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   CreatedRoom: { roomId: S.String, player: Shared.Player },
   JoinedRoom: { roomId: S.String, player: Shared.Player },
 })

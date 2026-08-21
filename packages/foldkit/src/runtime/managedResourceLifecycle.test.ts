@@ -5,7 +5,7 @@ import * as Command from '../command/index.js'
 import { __htmlBuilder } from '../html/index.js'
 import * as ManagedResource from '../managedResource/index.js'
 import { make } from '../managedResource/managedResource.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import { makeElement } from './runtime.js'
 
@@ -44,7 +44,7 @@ const makeEngineLayer = (id: string): Layer.Layer<EngineService, Error> =>
 const Engine = ManagedResource.tag<EngineShape>()('Engine')
 type EngineServiceId = ManagedResource.ServiceOf<typeof Engine>
 
-const Message = messages({
+const Message = defineMessageUnion({
   RequestedEngine: { id: S.String },
   StoppedEngine: {},
   AcquiredEngine: {},

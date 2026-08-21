@@ -20,7 +20,7 @@ import {
   validate,
 } from 'foldkit/fieldValidation'
 import { Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button, Input } from '@foldkit/ui'
@@ -46,7 +46,7 @@ export const initModel = (): Model => ({
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ChangedEmail: { value: S.String },
   ChangedPassword: { value: S.String },
   SubmittedForm: {},
@@ -62,7 +62,7 @@ export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   SucceededLogin: { session: Session },
 })
 

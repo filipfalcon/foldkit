@@ -1,7 +1,7 @@
 import { Effect, Schema as S } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { type Document, type HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -28,7 +28,7 @@ export type Flags = typeof Flags.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedDecrement: {},
   ClickedIncrement: {},
   CompletedPersistCount: {},

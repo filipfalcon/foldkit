@@ -11,7 +11,7 @@ import {
 } from 'effect'
 import type { Command } from 'foldkit/command'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 import { type Reflect, defineView } from 'foldkit/submodel'
@@ -44,7 +44,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the slider component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   PressedThumb: { originValue: S.Number },
   PressedPointer: {
     value: S.Number,
@@ -79,7 +79,7 @@ export type PressedKeyboardNavigation =
 // OUT MESSAGE
 
 /** Union of all out-messages the slider component can emit to its parent. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   ChangedValue: { value: S.Number },
 })
 export type OutMessage = typeof OutMessage.Type

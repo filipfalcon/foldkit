@@ -330,7 +330,7 @@ For each Foldkit module you plan to use, read the `.d.ts` at the paths below. Re
 # Every app
 <project>/node_modules/foldkit/dist/index.d.ts          # top-level re-exports: the authoritative list of what `foldkit` exposes
 <project>/node_modules/foldkit/dist/html/index.d.ts     # HtmlBuilder<Message>, element signatures, Attribute<Message>, inertHtml
-<project>/node_modules/foldkit/dist/message/index.d.ts  # messages()
+<project>/node_modules/foldkit/dist/message/index.d.ts  # defineMessageUnion()
 <project>/node_modules/foldkit/dist/schema/index.d.ts   # ts(), r()
 <project>/node_modules/foldkit/dist/struct/index.d.ts   # evo(): check nested-update signature
 <project>/node_modules/foldkit/dist/update/public.d.ts  # Update.Return, Update.ReturnWithOutMessage, Update.combine, Update.refresh
@@ -449,7 +449,7 @@ Generate files following the architecture and conventions guides exactly. Write 
 Declare the Message union and its type together:
 
 ```ts
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedSubmit: {},
   UpdatedEmail: { value: S.String },
   SucceededLogin: { user: User },
@@ -459,7 +459,7 @@ export const Message = messages({
 export type Message = typeof Message.Type
 ```
 
-Keep the `messages()` declaration and `type Message` alias adjacent. Construct variants through the namespace, such as `Message.ClickedSubmit()` and `Message.UpdatedEmail({ value })`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
+Keep the `defineMessageUnion()` declaration and `type Message` alias adjacent. Construct variants through the namespace, such as `Message.ClickedSubmit()` and `Message.UpdatedEmail({ value })`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
 
 Name messages by category:
 

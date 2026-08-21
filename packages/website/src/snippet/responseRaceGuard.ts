@@ -1,7 +1,7 @@
 import { Effect, Schema as S, pipe } from 'effect'
 import { HttpClient, HttpClientRequest } from 'effect/unstable/http'
 import { AsyncData, Command, Http } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 const SearchResult = S.Struct({ id: S.String, title: S.String })
@@ -18,7 +18,7 @@ type Model = typeof Model.Type
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   UpdatedQuery: { query: S.String },
   SettledSearch: {
     query: S.String,

@@ -10,7 +10,7 @@ import {
 } from 'effect'
 import { Command, Submodel } from 'foldkit'
 import { Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { pushUrl } from 'foldkit/navigation'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
@@ -95,7 +95,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ChangedSearchInput: { value: S.String },
   SubmittedSearch: {},
   ChangedRoute: { route: PeopleRoute },

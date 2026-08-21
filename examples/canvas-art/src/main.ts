@@ -9,7 +9,7 @@ import {
 } from 'effect'
 import { Canvas, Command, Runtime, Subscription } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -56,7 +56,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   TickedFrame: { deltaTime: S.Number },
   ClickedCanvas: { x: S.Number, y: S.Number },
   CompletedGenerateBall: {

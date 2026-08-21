@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Schema as S } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Checkbox } from '@foldkit/ui'
@@ -28,7 +28,7 @@ const init = () => [
 // One Message per child, plus one for the "Select All" parent. Each carries
 // the new checked state:
 
-const Message = messages({
+const Message = defineMessageUnion({
   ToggledSelectAll: { isChecked: S.Boolean },
   ToggledOptionA: { isChecked: S.Boolean },
   ToggledOptionB: { isChecked: S.Boolean },

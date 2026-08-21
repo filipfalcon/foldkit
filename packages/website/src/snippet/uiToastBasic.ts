@@ -4,7 +4,7 @@
 import { Match as M, Option, Schema as S } from 'effect'
 import { Command, Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Toast as UiToast } from '@foldkit/ui'
@@ -43,7 +43,7 @@ const init = () => [
 
 // Embed the Toast Message in your parent Message, plus any domain Messages
 // that should push a toast:
-const Message = messages({
+const Message = defineMessageUnion({
   GotToastMessage: { message: Toast.Message },
   ClickedSave: {},
 })

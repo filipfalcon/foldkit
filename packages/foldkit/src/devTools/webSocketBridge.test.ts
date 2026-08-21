@@ -11,7 +11,7 @@ import {
 } from 'effect'
 import { describe, expect, it } from 'vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import {
   EventFrame,
@@ -36,7 +36,7 @@ type CounterModel = typeof CounterModel.Type
 
 const initialModel = CounterModel.make({ count: 0 })
 
-const CounterMessage = messages({
+const CounterMessage = defineMessageUnion({
   ClickedIncrement: {},
   ClickedDecrement: {},
 })

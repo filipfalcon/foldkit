@@ -194,7 +194,7 @@ Alongside the greps, eyeball each file's imports. Every symbol you imported shou
 
 ## Structural completeness
 
-- [ ] Every Message variant is declared once in `messages()`
+- [ ] Every Message variant is declared once in `defineMessageUnion()`
 - [ ] Every Message variant has a case in `Message.match` in update
 - [ ] Every route variant has a corresponding view branch
 - [ ] Every `Succeeded*` has a paired `Failed*`
@@ -262,7 +262,7 @@ Alongside the greps, eyeball each file's imports. Every symbol you imported shou
 - [ ] `Option` for absent fields (not empty strings, null, or zero)
 - [ ] Impossible states are unrepresentable
 - [ ] `ts()` for non-Message tagged structs (Model states, route variants)
-- [ ] `messages()` for Message and OutMessage unions
+- [ ] `defineMessageUnion()` for Message and OutMessage unions
 - [ ] **Remote data uses `AsyncData`, not a hand-rolled union.** `AsyncData.Schema(DataSchema, ErrorSchema)` supplies `Idle`, `Loading`, `Refreshing`, `Failure`, `Stale`, and `Success` plus `match`, `isPending`, `hasData`, `revalidate`, and the rest. A hand-rolled `Idle | Loading | Error | Ok` is missing `Refreshing` and `Stale`, which is what forces a refetch to blank the screen and a failed refetch to discard good data. Reference: `repos/foldkit/examples/weather/src/main.ts`
 
 ## Framework modules over hand-rolled equivalents

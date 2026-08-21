@@ -40,7 +40,7 @@ import {
   createKeyedLazy,
   createLazy,
 } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { makeElement } from 'foldkit/runtime'
 import type { DevToolsMode, DevToolsPosition } from 'foldkit/runtime'
 import { ts } from 'foldkit/schema'
@@ -163,7 +163,7 @@ const Flags = S.Struct({
 
 // NOTE: suspend for the same init-order reason as scrubberSlider above.
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedToggle: {},
   ClickedSettingsToggle: {},
   ToggledFlatten: { isFlattened: S.Boolean },

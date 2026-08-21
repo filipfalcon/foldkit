@@ -10,7 +10,7 @@ const Model = S.Struct({
 
 // MESSAGE
 
-const Message = messages({
+const Message = defineMessageUnion({
   EnteredPostsRoute: {},
   SettledFetchPosts: {
     result: S.Result(S.Array(Post), S.String),

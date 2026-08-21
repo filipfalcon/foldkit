@@ -4,7 +4,7 @@
 import { Match as M, Option } from 'effect'
 import { Update } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Popover } from '@foldkit/ui'
@@ -25,7 +25,7 @@ const init = () => [
 ]
 
 // Embed the Popover Message in your parent Message:
-const Message = messages({
+const Message = defineMessageUnion({
   GotPopoverMessage: {
     message: Popover.Message,
   },

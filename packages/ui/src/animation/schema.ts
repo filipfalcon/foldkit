@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // TRANSITION STATE
 
@@ -27,7 +27,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the animation component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   Showed: {},
   Hid: {},
   CompletedWaitForPaint: {},
@@ -40,7 +40,7 @@ export type Hid = typeof Message.Hid.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   StartedLeaveAnimating: {},
   TransitionedOut: {},
 })

@@ -15,7 +15,7 @@ import {
 } from 'effect'
 import { Command, ManagedResource, Mount, Submodel } from 'foldkit'
 import { Html, type HtmlBuilder, inertHtml as ih } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 import filesBySlug from 'virtual:playground-files'
@@ -68,7 +68,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   BootedPlayground: { previewUrl: S.String },
   FailedBootPlayground: { reason: S.String },
   ReleasedPlayground: {},

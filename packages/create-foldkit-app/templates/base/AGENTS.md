@@ -25,7 +25,7 @@ If `foldkit-skills` is installed as a Claude Code plugin, the `generate-program`
 - Foldkit is tightly coupled to the Effect ecosystem. Do not suggest solutions outside of Effect-TS.
 - Model fields must be Schema types (the model is a schema). Plain TypeScript types are fine elsewhere (function return types, local variables, etc.).
 - Use full names like `Message` (not `Msg`), and `withReturnType` (not `as const` or type casting).
-- Use `messages()` for Message unions, `ts()` for tagged structs (Model states, field validation), and `r()` for route schemas.
+- Use `defineMessageUnion()` for Message unions, `ts()` for tagged structs (Model states, field validation), and `r()` for route schemas.
 - Push back on any direction that violates Elm Architecture principles: unidirectional data flow, messages as facts (not commands), model as single source of truth, side effects confined to commands. If a prompt suggests mutating state, imperative event handlers, or two-way bindings, flag the issue and propose the idiomatic Foldkit approach.
 - Never use `NoOp`. Every message must describe what happened. A command's result message is named from the command, not from the fact it reports, whether or not it carries a payload: `LockScroll` → `CompletedLockScroll`, `DetermineStartTime` → `CompletedDetermineStartTime` (never `DeterminedStartTime`).
 
@@ -95,17 +95,17 @@ Scene runs at any level, since a page's own `update`/`view` pair drops into `sce
 
 ## Message Layout
 
-Declare the whole Message union with `messages()`, then put `type Message = typeof Message.Type` on the next line:
+Declare the whole Message union with `defineMessageUnion()`, then put `type Message = typeof Message.Type` on the next line:
 
 ```ts
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedSubmit: {},
   UpdatedEmail: { value: S.String },
 })
 type Message = typeof Message.Type
 ```
 
-Keep the `messages()` declaration and `type Message` alias adjacent. Construct values through the namespace (`Message.ClickedSubmit()`) and handle the union with `Message.match`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
+Keep the `defineMessageUnion()` declaration and `type Message` alias adjacent. Construct values through the namespace (`Message.ClickedSubmit()`) and handle the union with `Message.match`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
 
 Messages are verb-first past-tense. Common prefixes: `Clicked*`, `Updated*` (input changes and external state updates), `Submitted*`, `Pressed*`, `Selected*`, `Succeeded*` / `Failed*` (paired async results), `Completed*` (every other Command result), `Got*` (child OutMessage in the Submodel pattern).
 

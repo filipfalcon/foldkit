@@ -4,14 +4,14 @@
 import { Effect, Schema as S } from 'effect'
 import { Mount } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { AnchorConfig, anchorSetup } from '@foldkit/ui/anchor'
 
 // Every Mount Definition declares at least one result Message. Name it after
 // the Definition, the way a Command's result Message is named after the
 // Command:
-const Message = messages({
+const Message = defineMessageUnion({
   CompletedAnchorPanel: {},
 })
 

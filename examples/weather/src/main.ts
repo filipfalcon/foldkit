@@ -2,7 +2,7 @@ import { Array, Effect, Match as M, Option, Schema as S, String } from 'effect'
 import { HttpClient, HttpClientRequest } from 'effect/unstable/http'
 import { AsyncData, Command, Http, Runtime } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button, Input } from '@foldkit/ui'
@@ -30,7 +30,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   UpdatedZipCodeInput: {
     value: S.String,
   },

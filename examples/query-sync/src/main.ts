@@ -13,7 +13,7 @@ import {
 } from 'effect'
 import { Command, Route, Runtime, Update } from 'foldkit'
 import { Document, Html, HtmlBuilder, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { UrlRequest, load, pushUrl, replaceUrl } from 'foldkit/navigation'
 import { r } from 'foldkit/route'
 import { ts } from 'foldkit/schema'
@@ -154,7 +154,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   CompletedNavigateInternal: {},
   CompletedLoadExternal: {},
   CompletedReplaceFilters: {},

@@ -143,14 +143,14 @@ Messages describe what happened, not what should happen. The update function dec
 
 ```ts
 // WRONG: imperative, tells the system what to do
-const Message = messages({
+const Message = defineMessageUnion({
   FetchData: {},
   SetFilter: { filter: S.String },
   ShowModal: {},
 })
 
 // RIGHT: past-tense, describes what happened
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedRefresh: {},
   SelectedFilter: { filter: S.String },
   ClickedOpenModal: {},

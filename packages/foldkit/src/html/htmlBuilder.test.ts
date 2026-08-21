@@ -1,7 +1,7 @@
 import { Context, Number, Schema as S } from 'effect'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { MountTracker } from '../mount/index.js'
 import { isClientOnlyProperty } from '../propertyProvenance.js'
 import { Dispatch } from '../runtime/index.js'
@@ -26,17 +26,17 @@ import { defineView } from './submodel.js'
 
 type ChildModel = Readonly<{ value: number }>
 
-const ChildMessage = messages({
+const ChildMessage = defineMessageUnion({
   ClickedChild: { value: S.Number },
 })
 type ChildMessage = typeof ChildMessage.Type
 
-const ParentMessage = messages({
+const ParentMessage = defineMessageUnion({
   GotChildMessage: { message: ChildMessage },
 })
 type ParentMessage = typeof ParentMessage.Type
 
-const AppMessage = messages({
+const AppMessage = defineMessageUnion({
   ClickedApp: {},
 })
 type AppMessage = typeof AppMessage.Type
@@ -283,7 +283,7 @@ describe('HtmlBuilder runtime guarantees', () => {
   })
 
   it('supplies the root view its builder in a live runtime and routes clicks to update', async () => {
-    const Message = messages({ ClickedIncrement: {} })
+    const Message = defineMessageUnion({ ClickedIncrement: {} })
     type Message = typeof Message.Type
     const Model = S.Struct({ count: S.Number })
     type Model = typeof Model.Type
@@ -328,7 +328,7 @@ describe('HtmlBuilder runtime guarantees', () => {
   })
 
   it('passes an explicitly undefined viewInputs through as the inputs argument', async () => {
-    const Message = messages({ IgnoredChildRender: {} })
+    const Message = defineMessageUnion({ IgnoredChildRender: {} })
     type Message = typeof Message.Type
     const Model = S.Struct({ ready: S.Boolean })
     type Model = typeof Model.Type

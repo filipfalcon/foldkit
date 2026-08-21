@@ -15,7 +15,7 @@ import { Command, Mount, Runtime, Subscription } from 'foldkit'
 import * as Dom from 'foldkit/dom'
 import type { Document, Html } from 'foldkit/html'
 import { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 import type { Map as MapInstance } from 'maplibre-gl'
@@ -70,7 +70,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   SucceededMountMap: { hostId: S.String },
   FailedMountMap: { reason: S.String },
   MovedMap: { bounds: Bounds },

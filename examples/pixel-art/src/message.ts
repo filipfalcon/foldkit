@@ -1,11 +1,11 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { Dialog, Listbox, RadioGroup } from '@foldkit/ui'
 
 import { PaletteIndex, Tool } from './model'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   PressedCell: { x: S.Number, y: S.Number },
   EnteredCell: { x: S.Number, y: S.Number },
   LeftCanvas: {},

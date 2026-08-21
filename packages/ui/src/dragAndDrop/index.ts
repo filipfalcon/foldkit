@@ -13,7 +13,7 @@ import {
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import { type Attribute, type HtmlBuilder, inertHtml as ih } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { ts } from 'foldkit/schema'
 import { evo } from 'foldkit/struct'
 import * as Subscription from 'foldkit/subscription'
@@ -80,7 +80,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the drag-and-drop component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   PressedDraggable: {
     itemId: S.String,
     containerId: S.String,
@@ -126,7 +126,7 @@ export type Message = typeof Message.Type
 // OUT MESSAGE
 
 /** Union of all out-messages the drag-and-drop component can emit to its parent. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Reordered: {
     itemId: S.String,
     fromContainerId: S.String,

@@ -2,11 +2,11 @@ import { Number, Schema as S } from 'effect'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Document, __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import { makeApplication, run } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
 })
 type Message = typeof Message.Type

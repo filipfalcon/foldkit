@@ -3,7 +3,7 @@
 // update, and view definitions.
 import { Command } from 'foldkit'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Popover } from '@foldkit/ui'
@@ -30,7 +30,7 @@ const init = () => [
 ]
 
 // Embed each Popover Message in your parent Message:
-const Message = messages({
+const Message = defineMessageUnion({
   GotAccountPopoverMessage: {
     message: Popover.Message,
   },

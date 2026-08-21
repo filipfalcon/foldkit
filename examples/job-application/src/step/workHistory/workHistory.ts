@@ -1,7 +1,7 @@
 import { Array, Crypto, Effect, Match as M, Schema as S } from 'effect'
 import { Calendar, Command, Update } from 'foldkit'
 import { type CalendarDate } from 'foldkit/calendar'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { BrowserCrypto } from '@effect/platform-browser'
@@ -18,7 +18,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedAddEntry: {},
   SucceededGenerateEntryId: {
     entryId: S.String,

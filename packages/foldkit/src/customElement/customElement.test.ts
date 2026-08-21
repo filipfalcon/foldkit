@@ -8,7 +8,7 @@ import {
   __clearRuntime as clearHtmlRuntime,
   __setRuntime as setHtmlRuntime,
 } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { MountTracker } from '../mount/index.js'
 import { propsModule } from '../propsModule.js'
 import { Dispatch } from '../runtime/index.js'
@@ -33,7 +33,7 @@ const patch = init([
   styleModule,
 ])
 
-const Message = messages({
+const Message = defineMessageUnion({
   RatingChanged: { value: S.Number },
   RatingCleared: {},
   ToggledDisabled: { value: S.Boolean },

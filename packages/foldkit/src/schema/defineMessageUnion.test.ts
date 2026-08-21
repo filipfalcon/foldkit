@@ -1,16 +1,16 @@
 import { Match as M, Schema as S } from 'effect'
 import { describe, expect, it } from 'vitest'
 
-import { messages } from './index.js'
+import { defineMessageUnion } from './index.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedReset: {},
   ChangedCount: { count: S.Number },
   SelectedItem: { id: S.String, label: S.String },
 })
 type Message = typeof Message.Type
 
-describe('messages', () => {
+describe('defineMessageUnion', () => {
   it('builds a callable constructor for a variant with no fields', () => {
     expect(Message.ClickedReset()).toStrictEqual({ _tag: 'ClickedReset' })
   })
@@ -82,7 +82,7 @@ describe('messages', () => {
 
   it('rejects names that conflict with the tagged union surface', () => {
     expect(() =>
-      Reflect.apply(messages, undefined, [{ match: {} }]),
+      Reflect.apply(defineMessageUnion, undefined, [{ match: {} }]),
     ).toThrowError(
       'Message variant names conflict with Schema.TaggedUnion properties: match',
     )
@@ -90,7 +90,7 @@ describe('messages', () => {
 
   it('rejects names inherited from the tagged union prototype', () => {
     expect(() =>
-      Reflect.apply(messages, undefined, [{ toString: {} }]),
+      Reflect.apply(defineMessageUnion, undefined, [{ toString: {} }]),
     ).toThrowError(
       'Message variant names conflict with Schema.TaggedUnion properties: toString',
     )
@@ -98,7 +98,7 @@ describe('messages', () => {
 
   it('rejects type-only tagged union property names at runtime', () => {
     expect(() =>
-      Reflect.apply(messages, undefined, [{ Type: {} }]),
+      Reflect.apply(defineMessageUnion, undefined, [{ Type: {} }]),
     ).toThrowError(
       'Message variant names conflict with Schema.TaggedUnion properties: Type',
     )
@@ -106,11 +106,11 @@ describe('messages', () => {
 
   if (false) {
     // @ts-expect-error Message variant names cannot shadow tagged union properties
-    messages({ match: {} })
+    defineMessageUnion({ match: {} })
     // @ts-expect-error The collision check follows additions to the tagged union surface
-    messages({ annotateKey: {} })
+    defineMessageUnion({ annotateKey: {} })
     // @ts-expect-error Type-only tagged union properties are also reserved
-    messages({ Type: {} })
+    defineMessageUnion({ Type: {} })
   }
 
   it('works with a single handler across several tags', () => {

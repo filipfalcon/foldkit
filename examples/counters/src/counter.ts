@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import { Command, Submodel } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Button } from '@foldkit/ui'
@@ -14,7 +14,7 @@ export const init: Model = { count: 0 }
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedDecrement: {},
   ClickedIncrement: {},
 })

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Command } from '../command/index.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import * as Subscription from '../subscription/subscription.js'
 import {
@@ -14,7 +14,7 @@ import {
   makeElement,
 } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
   ClickedKeptModel: {},
 })

@@ -8,7 +8,7 @@ import {
   makeRules,
   validate,
 } from 'foldkit/fieldValidation'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { RadioGroup } from '@foldkit/ui'
@@ -42,7 +42,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   UpdatedName: { value: S.String },
   GotProficiencyRadioGroupMessage: { message: RadioGroup.Message },
   ClickedRemoveSelf: {},
@@ -52,7 +52,7 @@ export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Removed: {},
 })
 

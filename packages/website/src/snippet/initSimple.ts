@@ -1,13 +1,13 @@
 import { Schema as S } from 'effect'
 import type { Runtime } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 const Model = S.Struct({
   count: S.Number,
 })
 type Model = typeof Model.Type
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
   ClickedDecrement: {},
 })

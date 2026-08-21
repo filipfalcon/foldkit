@@ -10,7 +10,7 @@ import {
 import * as Command from 'foldkit/command'
 import * as Dom from 'foldkit/dom'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { type View as SubmodelView, defineView } from 'foldkit/submodel'
 
@@ -45,7 +45,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the tabs component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   SelectedTab: {
     index: S.Number,
     value: S.String,
@@ -68,7 +68,7 @@ export type Selected<Value extends string = string> = Readonly<{
 }>
 
 /** Union of out-messages the tabs component can produce. Surfaced as the third element of `update`'s return tuple and pattern-matched by the parent. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Selected: {
     value: S.String,
     index: S.Number,

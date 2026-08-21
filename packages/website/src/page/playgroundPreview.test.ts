@@ -1,5 +1,5 @@
 import { type HtmlBuilder, inertHtml as ih } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import {
   type SceneSimulation,
   expect,
@@ -15,7 +15,7 @@ import * as PlaygroundPreview from './playgroundPreview'
 const PREVIEW_URL = 'https://preview.example.test'
 const STALE_PREVIEW_URL = 'https://stale.example.test'
 const preview = selector('iframe')
-const Message = messages({ LoadedPreview: {} })
+const Message = defineMessageUnion({ LoadedPreview: {} })
 type Message = typeof Message.Type
 
 const previewApp = {

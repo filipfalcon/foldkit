@@ -12,11 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as Command from '../command/index.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import * as Subscription from '../subscription/subscription.js'
 import { makeApplication, makeElement, run } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedReadValue: {},
   SucceededReadValue: { value: S.String },
 })

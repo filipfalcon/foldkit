@@ -1,16 +1,16 @@
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import * as Child from './child'
 
 // ❌ Bad
-const BadMessage = messages({
+const BadMessage = defineMessageUnion({
   ChildChanged: {
     message: Child.Message,
   },
 })
 
 // ✅ Good
-const Message = messages({
+const Message = defineMessageUnion({
   GotChildMessage: {
     message: Child.Message,
   },

@@ -11,7 +11,7 @@ import {
 } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { evo } from '../struct/index.js'
 import {
   type Bridge,
@@ -126,7 +126,7 @@ const initialModel = { count: 0 }
 
 const CounterModel = Schema.Struct({ count: Schema.Number })
 
-const CounterMessage = messages({
+const CounterMessage = defineMessageUnion({
   ClickedIncrement: {},
   ClickedDecrement: {},
 })

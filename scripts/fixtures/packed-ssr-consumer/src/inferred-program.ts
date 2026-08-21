@@ -1,12 +1,12 @@
 import { Schema as S } from 'effect'
 import { Runtime } from 'foldkit'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 const InferredModel = S.Struct({ count: S.Number })
 type InferredModel = typeof InferredModel.Type
 
-const Message = messages({ Ticked: {} })
+const Message = defineMessageUnion({ Ticked: {} })
 type InferredMessage = typeof Message.Type
 
 type InferredStep = readonly [InferredModel, ReadonlyArray<never>]

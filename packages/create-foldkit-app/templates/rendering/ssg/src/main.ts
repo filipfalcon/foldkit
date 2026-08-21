@@ -1,7 +1,7 @@
 import { Effect, Match as M, Schema as S, pipe } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { type Document, type Html, type HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { UrlRequest, load, pushUrl } from 'foldkit/navigation'
 import { evo } from 'foldkit/struct'
 import { Url, toString as urlToString } from 'foldkit/url'
@@ -18,7 +18,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedIncrement: {},
   ClickedLink: { request: UrlRequest },
   ChangedUrl: { url: Url },

@@ -1,9 +1,9 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import * as Settings from './page/settings'
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   GotSettingsMessage: {
     message: Settings.Message,
   },

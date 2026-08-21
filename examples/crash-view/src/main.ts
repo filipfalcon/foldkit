@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { Command, Runtime } from 'foldkit'
 import { Document, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 import { Button } from '@foldkit/ui'
 
@@ -12,7 +12,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedCrash: {},
 })
 

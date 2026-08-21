@@ -2,7 +2,7 @@ import { Array, Option, Schema as S } from 'effect'
 import * as Command from 'foldkit/command'
 import * as File from 'foldkit/file'
 import { type ChildAttribute, type Html, childAttributes } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 import { defineView } from 'foldkit/submodel'
 
@@ -23,7 +23,7 @@ export type Model = typeof Model.Type
 // MESSAGE
 
 /** Union of all messages the file-drop component can produce. */
-export const Message = messages({
+export const Message = defineMessageUnion({
   EnteredDragZone: {},
   LeftDragZone: {},
   DroppedFiles: {
@@ -37,7 +37,7 @@ export type Message = typeof Message.Type
 
 /** The file-drop component's OutMessages: `ReceivedFiles` on the happy
  * path and `RejectedNonFiles` when a drop event fires without files. */
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   ReceivedFiles: {
     files: S.NonEmptyArray(File.File),
   },

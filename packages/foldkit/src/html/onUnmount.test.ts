@@ -3,7 +3,7 @@ import { expect, vi } from 'vitest'
 
 import { describe, it } from '@effect/vitest'
 
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import type { MountAction } from '../mount/index.js'
 import { MountTracker } from '../mount/index.js'
 import { propsModule } from '../propsModule.js'
@@ -42,7 +42,7 @@ const patch = init([
   styleModule,
 ])
 
-const Message = messages({
+const Message = defineMessageUnion({
   Unmounted: {},
   Mounted: {},
 })

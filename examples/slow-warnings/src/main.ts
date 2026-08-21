@@ -9,7 +9,7 @@ import {
 } from 'effect'
 import { Command, Runtime, Subscription } from 'foldkit'
 import { type Document, type Html, HtmlBuilder, createLazy } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 const UPDATE_WORK_MS = 10
@@ -58,7 +58,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedRunUpdateWork: {},
   ClickedRunViewWork: {},
   ClickedRunPatchWork: {},

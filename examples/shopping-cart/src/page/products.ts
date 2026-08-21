@@ -1,6 +1,6 @@
 import { Array, Effect, Option, Schema as S } from 'effect'
 import { Command, Submodel } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { replaceUrl } from 'foldkit/navigation'
 import { evo } from 'foldkit/struct'
 
@@ -19,7 +19,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   CompletedReplaceSearchUrl: {},
   ChangedSearchInput: { value: S.String },
   ClickedAddToCart: { item: Item.Item },
@@ -35,7 +35,7 @@ export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   AddedToCart: { item: Item.Item },
   IncrementedQuantity: {
     itemId: S.String,

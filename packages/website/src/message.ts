@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import { Calendar } from 'foldkit'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { UrlRequest } from 'foldkit/navigation'
 import { Url } from 'foldkit/url'
 
@@ -20,7 +20,7 @@ export type ResolvedTheme = typeof ResolvedTheme.Type
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   CompletedNavigateInternal: {},
   CompletedLoadExternal: {},
   CompletedInjectAnalytics: {},

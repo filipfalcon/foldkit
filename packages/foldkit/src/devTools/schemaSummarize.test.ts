@@ -1,7 +1,7 @@
 import { Option, Schema as S } from 'effect'
 import { describe, expect, it } from 'vitest'
 
-import { messages, ts } from '../schema/index.js'
+import { defineMessageUnion, ts } from '../schema/index.js'
 import {
   indexMessageSchemaDocument,
   narrowToVariant,
@@ -13,9 +13,9 @@ const expectSome = <A>(option: Option.Option<A>): A => {
   return Option.getOrThrow(option)
 }
 
-const ChildMessage = messages({ Opened: {}, Closed: {} })
+const ChildMessage = defineMessageUnion({ Opened: {}, Closed: {} })
 
-const Message = messages({
+const Message = defineMessageUnion({
   Completed: {},
   ScrolledSidebar: { scroll: S.Number },
   ClickedLink: { href: S.String },

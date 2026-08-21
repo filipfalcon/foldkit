@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Command } from '../command/index.js'
 import { type DevToolsStore, INIT_INDEX } from '../devTools/store.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { __setDevToolsOverlay, makeElement } from './runtime.js'
 import {
   __decideViewTransition,
@@ -162,7 +162,7 @@ describe('__resolveStartViewTransition', () => {
   })
 })
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedTransition: {},
   ClickedPlain: {},
 })

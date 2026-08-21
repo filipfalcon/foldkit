@@ -141,7 +141,7 @@ A `keyed(...)` whose key is built from displayed data (concatenated booleans, a 
 
 ### `flat-parent-message-union`
 
-Flattening a child's Message variants into the parent's `messages()` record makes every parent handler know the child's tag names, and the child can't grow its vocabulary without leaking into the parent. The canonical Submodel pattern adds `GotChildMessage: { message: Child.Message }` to the parent Message and handles that one variant with `Message.match`, delegating to `Child.update(model.child, message)`. Flat unions work for trivial cases but don't isolate child concerns. Suggest `Got*` wrapping for any Submodel likely to grow, or any child that needs an OutMessage.
+Flattening a child's Message variants into the parent's `defineMessageUnion()` record makes every parent handler know the child's tag names, and the child can't grow its vocabulary without leaking into the parent. The canonical Submodel pattern adds `GotChildMessage: { message: Child.Message }` to the parent Message and handles that one variant with `Message.match`, delegating to `Child.update(model.child, message)`. Flat unions work for trivial cases but don't isolate child concerns. Suggest `Got*` wrapping for any Submodel likely to grow, or any child that needs an OutMessage.
 
 ## Accessibility
 

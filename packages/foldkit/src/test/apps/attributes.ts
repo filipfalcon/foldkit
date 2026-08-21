@@ -1,10 +1,10 @@
 import { customElement } from '../../html/index.js'
 import type { Attribute, Html, HtmlBuilder } from '../../html/index.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   IgnoredInteraction: {},
 })
 

@@ -1,7 +1,7 @@
 import { Schema as S } from 'effect'
 import { Command } from 'foldkit'
 import type { Document, HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 // MODEL - Your entire application state
@@ -13,7 +13,7 @@ type Model = typeof Model.Type
 
 // MESSAGE - Events that can happen in your app
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
 })
 type Message = typeof Message.Type

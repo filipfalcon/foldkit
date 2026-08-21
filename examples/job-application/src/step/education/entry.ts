@@ -8,7 +8,7 @@ import {
   makeRules,
   validate,
 } from 'foldkit/fieldValidation'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { Listbox } from '@foldkit/ui'
@@ -50,7 +50,7 @@ const GraduationYearListbox = Listbox.create<string>()
 
 // MESSAGE
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   UpdatedSchool: { value: S.String },
   UpdatedDegree: { value: S.String },
   UpdatedFieldOfStudy: {
@@ -67,7 +67,7 @@ export type Message = typeof Message.Type
 
 // OUT MESSAGE
 
-export const OutMessage = messages({
+export const OutMessage = defineMessageUnion({
   Removed: {},
 })
 

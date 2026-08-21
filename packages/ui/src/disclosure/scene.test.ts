@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import type { HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import * as Scene from 'foldkit/scene'
 import { evo } from 'foldkit/struct'
 
@@ -8,7 +8,7 @@ import { describe, it } from '@effect/vitest'
 
 import { view } from './index.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   Toggled: { isOpen: S.Boolean },
 })
 type Message = typeof Message.Type

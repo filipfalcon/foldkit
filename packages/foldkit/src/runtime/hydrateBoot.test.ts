@@ -5,10 +5,10 @@ import type { Command } from '../command/index.js'
 import { renderToString } from '../experimental/server/server.js'
 import type { Document } from '../html/index.js'
 import { __htmlBuilder } from '../html/index.js'
-import { messages } from '../message/index.js'
+import { defineMessageUnion } from '../message/index.js'
 import { __startProgram, hydrate, makeApplication, run } from './runtime.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedIncrement: {},
 })
 type Message = typeof Message.Type

@@ -22,13 +22,13 @@ import {
   hydrationIdentityMarker,
   hydrationKeyMarker,
 } from '../../hydrationMarkers.js'
-import { messages } from '../../message/index.js'
+import { defineMessageUnion } from '../../message/index.js'
 import { h as snabbdomH } from '../../snabbdom/index.js'
 import type { VNode } from '../../snabbdom/vnode.js'
 import { __patchVNode } from '../../vdom.js'
 import { serializeHtml } from './serialize.js'
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedButton: {},
 })
 type Message = typeof Message.Type

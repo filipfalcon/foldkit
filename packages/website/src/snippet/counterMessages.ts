@@ -1,11 +1,11 @@
 import { Schema as S } from 'effect'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 
 // MESSAGE
 
-// messages() declares the union and its callable constructors together
+// defineMessageUnion() declares the union and its callable constructors together
 
-const Message = messages({
+const Message = defineMessageUnion({
   ClickedDecrement: {},
   ClickedIncrement: {},
   ClickedReset: {},

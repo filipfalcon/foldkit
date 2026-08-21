@@ -29,7 +29,7 @@ const staticPropertyName = (
   return Option.none()
 }
 
-export const recordFoldkitMessagesBindings = (
+export const recordFoldkitMessageUnionBindings = (
   bindings: Set<string>,
   node: ESTree.Node,
 ): void => {
@@ -50,9 +50,9 @@ export const recordFoldkitMessagesBindings = (
       if (
         specifier.type === 'ImportSpecifier' &&
         specifier.importKind !== 'type' &&
-        (isIdentifier(specifier.imported, 'messages') ||
+        (isIdentifier(specifier.imported, 'defineMessageUnion') ||
           (isStringLiteral(specifier.imported) &&
-            specifier.imported.value === 'messages'))
+            specifier.imported.value === 'defineMessageUnion'))
       ) {
         bindings.add(specifier.local.name)
       }

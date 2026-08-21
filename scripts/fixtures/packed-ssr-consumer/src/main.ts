@@ -1,7 +1,7 @@
 import { Schema as S } from 'effect'
 import { CustomElement, type Runtime } from 'foldkit'
 import { type Document, type HtmlBuilder } from 'foldkit/html'
-import { messages } from 'foldkit/message'
+import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 export const Model = S.Struct({
@@ -13,7 +13,7 @@ export type Model = typeof Model.Type
 export const Flags = S.Struct({ start: S.Number })
 export type Flags = typeof Flags.Type
 
-export const Message = messages({
+export const Message = defineMessageUnion({
   ClickedIncrement: {},
   ClickedRelease: {},
 })
