@@ -97,7 +97,7 @@ Don't add inline or block comments to explain code. If code needs explanation, r
 
 ## File Organization
 
-- `index.ts` is always a barrel; real code lives in a named file. For a module `foo/`, the shape is `foo/foo.ts` for the code and `foo/index.ts` for the barrel. Re-export via `export * from './foo'` and nest children as namespaces via `export * as Child from './child'`.
+- `index.ts` is always a barrel; real code lives in a named file. For a module `foo/`, the shape is `foo/foo.ts` for the code and `foo/index.ts` for the barrel. Re-export the intended public names explicitly so adding an internal export does not silently expand the barrel. Use `export *` only when the whole module surface is intentionally public. Nest children as namespaces via `export * as Child from './child'`.
 - Extract Messages to a dedicated `message.ts` when Commands need Message constructors. This breaks the circular dependency between `command.ts` and `main.ts`.
 - Commands are colocated with the update function that returns them. Never centralize all Commands in one file.
 - Expose a `boot()` helper alongside `init()` when a submodel applies a boot-time Message. `init()` returns clean state with no boot effects. `boot()` applies the boot Message via `update` and returns `[Model, Commands]`.
