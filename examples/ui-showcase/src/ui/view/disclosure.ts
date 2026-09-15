@@ -176,62 +176,58 @@ export const view = Submodel.defineView<UiModel, UiMessage>(
             onToggle: isOpen =>
               UiMessage.ToggledDisclosureCollapsedPreviewDemo({ isOpen }),
             toView: ({ button, panel, animatePanel }) =>
-              h.div(
-                [h.Class('relative pb-5')],
+              h.article(
                 [
-                  h.article(
+                  h.Class(
+                    'overflow-hidden rounded-lg border border-gray-300 bg-white',
+                  ),
+                ],
+                [
+                  h.h4(
+                    [h.Class('px-4 py-3 text-base font-normal text-gray-900')],
+                    ['Why the Elm Architecture scales'],
+                  ),
+                  h.div(
+                    [h.Class('relative')],
                     [
-                      h.Class(
-                        'overflow-hidden rounded-lg border border-gray-300 bg-white',
+                      animatePanel(
+                        h.div(
+                          [
+                            ...panel,
+                            h.Class('border-t border-gray-300 px-4 py-3'),
+                          ],
+                          [collapsedPreviewPanel(h)],
+                        ),
+                        { peek: COLLAPSED_PREVIEW_HEIGHT },
                       ),
-                    ],
-                    [
-                      h.h4(
-                        [
-                          h.Class(
-                            'px-4 py-3 text-base font-normal text-gray-900',
-                          ),
-                        ],
-                        ['Why the Elm Architecture scales'],
-                      ),
-                      h.div(
-                        [h.Class('relative')],
-                        [
-                          animatePanel(
-                            h.div(
-                              [
-                                ...panel,
-                                h.Class('border-t border-gray-300 px-4 py-3'),
-                              ],
-                              [collapsedPreviewPanel(h)],
-                            ),
-                            { peek: COLLAPSED_PREVIEW_HEIGHT },
-                          ),
-                          ...(model.isDisclosureCollapsedPreviewDemoOpen
-                            ? []
-                            : [
-                                h.div([
-                                  h.AriaHidden(true),
-                                  h.Class(
-                                    'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent',
-                                  ),
-                                ]),
-                              ]),
-                        ],
-                      ),
+                      ...(model.isDisclosureCollapsedPreviewDemoOpen
+                        ? []
+                        : [
+                            h.div([
+                              h.AriaHidden(true),
+                              h.Class(
+                                'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent',
+                              ),
+                            ]),
+                          ]),
                     ],
                   ),
-                  h.button(
+                  h.div(
+                    [h.Class('flex justify-center px-4 pt-2 pb-4')],
                     [
-                      ...button,
-                      h.Class(
-                        'absolute bottom-0 left-1/2 z-10 -translate-x-1/2 cursor-pointer whitespace-nowrap rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 select-none',
+                      h.button(
+                        [
+                          ...button,
+                          h.Class(
+                            'cursor-pointer whitespace-nowrap rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 select-none',
+                          ),
+                        ],
+                        [
+                          model.isDisclosureCollapsedPreviewDemoOpen
+                            ? 'Show less'
+                            : 'Read more',
+                        ],
                       ),
-                    ],
-                    [
-                      model.isDisclosureCollapsedPreviewDemoOpen
-                        ? 'Show less'
-                        : 'Read more',
                     ],
                   ),
                 ],

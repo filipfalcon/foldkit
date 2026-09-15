@@ -114,83 +114,83 @@ export const collapsedPreviewDemo = (
           onToggle: isOpen =>
             Message.ToggledDisclosureCollapsedPreviewDemo({ isOpen }),
           toView: ({ button, panel, animatePanel }) =>
-            h.div(
-              [h.Class('relative pb-5')],
+            h.article(
               [
-                h.article(
+                h.Class(
+                  'overflow-hidden rounded-lg border border-gray-300 bg-cream dark:border-gray-700 dark:bg-gray-900',
+                ),
+              ],
+              [
+                h.h4(
                   [
                     h.Class(
-                      'overflow-hidden rounded-lg border border-gray-300 bg-cream dark:border-gray-700 dark:bg-gray-900',
+                      'px-4 py-3 text-base font-normal text-gray-900 dark:text-white',
                     ),
                   ],
+                  ['Why the Elm Architecture scales'],
+                ),
+                h.div(
+                  [h.Class('relative')],
                   [
-                    h.h4(
-                      [
-                        h.Class(
-                          'px-4 py-3 text-base font-normal text-gray-900 dark:text-white',
-                        ),
-                      ],
-                      ['Why the Elm Architecture scales'],
-                    ),
-                    h.div(
-                      [h.Class('relative')],
-                      [
-                        animatePanel(
-                          h.div(
+                    animatePanel(
+                      h.div(
+                        [
+                          ...panel,
+                          h.Class(
+                            'space-y-3 border-t border-gray-300 px-4 py-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200',
+                          ),
+                        ],
+                        [
+                          h.p(
+                            [],
                             [
-                              ...panel,
-                              h.Class(
-                                'space-y-3 border-t border-gray-300 px-4 py-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200',
-                              ),
-                            ],
-                            [
-                              h.p(
-                                [],
-                                [
-                                  'Foldkit keeps application state in one Model. Messages record facts, and update decides how each fact changes that Model.',
-                                ],
-                              ),
-                              h.p(
-                                [],
-                                [
-                                  'Commands describe one-time work for the Runtime, so network requests, focus changes, and storage writes stay outside state transitions.',
-                                ],
-                              ),
-                              h.p(
-                                [],
-                                [
-                                  'That separation leaves every transition visible in one place and gives tests the same inputs and outputs the application uses.',
-                                ],
-                              ),
+                              'Foldkit keeps application state in one Model. Messages record facts, and update decides how each fact changes that Model.',
                             ],
                           ),
-                          { peek: COLLAPSED_PREVIEW_HEIGHT },
-                        ),
-                        ...(isDisclosureCollapsedPreviewDemoOpen
-                          ? []
-                          : [
-                              h.div([
-                                h.AriaHidden(true),
-                                h.Class(
-                                  'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-cream to-transparent dark:from-gray-900',
-                                ),
-                              ]),
-                            ]),
-                      ],
+                          h.p(
+                            [],
+                            [
+                              'Commands describe one-time work for the Runtime, so network requests, focus changes, and storage writes stay outside state transitions.',
+                            ],
+                          ),
+                          h.p(
+                            [],
+                            [
+                              'That separation leaves every transition visible in one place and gives tests the same inputs and outputs the application uses.',
+                            ],
+                          ),
+                        ],
+                      ),
+                      { peek: COLLAPSED_PREVIEW_HEIGHT },
                     ),
+                    ...(isDisclosureCollapsedPreviewDemoOpen
+                      ? []
+                      : [
+                          h.div([
+                            h.AriaHidden(true),
+                            h.Class(
+                              'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-cream to-transparent dark:from-gray-900',
+                            ),
+                          ]),
+                        ]),
                   ],
                 ),
-                h.button(
+                h.div(
+                  [h.Class('flex justify-center px-4 pt-2 pb-4')],
                   [
-                    ...button,
-                    h.Class(
-                      'absolute bottom-0 left-1/2 z-10 -translate-x-1/2 cursor-pointer whitespace-nowrap rounded-full border border-gray-300 bg-cream px-5 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 select-none dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800',
+                    h.button(
+                      [
+                        ...button,
+                        h.Class(
+                          'cursor-pointer whitespace-nowrap rounded-full border border-gray-300 bg-cream px-5 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 select-none dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800',
+                        ),
+                      ],
+                      [
+                        isDisclosureCollapsedPreviewDemoOpen
+                          ? 'Show less'
+                          : 'Read more',
+                      ],
                     ),
-                  ],
-                  [
-                    isDisclosureCollapsedPreviewDemoOpen
-                      ? 'Show less'
-                      : 'Read more',
                   ],
                 ),
               ],
