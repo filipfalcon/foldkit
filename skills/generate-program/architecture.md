@@ -462,7 +462,7 @@ Runtime.run(application)
 
 ### Scoped to a Node (Embedded Widgets)
 
-`makeApplication` assumes it owns the page: its `view` returns a `Document` (`{ title, lang?, dir?, canonical?, ogUrl?, body }`) and the runtime writes `document.title`, the `lang` / `dir` attributes on `<html>`, and the canonical / og:url tags on every render. For a widget embedded on a page you do not control, that clobbers the host page's metadata.
+`makeApplication` assumes it owns the page. Its `view` returns a `Document` (`{ title, lang?, dir?, canonical?, ogUrl?, body }`), and the runtime manages `document.title`, the `lang` and `dir` attributes on `<html>`, `<link rel="canonical">`, and `<meta property="og:url">`. A widget embedded on a page does not own that metadata.
 
 Use `Runtime.makeElement` instead. Its `view` returns `Html` directly (no title to discard) and the runtime never touches the document `<head>` or the `<html>` element. Everything else (Model, init, update, Commands, Subscriptions, Flags, crash handling) is identical. Embedded apps don't own the URL bar, so `makeElement` has no `routing` config.
 
@@ -482,7 +482,13 @@ When the host application needs to control the embedded app (mount and unmount i
 
 ### Document Metadata
 
-With `makeApplication`, the `view` returns a `Document`. The runtime sets `document.title` from its `title` field after every render and syncs the canonical / og:url tags (`canonical` defaults to the current URL, and `ogUrl` defaults to `canonical`, so setting `canonical` alone moves both). With `makeElement`, there is no title or metadata management at all.
+With `makeApplication`, the `view` returns a `Document`. The runtime writes `title` to `document.title` after every render. It never derives `canonical` from the address bar. Build the canonical from the typed route in the Model, where the application can decide which route and query values identify the page.
+
+If no render supplies `canonical`, the runtime leaves a served `<link rel="canonical">` unchanged or keeps the document without one. Before the client first writes a canonical, it records the existing `href`. A later omission restores that value, or removes the element if the runtime created it. During hydration, the recorded value can be the initial route's server-rendered canonical, so omission means restore that baseline rather than remove every canonical.
+
+`ogUrl` can be supplied independently. An omitted `ogUrl` uses an explicit `canonical`, and its restore or removal behavior is the same. `Server.renderToString` returns only a canonical supplied by the view and gives `ogUrl` the explicit canonical when `ogUrl` is omitted. It does not derive either field from `Request.url`.
+
+With `makeElement`, the runtime does not manage the title or document metadata.
 
 `lang` and `dir` sync to the `<html>` element, so an app that switches language at runtime drives them from the Model. `dir` is `TextDirection` from `foldkit/html`, a Schema over `'Ltr' | 'Rtl' | 'Auto'` that you can drop straight into a Model `Schema.Struct`, and the runtime writes it as the lowercase attribute value. Both fields are optional and have no default: when a view omits one, the runtime does not touch that attribute, leaving whatever value it currently holds, so a view that never sets it leaves the served HTML in place.
 
