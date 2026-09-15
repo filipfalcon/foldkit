@@ -178,7 +178,7 @@ export const collapsedPreviewDemo = (
                 h.div(
                   [
                     h.Class(
-                      'absolute inset-x-0 bottom-4 flex justify-center px-4',
+                      'absolute inset-x-0 bottom-2.5 flex justify-center px-4',
                     ),
                   ],
                   [
