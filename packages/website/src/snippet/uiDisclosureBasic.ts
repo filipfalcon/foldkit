@@ -48,7 +48,6 @@ const view = (model, h: HtmlBuilder<Message>) =>
       id: 'faq-1',
       isOpen: model.isFaqOpen,
       onToggle: isOpen => Message.ToggledFaq({ isOpen }),
-      // ariaLabel: 'What is Foldkit?',
       toView: ({ button, panel, animatePanel }) =>
         h.div(
           [h.Class('border rounded-lg overflow-hidden')],
