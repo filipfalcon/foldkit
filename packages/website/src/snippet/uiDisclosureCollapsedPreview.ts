@@ -34,7 +34,8 @@ ToggledArticle: ({ isOpen }) => ({
 
 // Pass peek to animatePanel to keep that much of the panel visible while
 // closed. The preview is inert until the disclosure opens, so keep the toggle
-// outside the panel where it remains interactive.
+// outside the panel where it remains interactive. The toggle overlays the
+// collapsed preview; extra panel padding keeps it clear of the full article.
 const view = (model, h: HtmlBuilder<Message>) =>
   Disclosure.view(
     {
@@ -43,7 +44,7 @@ const view = (model, h: HtmlBuilder<Message>) =>
       onToggle: isOpen => Message.ToggledArticle({ isOpen }),
       toView: ({ button, panel, animatePanel }) =>
         h.article(
-          [h.Class('overflow-hidden rounded-lg border bg-white')],
+          [h.Class('relative overflow-hidden rounded-lg border bg-white')],
           [
             h.h2(
               [h.Class('px-4 py-3 font-normal')],
@@ -56,7 +57,9 @@ const view = (model, h: HtmlBuilder<Message>) =>
                   h.div(
                     [
                       ...panel,
-                      h.Class('space-y-3 border-t px-4 py-3 leading-6'),
+                      h.Class(
+                        `space-y-3 border-t px-4 pt-3 leading-6 ${model.isArticleOpen ? 'pb-20' : 'pb-3'}`,
+                      ),
                     ],
                     [
                       h.p([], ['The first paragraph of the article…']),
@@ -73,14 +76,14 @@ const view = (model, h: HtmlBuilder<Message>) =>
                       h.div([
                         h.AriaHidden(true),
                         h.Class(
-                          'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent',
+                          'pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent',
                         ),
                       ]),
                     ]),
               ],
             ),
             h.div(
-              [h.Class('flex justify-center px-4 pt-2 pb-4')],
+              [h.Class('absolute inset-x-0 bottom-4 flex justify-center px-4')],
               [
                 h.button(
                   [

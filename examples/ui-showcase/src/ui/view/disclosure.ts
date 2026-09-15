@@ -179,7 +179,7 @@ export const view = Submodel.defineView<UiModel, UiMessage>(
               h.article(
                 [
                   h.Class(
-                    'overflow-hidden rounded-lg border border-gray-300 bg-white',
+                    'relative overflow-hidden rounded-lg border border-gray-300 bg-white',
                   ),
                 ],
                 [
@@ -194,7 +194,9 @@ export const view = Submodel.defineView<UiModel, UiMessage>(
                         h.div(
                           [
                             ...panel,
-                            h.Class('border-t border-gray-300 px-4 py-3'),
+                            h.Class(
+                              `border-t border-gray-300 px-4 pt-3 ${model.isDisclosureCollapsedPreviewDemoOpen ? 'pb-20' : 'pb-3'}`,
+                            ),
                           ],
                           [collapsedPreviewPanel(h)],
                         ),
@@ -206,14 +208,18 @@ export const view = Submodel.defineView<UiModel, UiMessage>(
                             h.div([
                               h.AriaHidden(true),
                               h.Class(
-                                'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent',
+                                'pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent',
                               ),
                             ]),
                           ]),
                     ],
                   ),
                   h.div(
-                    [h.Class('flex justify-center px-4 pt-2 pb-4')],
+                    [
+                      h.Class(
+                        'absolute inset-x-0 bottom-4 flex justify-center px-4',
+                      ),
+                    ],
                     [
                       h.button(
                         [

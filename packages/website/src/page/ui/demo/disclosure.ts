@@ -117,7 +117,7 @@ export const collapsedPreviewDemo = (
             h.article(
               [
                 h.Class(
-                  'overflow-hidden rounded-lg border border-gray-300 bg-cream dark:border-gray-700 dark:bg-gray-900',
+                  'relative overflow-hidden rounded-lg border border-gray-300 bg-cream dark:border-gray-700 dark:bg-gray-900',
                 ),
               ],
               [
@@ -137,7 +137,7 @@ export const collapsedPreviewDemo = (
                         [
                           ...panel,
                           h.Class(
-                            'space-y-3 border-t border-gray-300 px-4 py-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200',
+                            `space-y-3 border-t border-gray-300 px-4 pt-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200 ${isDisclosureCollapsedPreviewDemoOpen ? 'pb-20' : 'pb-3'}`,
                           ),
                         ],
                         [
@@ -169,14 +169,18 @@ export const collapsedPreviewDemo = (
                           h.div([
                             h.AriaHidden(true),
                             h.Class(
-                              'pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-cream to-transparent dark:from-gray-900',
+                              'pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-cream to-transparent dark:from-gray-900',
                             ),
                           ]),
                         ]),
                   ],
                 ),
                 h.div(
-                  [h.Class('flex justify-center px-4 pt-2 pb-4')],
+                  [
+                    h.Class(
+                      'absolute inset-x-0 bottom-4 flex justify-center px-4',
+                    ),
+                  ],
                   [
                     h.button(
                       [
