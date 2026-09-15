@@ -11,6 +11,7 @@ import { view } from './index.js'
 
 const Message = defineMessageUnion({
   Toggled: { isOpen: Schema.Boolean },
+  ClickedPanelAction: {},
 })
 type Message = typeof Message.Type
 
@@ -19,6 +20,7 @@ type Model = Readonly<{ isOpen: boolean }>
 const update = (model: Model, message: Message) =>
   Message.match<Update.Return<Model, Message>>(message, {
     Toggled: ({ isOpen }) => ({ model: evo(model, { isOpen: () => isOpen }) }),
+    ClickedPanelAction: () => ({ model }),
   })
 
 const testView =
@@ -33,15 +35,25 @@ const testView =
         isOpen: model.isOpen,
         onToggle: isOpen => Message.Toggled({ isOpen }),
         isDisabled,
-        // A section around a paragraph, so the only divs in the scene are
-        // the two animatePanel draws and `div div` reaches its inner box.
         toView: ({ button, panel, animatePanel }) =>
           h.section(
             [],
             [
               h.button([...button], ['Details']),
               animatePanel(
-                h.p([...panel], ['Panel content']),
+                h.div(
+                  [...panel],
+                  [
+                    h.p([], ['Panel content']),
+                    h.button(
+                      [
+                        h.Id('panel-action'),
+                        h.OnClick(Message.ClickedPanelAction()),
+                      ],
+                      ['Panel action'],
+                    ),
+                  ],
+                ),
                 peek === undefined ? {} : { peek },
               ),
             ],
@@ -51,8 +63,8 @@ const testView =
     )
 
 const button = Scene.selector('#test-button')
-// The box animatePanel draws around the panel: the inner of its two divs.
 const panelBox = Scene.selector('div div')
+const panelAction = Scene.selector('#panel-action')
 
 describe('Disclosure controlled view', () => {
   it('reflects the open state from the parent', () => {
@@ -101,27 +113,31 @@ describe('Disclosure controlled view', () => {
     )
   })
 
-  it('hides the collapsed panel from assistive technology', () => {
+  it('makes the collapsed panel inaccessible and non-interactive', () => {
     Scene.scene(
       { update, view: testView() },
       Scene.given({ isOpen: false }),
       Scene.expect(panelBox).toHaveAttr('aria-hidden', 'true'),
+      Scene.expect(panelBox).toHaveAttr('inert', 'true'),
+      Scene.expect(panelAction).toHaveHandler('click'),
       Scene.expect(panelBox).toHaveStyle('min-height', '0px'),
       Scene.click(button),
       Scene.expect(panelBox).not.toHaveAttr('aria-hidden'),
+      Scene.expect(panelBox).not.toHaveAttr('inert'),
     )
   })
 
-  it('keeps a peek of the collapsed panel in view, readable, and as the floor once open', () => {
+  it('keeps an inert peek of the collapsed panel as the floor once open', () => {
     Scene.scene(
       { update, view: testView({ peek: '7.5em' }) },
       Scene.given({ isOpen: false }),
       Scene.expect(panelBox).toHaveStyle('min-height', '7.5em'),
-      Scene.expect(panelBox).not.toHaveAttr('aria-hidden'),
-      // The floor stays up while open, so the height transition starts from
-      // the peek rather than from nothing.
+      Scene.expect(panelBox).toHaveAttr('aria-hidden', 'true'),
+      Scene.expect(panelBox).toHaveAttr('inert', 'true'),
       Scene.click(button),
       Scene.expect(panelBox).toHaveStyle('min-height', '7.5em'),
+      Scene.expect(panelBox).not.toHaveAttr('aria-hidden'),
+      Scene.expect(panelBox).not.toHaveAttr('inert'),
     )
   })
 
