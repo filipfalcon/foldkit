@@ -1,3 +1,4 @@
+import { clsx } from 'clsx'
 import type { HtmlBuilder } from 'foldkit/html'
 
 import { Disclosure } from '@foldkit/ui'
@@ -21,7 +22,7 @@ export const basicDemo = (
     h.span(
       [
         h.Class(
-          `text-gray-600 dark:text-gray-300 ${isOpen ? 'rotate-180' : ''}`,
+          clsx('text-gray-600 dark:text-gray-300', { 'rotate-180': isOpen }),
         ),
       ],
       [Icon.chevronDown('w-4 h-4')],
@@ -137,7 +138,12 @@ export const collapsedPreviewDemo = (
                         [
                           ...panel,
                           h.Class(
-                            `space-y-3 border-t border-gray-300 px-4 pt-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200 ${isDisclosureCollapsedPreviewDemoOpen ? 'pb-20' : 'pb-3'}`,
+                            clsx(
+                              'space-y-3 border-t border-gray-300 px-4 pt-3 text-base leading-6 text-gray-800 dark:border-gray-700 dark:text-gray-200',
+                              isDisclosureCollapsedPreviewDemoOpen
+                                ? 'pb-20'
+                                : 'pb-3',
+                            ),
                           ),
                         ],
                         [

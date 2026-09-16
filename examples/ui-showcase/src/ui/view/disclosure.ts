@@ -195,7 +195,12 @@ export const view = Submodel.defineView<UiModel, UiMessage>(
                           [
                             ...panel,
                             h.Class(
-                              `border-t border-gray-300 px-4 pt-3 ${model.isDisclosureCollapsedPreviewDemoOpen ? 'pb-20' : 'pb-3'}`,
+                              clsx(
+                                'border-t border-gray-300 px-4 pt-3',
+                                model.isDisclosureCollapsedPreviewDemoOpen
+                                  ? 'pb-20'
+                                  : 'pb-3',
+                              ),
                             ),
                           ],
                           [collapsedPreviewPanel(h)],
