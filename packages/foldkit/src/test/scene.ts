@@ -1300,11 +1300,7 @@ const expectEndedMountsStep =
     if (Array.isReadonlyArrayNonEmpty(remaining)) {
       throw new Error(
         `I tried to acknowledge ended Mounts but some haven't unmounted:\n\n` +
-          pipe(
-            remaining,
-            Array.map(matcher => `    ${formatMountMatcher(matcher)}`),
-            Array.join('\n'),
-          ) +
+          formatMountMatcherList(remaining) +
           '\n\nUse Scene.Mount.expectEnded only after the Mount has disappeared from the rendered tree.',
       )
     }

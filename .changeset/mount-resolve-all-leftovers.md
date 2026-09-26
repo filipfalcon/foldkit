@@ -10,7 +10,7 @@ The new `Scene.Mount.resolveAllExact` keeps the strict check in one step. It thr
 
 A Mount that is rendered but never resolved still fails the scene, at the next interaction or at the end.
 
-If a test used `Mount.resolveAll` to check which Mounts were rendered, switch it to `Mount.resolveAllExact` to keep that check:
+This is a breaking change for test suites that used `Mount.resolveAll` to check which Mounts were rendered: those tests keep passing but stop checking it. Switch them to `Mount.resolveAllExact` to keep that check:
 
 ```ts
 Scene.Mount.resolveAllExact(
