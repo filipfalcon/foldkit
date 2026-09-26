@@ -4738,6 +4738,27 @@ describe('scene mounts', () => {
     )
   })
 
+  test('resolveAllExactMounts lists the pending mounts left after an unmatched entry', () => {
+    expect(() =>
+      Scene.scene(
+        {
+          update: mountUpdate,
+          view: (_model, h) => mountScrollListView(10, h),
+        },
+        Scene.given(mountInitialModel),
+        Scene.Mount.resolveAllExact([
+          ScrollList({ offset: 5 }),
+          MountPanelMessage.ScrolledTo({ offset: 5 }),
+        ]),
+      ),
+    ).toThrow(
+      'Mount.resolveAllExact expected Mounts that were not pending:\n\n' +
+        '    ScrollList {"offset":5}\n\n' +
+        'Pending Mounts after resolving matches:\n\n' +
+        '    ScrollList {"offset":10}',
+    )
+  })
+
   test('resolved mounts that disappear between renders must be acknowledged with expectEnded', () => {
     const openModel = modifyFields(mountInitialModel, { isOpen: () => true })
     Scene.scene(

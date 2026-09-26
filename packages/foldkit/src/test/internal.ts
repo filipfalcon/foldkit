@@ -167,6 +167,17 @@ export const formatMountMatcher = (matcher: MountMatcher): string =>
     ? matcher.name
     : `${matcher.name}${formatArgs(matcher.args)}`
 
+/** Formats Mount matchers as an indented list, one per line, for display in
+ *  error messages. */
+export const formatMountMatcherList = (
+  matchers: ReadonlyArray<MountMatcher>,
+): string =>
+  pipe(
+    matchers,
+    Array.map(matcher => `    ${formatMountMatcher(matcher)}`),
+    Array.join('\n'),
+  )
+
 /**
  * Result shape used after Story and Scene replace executable Commands with
  * assertion metadata. Plain returns retain `outMessage?: never`, so code that

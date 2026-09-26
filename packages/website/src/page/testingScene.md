@@ -185,7 +185,7 @@ This applies to Mounts declared inside `@foldkit/ui` components too. Popovers, d
 - Every mount that fires and unmounts during a scene must be acknowledged with `Mount.expectEnded`, even if it was already resolved. `resolve` handles a mount’s result Message; `expectEnded` handles its unmount. Unacknowledged unmounts throw at the end of the scene.
 - Same-named mounts in the tree are disambiguated by occurrence. `Mount.resolve` resolves the first pending occurrence; a second call resolves the next.
 - Interactions throw if there are unresolved mounts or unacknowledged unmounts when they try to dispatch a Message. Same contract as Commands.
-- `Mount.resolveAll` skips an entry that matches no pending mount, so one resolver list can serve every scene of a view with a conditional Mount. Skipped entries do not carry forward to mounts rendered by later steps. Use `Mount.resolveAllExact` when the list is a claim about which mounts are rendered: it throws if an entry matches no pending mount or if a pending mount is left unresolved.
+- `Mount.resolveAll` skips an entry that matches no pending mount, so one resolver list can serve every scene of a view with a conditional mount. Skipped entries do not carry forward to mounts rendered by later steps. Use `Mount.resolveAllExact` when the list is a claim about which mounts are rendered: it throws if an entry matches no pending mount or if a pending mount is left unresolved.
 - `scene` throws at the end if any mount remains unresolved.
 
 ::Snippet{name="sceneMountAssertions" label="mount assertions example"}

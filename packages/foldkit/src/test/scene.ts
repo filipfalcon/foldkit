@@ -70,6 +70,7 @@ import {
   formatMatcher,
   formatMountList,
   formatMountMatcher,
+  formatMountMatcherList,
   mountMatches,
   resolveAllExactInternal,
   resolveAllInternal,
@@ -1077,9 +1078,6 @@ const expectNoCommandsStep =
     return simulation
   }
 
-/** Resolves the first pending Mount that matches `matcher`, feeding
- *  `resultMessage` through update and marking the consumed slot resolved.
- *  Returns `Option.none()` when no pending Mount matches. */
 const resolveFirstMatchingMount = <Model, Message, OutMessage>(
   simulation: SceneSimulation<Model, Message, OutMessage>,
   matcher: MountMatcher,
@@ -1106,12 +1104,16 @@ const resolveFirstMatchingMount = <Model, Message, OutMessage>(
           if (state.status._tag !== 'Pending') {
             return state
           }
-          const key = slotKey(state.slot)
-          return resolvedKeys.has(key)
-            ? state
-            : state.slot.name === matcher.name
-              ? { slot: state.slot, status: RESOLVED }
-              : state
+
+          const isConsumedSlot =
+            !resolvedKeys.has(slotKey(state.slot)) &&
+            state.slot.name === matcher.name
+
+          if (isConsumedSlot) {
+            return { slot: state.slot, status: RESOLVED }
+          } else {
+            return state
+          }
         },
       )
 
@@ -1221,10 +1223,8 @@ const resolveAllExactMounts =
 
     if (Array.isReadonlyArrayNonEmpty(walk.unmatchedMatchers)) {
       throw new Error(
-        `Mount.resolveAllExact expected Mounts that were not pending:\n\n${pipe(
+        `Mount.resolveAllExact expected Mounts that were not pending:\n\n${formatMountMatcherList(
           walk.unmatchedMatchers,
-          Array.map(matcher => `    ${formatMountMatcher(matcher)}`),
-          Array.join('\n'),
         )}\n\nPending Mounts after resolving matches:\n\n${formatMountList(pendingMounts)}`,
       )
     }
