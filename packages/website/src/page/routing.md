@@ -154,6 +154,16 @@ Both code paths resolve a URL into a route, and both should produce the same rou
 
 When the route-driven state lives in a Submodel, the same factoring follows the Submodel boundary instead of a shared helper: the Submodel’s `init(route)` seeds its state and returns the boot Commands for the cold load, and its `informRouteChanged` helper covers later transitions. [Informing Submodels](/patterns/informing-submodels) shows that shape, and the [Routing example](/example-apps/routing) runs on it.
 
+## URL Fragments
+
+A link to `#pricing` on the current page, or to `/about#pricing`, reaches `onUrlRequest` as an Internal request like any other, and the handler above pushes it. `pushUrl` and `replaceUrl` write history and call `onUrlChange`, but neither performs a fragment navigation, so the browser does not scroll to `#pricing` or move focus there. Landing on the fragment is the application’s job, in the same two places that resolve a URL into a route:
+
+::Snippet{name="routingUrlFragments" label="URL fragment example"}
+
+`ScrollToAnchor` waits for paint because a link to another route renders its target in the same update, and the browser has to lay out the new page before the scroll can land on it. It then focuses the target, so a keyboard user who presses Tab continues from that section instead of from the link. When no element matches the hash, the Command does nothing. `ScrollToTop` runs only when the pathname changed, so a link within the page does not undo its own scroll. The result approximates the browser’s own fragment navigation: it scrolls and moves focus, but it does not set `:target`.
+
+That covers a link to a section on the current page, a link to a section on another route, and a shared link that arrives with a hash, which `init` handles.
+
 ## Route Transitions
 
 The shared helper above answers what a route needs, so its Commands fire on every navigation that lands on the route. For `FetchPeople` that is the point: every search text is a new query. Other Commands should run once when the user arrives, loading a filter catalog, starting a poll, recording a page view. For those the route alone cannot answer the real question: did this navigation enter the route, or was the application already there?
