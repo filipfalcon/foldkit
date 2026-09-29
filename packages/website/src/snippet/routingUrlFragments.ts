@@ -27,6 +27,7 @@ const ScrollToAnchor = Command.define('ScrollToAnchor', {
 // ...init lands on the fragment of a shared link...
 const init: Runtime.RoutingApplicationInit<Model, Message> = (url: Url) => {
   const route = urlToAppRoute(url)
+
   return {
     model: { route, url },
     commands: Option.match(url.hash, {
