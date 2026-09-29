@@ -12,7 +12,7 @@ const ScrollToTop = Command.define('ScrollToTop', {
   }),
 })
 
-// ...and one lands on the fragment after paint and moves focus to it...
+// ...one lands on the fragment after paint and moves focus to it...
 const ScrollToAnchor = Command.define('ScrollToAnchor', {
   args: { hash: Schema.String },
   messages: [Message.CompletedScrollToAnchor],
@@ -30,14 +30,17 @@ const init: Runtime.RoutingApplicationInit<Model, Message> = (url: Url) => {
 
   return {
     model: { route, url },
-    commands: Option.match(url.hash, {
-      onNone: () => [],
-      onSome: hash => [ScrollToAnchor({ hash })],
-    }),
+    commands: [
+      ...commandsForRoute(route),
+      ...Option.match(url.hash, {
+        onNone: () => [],
+        onSome: hash => [ScrollToAnchor({ hash })],
+      }),
+    ],
   }
 }
 
-// ...and the ChangedUrl handler lands on it after a link click:
+// ...and the ChangedUrl handler lands on it after navigation:
 ChangedUrl: ({ url }) => {
   const route = urlToAppRoute(url)
 
@@ -48,9 +51,12 @@ ChangedUrl: ({ url }) => {
 
   return {
     model: modifyFields(model, { route: () => route, url: () => url }),
-    commands: Option.match(url.hash, {
-      onNone: () => Option.toArray(maybeScrollToTop),
-      onSome: hash => [ScrollToAnchor({ hash })],
-    }),
+    commands: [
+      ...commandsForRoute(route),
+      ...Option.match(url.hash, {
+        onNone: () => Option.toArray(maybeScrollToTop),
+        onSome: hash => [ScrollToAnchor({ hash })],
+      }),
+    ],
   }
 }
