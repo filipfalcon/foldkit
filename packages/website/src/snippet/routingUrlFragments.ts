@@ -3,7 +3,7 @@ import { Command, Dom, Runtime } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { Url } from 'foldkit/url'
 
-// Two Commands: one scrolls to the top of a new page...
+// One Command scrolls to the top of a new page...
 const ScrollToTop = Command.define('ScrollToTop', {
   messages: [Message.CompletedScrollToTop],
   execute: Effect.sync(() => {
@@ -12,7 +12,7 @@ const ScrollToTop = Command.define('ScrollToTop', {
   }),
 })
 
-// ...one lands on the fragment after paint and moves focus to it...
+// ...another lands on the fragment after paint and moves focus to it...
 const ScrollToAnchor = Command.define('ScrollToAnchor', {
   args: { hash: Schema.String },
   messages: [Message.CompletedScrollToAnchor],
