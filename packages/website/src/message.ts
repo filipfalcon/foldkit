@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { Calendar } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
-import { UrlRequest } from 'foldkit/navigation'
+import { UrlChangeType, UrlRequest } from 'foldkit/navigation'
 import { Url } from 'foldkit/url'
 
 import { Dialog, Menu } from '@foldkit/ui'
@@ -37,6 +37,8 @@ export const Message = defineMessageUnion({
   CompletedInjectSpeedInsights: {},
   CompletedScrollToTop: {},
   CompletedScrollToAnchor: {},
+  CompletedRestoreScrollPosition: {},
+  CompletedDisableBrowserScrollRestoration: {},
   CompletedApplyTheme: {},
   CompletedSaveThemePreference: {},
   CompletedSaveSidebarState: {},
@@ -53,7 +55,7 @@ export const Message = defineMessageUnion({
   SucceededCopyLink: {},
   FailedCopyLink: {},
   ClickedLink: { request: UrlRequest },
-  ChangedUrl: { url: Url },
+  ChangedUrl: { url: Url, urlChangeType: UrlChangeType },
   ClickedCopyLink: { hash: Schema.String },
   GotMobileMenuDialogMessage: { message: Dialog.Message },
   ClickedOpenMobileMenu: {},

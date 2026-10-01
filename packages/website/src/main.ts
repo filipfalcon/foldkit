@@ -14,11 +14,18 @@ import {
   Command,
   Dom,
   ManagedResource,
+  Render,
   Runtime,
   Subscription,
   Update,
 } from 'foldkit'
-import { UrlRequest, load, pushUrl } from 'foldkit/navigation'
+import {
+  type LoadType,
+  ScrollPosition,
+  UrlRequest,
+  load,
+  pushUrl,
+} from 'foldkit/navigation'
 import { modifyFields } from 'foldkit/struct'
 import { Url, toString as urlToString } from 'foldkit/url'
 import { githubStarCount } from 'virtual:landing-data'
@@ -203,7 +210,7 @@ export const init: Runtime.RoutingApplicationInit<
   Flags,
   AppResources,
   AppManagedResources
-> = (flags: Flags, url: Url) => {
+> = (flags: Flags, url: Url, loadType: LoadType) => {
   const maybeThemePreference = Option.none<ThemePreference>()
   const systemTheme: ResolvedTheme = 'Light'
   const resolvedTheme = systemTheme
@@ -302,6 +309,11 @@ export const init: Runtime.RoutingApplicationInit<
     },
   )
 
+  const anchorCommands = Option.match(url.hash, {
+    onNone: () => [],
+    onSome: hash => [ScrollToAnchor({ hash })],
+  })
+
   return {
     model: pageInits.model,
     commands: [
@@ -309,13 +321,27 @@ export const init: Runtime.RoutingApplicationInit<
       ...analyticsCommands,
       ...(pageInits.commands ?? []),
       ScrollSidebarActiveLinkIntoView(),
-      ...Option.match(url.hash, {
-        onNone: () => [],
-        onSome: hash => [ScrollToAnchor({ hash })],
-      }),
+      DisableBrowserScrollRestoration(),
+      ...Match.value(loadType).pipe(
+        Match.withReturnType<ReadonlyArray<Command.Command<Message>>>(),
+        Match.tag('Push', () => anchorCommands),
+        Match.tag('Reload', 'Traverse', ({ savedScrollPosition }) =>
+          restoreScrollPositionOr(savedScrollPosition, anchorCommands),
+        ),
+        Match.exhaustive,
+      ),
     ],
   }
 }
+
+const restoreScrollPositionOr = (
+  savedScrollPosition: Option.Option<ScrollPosition>,
+  commandsWithoutPosition: ReadonlyArray<Command.Command<Message>>,
+): ReadonlyArray<Command.Command<Message>> =>
+  Option.match(savedScrollPosition, {
+    onNone: () => commandsWithoutPosition,
+    onSome: scrollPosition => [RestoreScrollPosition(scrollPosition)],
+  })
 
 // UPDATE
 
@@ -617,7 +643,7 @@ export const update = (model: Model, message: Message) =>
         }),
       }),
 
-    ChangedUrl: ({ url }) => {
+    ChangedUrl: ({ url, urlChangeType }) => {
       const nextRoute = urlToAppRoute(url)
 
       const maybeNextExampleSlug = pipe(
@@ -673,13 +699,22 @@ export const update = (model: Model, message: Message) =>
         }),
       })
 
+      const anchorOrTopCommands = Option.match(url.hash, {
+        onNone: () => Option.toArray(maybeScrollToTop),
+        onSome: hash => [ScrollToAnchor({ hash })],
+      })
+
       const scrollToRoute: UpdateStep = model => ({
         model,
         commands: [
-          ...Option.match(url.hash, {
-            onNone: () => Option.toArray(maybeScrollToTop),
-            onSome: hash => [ScrollToAnchor({ hash })],
-          }),
+          ...Match.value(urlChangeType).pipe(
+            Match.withReturnType<ReadonlyArray<Command.Command<Message>>>(),
+            Match.tag('Push', 'Replace', () => anchorOrTopCommands),
+            Match.tag('Traverse', ({ savedScrollPosition }) =>
+              restoreScrollPositionOr(savedScrollPosition, anchorOrTopCommands),
+            ),
+            Match.exhaustive,
+          ),
           ...Option.toArray(maybeScrollSidebar),
         ],
       })
@@ -839,6 +874,8 @@ export const update = (model: Model, message: Message) =>
     CompletedInjectSpeedInsights: () => ({ model }),
     CompletedScrollToTop: () => ({ model }),
     CompletedScrollToAnchor: () => ({ model }),
+    CompletedRestoreScrollPosition: () => ({ model }),
+    CompletedDisableBrowserScrollRestoration: () => ({ model }),
     CompletedScrollSidebarActiveLinkIntoView: () => ({ model }),
     CompletedScrollMobileMenuActiveLinkIntoView: () => ({ model }),
     CompletedApplyTheme: () => ({ model }),
@@ -890,7 +927,29 @@ export const ScrollToTop = Command.define('ScrollToTop', {
   }),
 })
 
-const ScrollToAnchor = Command.define('ScrollToAnchor', {
+export const RestoreScrollPosition = Command.define('RestoreScrollPosition', {
+  args: ScrollPosition.fields,
+  messages: [Message.CompletedRestoreScrollPosition],
+  execute: ({ x, y }) =>
+    Effect.gen(function* () {
+      yield* Render.afterCommit
+      window.scrollTo({ left: x, top: y, behavior: 'instant' })
+      return Message.CompletedRestoreScrollPosition()
+    }),
+})
+
+export const DisableBrowserScrollRestoration = Command.define(
+  'DisableBrowserScrollRestoration',
+  {
+    messages: [Message.CompletedDisableBrowserScrollRestoration],
+    execute: Effect.sync(() => {
+      window.history.scrollRestoration = 'manual'
+      return Message.CompletedDisableBrowserScrollRestoration()
+    }),
+  },
+)
+
+export const ScrollToAnchor = Command.define('ScrollToAnchor', {
   args: { hash: Schema.String },
   messages: [Message.CompletedScrollToAnchor],
   execute: ({ hash }) =>

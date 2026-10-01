@@ -1,5 +1,6 @@
 import { HashSet, Option, pipe } from 'effect'
 import { Calendar } from 'foldkit'
+import { LoadType, UrlChangeType } from 'foldkit/navigation'
 import { Command, given, message, model, story } from 'foldkit/story'
 import * as Url from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
@@ -8,8 +9,11 @@ import { Dialog, Menu } from '@foldkit/ui'
 
 import { Deployment } from './deployment'
 import {
+  DisableBrowserScrollRestoration,
   LoadPlayground,
+  RestoreScrollPosition,
   ScrollSidebarActiveLinkIntoView,
+  ScrollToAnchor,
   ScrollToTop,
   init,
   managedResources,
@@ -27,6 +31,9 @@ const parseUrl = (value: string): Url.Url =>
 
 const homeUrl = parseUrl('https://foldkit.dev/')
 const newsletterUrl = parseUrl('https://foldkit.dev/newsletter')
+const newsletterSubscribeUrl = parseUrl(
+  'https://foldkit.dev/newsletter#subscribe',
+)
 
 const flags = {
   currentYear: 2026,
@@ -36,7 +43,7 @@ const flags = {
   maybeExampleSources: Option.none(),
 }
 
-const initAt = (url: Url.Url): Model => init(flags, url).model
+const initAt = (url: Url.Url): Model => init(flags, url, LoadType.Push()).model
 
 const aiHeadingSubscription = subscriptions.aiHeading
 
@@ -89,7 +96,12 @@ describe('application', () => {
       update,
       given(initAt(newsletterUrl)),
       model(expectHomeAbsent),
-      message(Message.ChangedUrl({ url: homeUrl })),
+      message(
+        Message.ChangedUrl({
+          url: homeUrl,
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
       model(model => {
         expectHomePresent(model)
         expectDefaultHome(Option.getOrThrow(model.maybeHome))
@@ -103,7 +115,12 @@ describe('application', () => {
       update,
       given(initAt(homeUrl)),
       model(expectHomePresent),
-      message(Message.ChangedUrl({ url: newsletterUrl })),
+      message(
+        Message.ChangedUrl({
+          url: newsletterUrl,
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
       model(expectHomeAbsent),
       ...resolvePathChangeCommands(),
     )
@@ -116,7 +133,12 @@ describe('application', () => {
     story(
       update,
       given(initialModel),
-      message(Message.ChangedUrl({ url: homeUrl })),
+      message(
+        Message.ChangedUrl({
+          url: homeUrl,
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
       model(model => {
         expect(Option.getOrThrow(model.maybeHome)).toBe(initialHome)
       }),
@@ -135,14 +157,177 @@ describe('application', () => {
       model(model => {
         expect(Option.getOrThrow(model.maybeHome).aiHeadingToggleCount).toBe(1)
       }),
-      message(Message.ChangedUrl({ url: newsletterUrl })),
+      message(
+        Message.ChangedUrl({
+          url: newsletterUrl,
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
       ...resolvePathChangeCommands(),
-      message(Message.ChangedUrl({ url: homeUrl })),
+      message(
+        Message.ChangedUrl({
+          url: homeUrl,
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
       model(model => {
         expectHomePresent(model)
         expectDefaultHome(Option.getOrThrow(model.maybeHome))
       }),
       ...resolvePathChangeCommands(),
+    )
+  })
+
+  test('Back and Forward restore the position the reader left instead of scrolling to the top', () => {
+    story(
+      update,
+      given(initAt(newsletterUrl)),
+      message(
+        Message.ChangedUrl({
+          url: homeUrl,
+          urlChangeType: UrlChangeType.Traverse({
+            savedScrollPosition: Option.some({ x: 0, y: 1500 }),
+          }),
+        }),
+      ),
+      Command.expectExact(
+        RestoreScrollPosition({ x: 0, y: 1500 }),
+        ScrollSidebarActiveLinkIntoView(),
+      ),
+      Command.resolve(
+        RestoreScrollPosition,
+        Message.CompletedRestoreScrollPosition(),
+      ),
+      Command.resolve(
+        ScrollSidebarActiveLinkIntoView,
+        Message.CompletedScrollSidebarActiveLinkIntoView(),
+      ),
+    )
+  })
+
+  test('a reload restores the position the reader had on the page', () => {
+    const reloadInit = init(
+      flags,
+      newsletterUrl,
+      LoadType.Reload({
+        savedScrollPosition: Option.some({ x: 0, y: 2400 }),
+      }),
+    )
+
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({
+        name: RestoreScrollPosition.name,
+        args: { x: 0, y: 2400 },
+      }),
+    )
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({ name: DisableBrowserScrollRestoration.name }),
+    )
+  })
+
+  test('Back and Forward to an entry with an anchor restore the recorded position instead of scrolling to the anchor', () => {
+    story(
+      update,
+      given(initAt(homeUrl)),
+      message(
+        Message.ChangedUrl({
+          url: newsletterSubscribeUrl,
+          urlChangeType: UrlChangeType.Traverse({
+            savedScrollPosition: Option.some({ x: 0, y: 900 }),
+          }),
+        }),
+      ),
+      Command.expectExact(
+        RestoreScrollPosition({ x: 0, y: 900 }),
+        ScrollSidebarActiveLinkIntoView(),
+      ),
+      Command.resolve(
+        RestoreScrollPosition,
+        Message.CompletedRestoreScrollPosition(),
+      ),
+      Command.resolve(
+        ScrollSidebarActiveLinkIntoView,
+        Message.CompletedScrollSidebarActiveLinkIntoView(),
+      ),
+    )
+  })
+
+  test('a reload of a page with an anchor restores the recorded position instead of scrolling to the anchor', () => {
+    const reloadInit = init(
+      flags,
+      newsletterSubscribeUrl,
+      LoadType.Reload({
+        savedScrollPosition: Option.some({ x: 0, y: 900 }),
+      }),
+    )
+
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({
+        name: RestoreScrollPosition.name,
+        args: { x: 0, y: 900 },
+      }),
+    )
+    expect(reloadInit.commands).not.toContainEqual(
+      expect.objectContaining({ name: ScrollToAnchor.name }),
+    )
+  })
+
+  test('Back or Forward to an entry without a recorded position scrolls to its anchor', () => {
+    story(
+      update,
+      given(initAt(homeUrl)),
+      message(
+        Message.ChangedUrl({
+          url: newsletterSubscribeUrl,
+          urlChangeType: UrlChangeType.Traverse({
+            savedScrollPosition: Option.none(),
+          }),
+        }),
+      ),
+      Command.expectExact(
+        ScrollToAnchor({ hash: 'subscribe' }),
+        ScrollSidebarActiveLinkIntoView(),
+      ),
+      Command.resolve(ScrollToAnchor, Message.CompletedScrollToAnchor()),
+      Command.resolve(
+        ScrollSidebarActiveLinkIntoView,
+        Message.CompletedScrollSidebarActiveLinkIntoView(),
+      ),
+    )
+  })
+
+  test('Back or Forward to a new page without a recorded position scrolls to the top', () => {
+    story(
+      update,
+      given(initAt(homeUrl)),
+      message(
+        Message.ChangedUrl({
+          url: newsletterUrl,
+          urlChangeType: UrlChangeType.Traverse({
+            savedScrollPosition: Option.none(),
+          }),
+        }),
+      ),
+      Command.expectExact(ScrollToTop(), ScrollSidebarActiveLinkIntoView()),
+      ...resolvePathChangeCommands(),
+    )
+  })
+
+  test('a reload without a recorded position scrolls to the anchor', () => {
+    const reloadInit = init(
+      flags,
+      newsletterSubscribeUrl,
+      LoadType.Reload({ savedScrollPosition: Option.none() }),
+    )
+
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({
+        name: ScrollToAnchor.name,
+        args: { hash: 'subscribe' },
+      }),
+    )
+    expect(reloadInit.commands).not.toContainEqual(
+      expect.objectContaining({ name: RestoreScrollPosition.name }),
     )
   })
 
