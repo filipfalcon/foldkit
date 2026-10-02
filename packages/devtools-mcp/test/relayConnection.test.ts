@@ -1,144 +1,180 @@
-import { ConfigProvider, Effect, Option, Schedule, pipe } from 'effect'
-import { Request, type RelayRecord } from 'foldkit/devtools-protocol'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { Array, Effect, Exit, Option } from 'effect'
+import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { createServer } from 'vite'
+import { join } from 'node:path'
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { WebSocketServer } from 'ws'
+
+import { makeRelayClient } from '../src/relayClient.ts'
 import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  onTestFinished,
-} from 'vitest'
+  RELAY_DIRECTORY_VARIABLE,
+  connectionCount,
+  listedIds,
+  openRuntime,
+  openSession,
+  startApplication,
+} from './relayFixtures.ts'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
-import { foldkit } from '@foldkit/vite-plugin'
-
-import { resolveRelayUrl } from '../src/relayLocation.ts'
-import { discoverRelay } from '../src/relayRegistry.ts'
-import {
-  type WebSocketClient,
-  connectWebSocketClient,
-} from '../src/webSocketClient.ts'
-
-const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
-const PACKAGE_ROOT = resolve(import.meta.dirname, '..')
 const TEST_TIMEOUT = 30_000
+const IDLE_WINDOW = 500
+const CALL_COUNT = 3
+const CLOSE_DELAY = 100
+const CONNECT_TIMEOUT = 2_000
 
-const findFreePort = () =>
-  new Promise<number>((resolvePort, reject) => {
-    const probe = createNetServer()
-    probe.on('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      if (address === null || typeof address === 'string') {
-        probe.close()
-        reject(new Error('Could not determine a free port'))
-        return
-      }
+let workspaceDirectory = ''
+let registryDirectory = ''
+let previousRegistryDirectory: string | undefined
+let errorLog = vi.spyOn(console, 'error')
 
-      const { port } = address
-      probe.close(() => resolvePort(port))
-    })
-  })
-
-describe('relay connection', () => {
-  let registryDirectory = ''
-  let previousRegistryDirectory: string | undefined
-
-  beforeEach(async () => {
-    previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
-    registryDirectory = await mkdtemp(join(tmpdir(), 'foldkit-mcp-relay-'))
-    process.env[RELAY_DIRECTORY_VARIABLE] = registryDirectory
-  })
-
-  afterEach(async () => {
-    if (previousRegistryDirectory === undefined) {
-      delete process.env[RELAY_DIRECTORY_VARIABLE]
-    } else {
-      process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
-    }
-    await rm(registryDirectory, { recursive: true, force: true })
-  })
-
-  it(
-    'discovers the relay, connects, and follows a dev server restart',
-    async () => {
-      const port = await findFreePort()
-      const server = await createServer({
-        root: PACKAGE_ROOT,
-        configFile: false,
-        logLevel: 'silent',
-        server: { port, strictPort: true, host: '127.0.0.1' },
-        plugins: [foldkit()],
-      })
-      onTestFinished(() => server.close().catch(() => undefined))
-      await server.listen()
-
-      const settings = {
-        maybeConfiguredPort: Option.none<string>(),
-        maybeConfiguredHost: Option.none<string>(),
-        projectRoot: PACKAGE_ROOT,
-      }
-      const listRuntimes = (client: WebSocketClient) =>
-        client.sendRequest(Request.RequestListRuntimes(), Option.none()).pipe(
-          Effect.retry({
-            schedule: Schedule.spaced('250 millis'),
-            times: 60,
-          }),
-        )
-      const tokenFromPublishedRelay = (
-        maybeRecord: Option.Option<RelayRecord>,
-        previousToken: string | undefined,
-      ) =>
-        pipe(
-          maybeRecord,
-          Option.flatMap(record =>
-            Option.fromNullishOr(new URL(record.url).searchParams.get('token')),
-          ),
-          Option.filter(token => token !== previousToken),
-        )
-      const waitForPublishedToken = (previousToken: string | undefined) =>
-        discoverRelay(PACKAGE_ROOT).pipe(
-          Effect.flatMap(maybeRecord =>
-            Option.match(tokenFromPublishedRelay(maybeRecord, previousToken), {
-              onNone: () => Effect.fail(new Error('no new relay published')),
-              onSome: token => Effect.succeed(token),
-            }),
-          ),
-          Effect.retry({ schedule: Schedule.spaced('100 millis'), times: 100 }),
-        )
-
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          const before = yield* waitForPublishedToken(undefined)
-          const client = yield* connectWebSocketClient(
-            resolveRelayUrl(settings),
-          )
-
-          const first = yield* listRuntimes(client)
-          expect(first._tag).toBe('ResponseRuntimes')
-
-          yield* Effect.promise(() => server.restart())
-          const after = yield* waitForPublishedToken(before)
-          expect(after).not.toBe(before)
-
-          const second = yield* listRuntimes(client)
-          expect(second._tag).toBe('ResponseRuntimes')
-
-          yield* client.close
-        }).pipe(
-          Effect.provideService(
-            ConfigProvider.ConfigProvider,
-            ConfigProvider.fromEnv(),
-          ),
-          Effect.provide(NodeServices.layer),
-        ),
-      )
-    },
-    TEST_TIMEOUT,
+beforeEach(async () => {
+  errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'log').mockImplementation(() => {})
+  previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
+  workspaceDirectory = await realpath(
+    await mkdtemp(join(tmpdir(), 'foldkit-workspace-')),
   )
+  registryDirectory = await mkdtemp(join(tmpdir(), 'foldkit-mcp-relay-'))
+  process.env[RELAY_DIRECTORY_VARIABLE] = registryDirectory
 })
+
+afterEach(async () => {
+  vi.restoreAllMocks()
+  if (previousRegistryDirectory === undefined) {
+    delete process.env[RELAY_DIRECTORY_VARIABLE]
+  } else {
+    process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
+  }
+  await rm(registryDirectory, { recursive: true, force: true })
+  await rm(workspaceDirectory, { recursive: true, force: true })
+})
+
+const fixedTarget = (url: string) => [
+  { key: url, url, maybeProjectRoot: Option.none<string>() },
+]
+
+const startDroppingRelay = async () => {
+  const relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
+  onTestFinished(() => new Promise<void>(done => relay.close(() => done())))
+  await new Promise<void>(resolveListening =>
+    relay.once('listening', () => resolveListening()),
+  )
+  const address = relay.address()
+  if (address === null || typeof address === 'string') {
+    throw new Error('relay has no port')
+  }
+  const connections = { count: 0 }
+  relay.on('connection', socket => {
+    connections.count += 1
+    socket.close()
+  })
+  return { url: `ws://127.0.0.1:${address.port}`, connections }
+}
+
+const startStalledServer = async () => {
+  const stalled = createNetServer(socket => {
+    socket.resume()
+  })
+  onTestFinished(() => new Promise<void>(done => stalled.close(() => done())))
+  await new Promise<void>(resolveListening =>
+    stalled.listen(0, '127.0.0.1', () => resolveListening()),
+  )
+  const address = stalled.address()
+  if (address === null || typeof address === 'string') {
+    throw new Error('server has no port')
+  }
+  return `ws://127.0.0.1:${address.port}`
+}
+
+it(
+  'connects on the first call after the dev server starts',
+  async () => {
+    const application = join(workspaceDirectory, 'application')
+    const session = await openSession(application)
+
+    await expect(listedIds(session)).rejects.toThrow(
+      'Not connected to a Foldkit dev server',
+    )
+
+    const server = await startApplication(application)
+    await openRuntime(server, 'runtime-application')
+
+    await expect
+      .poll(() => listedIds(session))
+      .toStrictEqual(['runtime-application'])
+    expect(await listedIds(session)).toStrictEqual(['runtime-application'])
+    expect(connectionCount(errorLog.mock.calls)).toBe(1)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'follows a dev server restart on the next call',
+  async () => {
+    const application = join(workspaceDirectory, 'application')
+    const server = await startApplication(application)
+    const session = await openSession(application)
+    expect(await listedIds(session)).toStrictEqual([])
+
+    await server.restart()
+
+    await expect.poll(() => listedIds(session)).toStrictEqual([])
+    expect(connectionCount(errorLog.mock.calls)).toBe(2)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'opens at most one connection per call to a relay that drops each one',
+  async () => {
+    const relay = await startDroppingRelay()
+    const client = await Effect.runPromise(
+      makeRelayClient(Effect.succeed(fixedTarget(relay.url))),
+    )
+    onTestFinished(() => Effect.runPromise(client.close))
+
+    await new Promise(done => setTimeout(done, IDLE_WINDOW))
+    expect(relay.connections.count).toBe(0)
+
+    await Effect.runPromise(
+      Effect.forEach(
+        Array.range(1, CALL_COUNT),
+        () => Effect.exit(client.listRuntimes),
+        { discard: true },
+      ),
+    )
+    await new Promise(done => setTimeout(done, IDLE_WINDOW))
+
+    expect(relay.connections.count).toBeGreaterThan(0)
+    expect(relay.connections.count).toBeLessThanOrEqual(CALL_COUNT)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'closes without an uncaught error while a connection is still opening',
+  async () => {
+    const url = await startStalledServer()
+    const uncaught: Array<unknown> = []
+    const onUncaught = (error: unknown) => uncaught.push(error)
+    process.on('uncaughtException', onUncaught)
+    onTestFinished(() => {
+      process.off('uncaughtException', onUncaught)
+    })
+    const client = await Effect.runPromise(
+      makeRelayClient(Effect.succeed(fixedTarget(url))),
+    )
+
+    const startedAt = Date.now()
+    const pending = Effect.runPromise(Effect.exit(client.listRuntimes))
+    await new Promise(done => setTimeout(done, CLOSE_DELAY))
+    await Effect.runPromise(client.close)
+    const exit = await pending
+    await new Promise(done => setTimeout(done, CLOSE_DELAY))
+
+    expect(Exit.isFailure(exit)).toBe(true)
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(CONNECT_TIMEOUT)
+    expect(uncaught).toStrictEqual([])
+  },
+  TEST_TIMEOUT,
+)

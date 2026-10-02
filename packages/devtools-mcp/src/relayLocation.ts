@@ -1,6 +1,8 @@
-import { Config, Effect, Option } from 'effect'
+import { Array, Config, Effect, Option } from 'effect'
+import type { ChildProcessSpawner } from 'effect/process'
 
-import { discoverRelay } from './relayRegistry.js'
+import { type RelayRegistryServices, discoverRelays } from './relayRegistry.js'
+import type { RelayRegistryTrust } from './relayRegistryTrust.js'
 
 const LEGACY_DEFAULT_PORT = 9988
 const DEFAULT_HOST = 'localhost'
@@ -9,6 +11,12 @@ export type Settings = Readonly<{
   maybeConfiguredPort: Option.Option<string>
   maybeConfiguredHost: Option.Option<string>
   projectRoot: string
+}>
+
+export type RelayTarget = Readonly<{
+  key: string
+  url: string
+  maybeProjectRoot: Option.Option<string>
 }>
 
 export const loadSettings: Effect.Effect<Settings> = Effect.gen(function* () {
@@ -31,36 +39,49 @@ export const loadSettings: Effect.Effect<Settings> = Effect.gen(function* () {
 const relayUrl = (host: string, port: number | string): string =>
   `ws://${host}:${port}`
 
-const withConfiguredHost = (
-  maybeConfiguredHost: Option.Option<string>,
-  url: string,
-): string =>
-  Option.match(maybeConfiguredHost, {
-    onNone: () => url,
-    onSome: host => {
-      const parsed = new URL(url)
-      parsed.hostname = host
-      return parsed.toString()
-    },
-  })
+const fixedTarget = (url: string): RelayTarget => ({
+  key: url,
+  url,
+  maybeProjectRoot: Option.none(),
+})
 
-export const resolveRelayUrl = (settings: Settings) => {
-  const configuredHost = Option.getOrElse(
-    settings.maybeConfiguredHost,
-    () => DEFAULT_HOST,
-  )
-
-  return Option.match(settings.maybeConfiguredPort, {
-    onSome: port => Effect.succeed(relayUrl(configuredHost, port)),
-    onNone: () =>
-      discoverRelay(settings.projectRoot).pipe(
-        Effect.map(maybeRecord =>
-          Option.match(maybeRecord, {
-            onSome: record =>
-              withConfiguredHost(settings.maybeConfiguredHost, record.url),
-            onNone: () => relayUrl(configuredHost, LEGACY_DEFAULT_PORT),
-          }),
+export const configuredRelayUrl = (
+  settings: Settings,
+): Option.Option<string> =>
+  Option.isNone(settings.maybeConfiguredHost) &&
+  Option.isNone(settings.maybeConfiguredPort)
+    ? Option.none()
+    : Option.some(
+        relayUrl(
+          Option.getOrElse(settings.maybeConfiguredHost, () => DEFAULT_HOST),
+          Option.getOrElse(
+            settings.maybeConfiguredPort,
+            () => `${LEGACY_DEFAULT_PORT}`,
+          ),
         ),
+      )
+
+export const resolveRelayTargets = (
+  settings: Settings,
+  trust: RelayRegistryTrust,
+): Effect.Effect<
+  ReadonlyArray<RelayTarget>,
+  never,
+  RelayRegistryServices | ChildProcessSpawner.ChildProcessSpawner
+> =>
+  Option.match(configuredRelayUrl(settings), {
+    onSome: url => Effect.succeed([fixedTarget(url)]),
+    onNone: () =>
+      Effect.map(discoverRelays(settings.projectRoot, trust), records =>
+        Array.match(records, {
+          onEmpty: () => [
+            fixedTarget(relayUrl(DEFAULT_HOST, LEGACY_DEFAULT_PORT)),
+          ],
+          onNonEmpty: Array.map((record): RelayTarget => ({
+            key: record.id,
+            url: record.url,
+            maybeProjectRoot: Option.some(record.root),
+          })),
+        }),
       ),
   })
-}
