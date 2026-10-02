@@ -8,7 +8,7 @@ import {
 import type { ListedRuntime, RelayClient } from './relayClient.js'
 
 const RUNTIME_ID_DESCRIPTION =
-  'Optional connection id of a specific Foldkit runtime. Defaults to the most recently connected runtime.'
+  'Optional connection id of a specific Foldkit runtime. Defaults to the most recently connected runtime of the most recently started dev server. Call `foldkit_list_runtimes` to find runtimes in other applications, each with its `projectRoot`.'
 
 const DEFAULT_LIST_MESSAGES_LIMIT = 50
 

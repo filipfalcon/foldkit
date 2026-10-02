@@ -1,6 +1,6 @@
 import { Array, Order } from 'effect'
 import { createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import {
@@ -14,14 +14,6 @@ const SETTLE = 300
 const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
-
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 it(
   'sends a Runtime response to every MCP client and a list response to the requester',

@@ -12,7 +12,7 @@ import {
   loadSettings,
   resolveRelayTargets,
 } from '../src/relayLocation.ts'
-import { makeRelayRegistryTrust } from '../src/relayRegistryTrust.ts'
+import { makeRelayRegistryReader } from '../src/relayRegistry.ts'
 
 const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 const PROJECT_ROOT = '/workspace/app'
@@ -40,8 +40,8 @@ describe('resolveRelayTargets', () => {
 
   const resolve = (value: Settings) =>
     Effect.runPromise(
-      Effect.flatMap(makeRelayRegistryTrust, trust =>
-        resolveRelayTargets(value, trust),
+      Effect.flatMap(makeRelayRegistryReader, registryReader =>
+        resolveRelayTargets(value, registryReader),
       ).pipe(
         Effect.provideService(
           ConfigProvider.ConfigProvider,

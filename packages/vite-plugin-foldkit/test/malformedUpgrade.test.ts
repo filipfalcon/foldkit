@@ -1,6 +1,6 @@
 import { connect } from 'node:net'
 import { createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { expect, it } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import {
@@ -10,14 +10,6 @@ import {
 } from './relayFixtures.ts'
 
 const directories = useRelayRegistry()
-
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 const sendMalformedUpgrade = (port: number): Promise<string> =>
   new Promise((resolveClosed, rejectClosed) => {

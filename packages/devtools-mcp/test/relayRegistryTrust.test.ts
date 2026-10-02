@@ -1,4 +1,4 @@
-import { Effect, Layer, Option } from 'effect'
+import { Effect, FileSystem, Layer, Option } from 'effect'
 import { ChildProcessSpawner } from 'effect/process'
 import {
   chmod,
@@ -15,6 +15,7 @@ import { describe, expect, it, onTestFinished } from 'vitest'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import {
+  makeCachedWindowsProbe,
   makeRelayRegistryTrust,
   powershellPath,
   probeWindowsDirectory,
@@ -124,6 +125,7 @@ const standInProbe = async (body: string) => {
   await chmod(executable, 0o755)
   return {
     directory,
+    executable,
     probe: (target: string) =>
       Effect.runPromise(
         probeWindowsDirectory(target, executable).pipe(
@@ -206,6 +208,70 @@ describe('probeWindowsDirectory', () => {
         ),
       ),
     ).toStrictEqual(UNVERIFIED_OWNERSHIP)
+  })
+})
+
+const verdictFor = (
+  cachedProbe: Effect.Success<ReturnType<typeof makeCachedWindowsProbe>>,
+  target: string,
+) =>
+  Effect.runPromise(
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem
+      const info = yield* fileSystem.stat(target)
+      return yield* cachedProbe(target, info)
+    }).pipe(Effect.provide(NodeServices.layer)),
+  )
+
+const temporaryDirectory = async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'foldkit-registry-'))
+  onTestFinished(() => rm(directory, { recursive: true, force: true }))
+  return directory
+}
+
+describe('makeCachedWindowsProbe', () => {
+  it.skipIf(process.platform === 'win32')(
+    'probes again after a probe that failed and keeps a verdict it read',
+    async () => {
+      const recoveringProbe = await standInProbe(
+        [
+          'runs="$(dirname "$0")/runs"',
+          'echo run >> "$runs"',
+          'if [ "$(wc -l < "$runs")" -eq 1 ]; then exit 1; fi',
+          `printf '%s\\n' '${PRIVATE}' '${IDENTITY}'`,
+        ].join('\n'),
+      )
+      const runCount = async () =>
+        (await readFile(join(recoveringProbe.directory, 'runs'), 'utf-8'))
+          .split('\n')
+          .filter(line => line !== '').length
+      const target = await temporaryDirectory()
+      const cachedProbe = await Effect.runPromise(
+        makeCachedWindowsProbe(Option.some(recoveringProbe.executable)),
+      )
+      const probeTarget = () => verdictFor(cachedProbe, target)
+
+      expect(await probeTarget()).toStrictEqual(UNVERIFIED_OWNERSHIP)
+      expect(await runCount()).toBe(1)
+
+      expect(await probeTarget()).toStrictEqual(Option.none())
+      expect(await runCount()).toBe(2)
+
+      expect(await probeTarget()).toStrictEqual(Option.none())
+      expect(await runCount()).toBe(2)
+    },
+    PROBE_TEST_TIMEOUT,
+  )
+
+  it('refuses without probing when no PowerShell path is known', async () => {
+    const target = await temporaryDirectory()
+    const cachedProbe = await Effect.runPromise(
+      makeCachedWindowsProbe(Option.none()),
+    )
+
+    expect(await verdictFor(cachedProbe, target)).toStrictEqual(
+      UNVERIFIED_OWNERSHIP,
+    )
   })
 })
 

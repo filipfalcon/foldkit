@@ -111,7 +111,7 @@ const recordFilePaths = (
 // NOTE: A relay from an older plugin names its record by its root and can
 // republish that path between the rename and the read. A hard link restores
 // the republished record only if no newer record occupies the path.
-const retireDeadRecord = (
+const retireStaleRecord = (
   filePath: string,
   record: RelayRecord,
 ): Effect.Effect<void, never, FileSystem.FileSystem> =>
@@ -156,7 +156,7 @@ const removeDeadRecords = (
             Option.isSome(maybeRecord) &&
             !isProcessAlive(maybeRecord.value.pid)
           ) {
-            yield* retireDeadRecord(filePath, maybeRecord.value)
+            yield* retireStaleRecord(filePath, maybeRecord.value)
           }
         }),
       { discard: true },

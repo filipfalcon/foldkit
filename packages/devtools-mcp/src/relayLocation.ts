@@ -1,8 +1,11 @@
 import { Array, Config, Effect, Option } from 'effect'
 import type { ChildProcessSpawner } from 'effect/process'
 
-import { type RelayRegistryServices, discoverRelays } from './relayRegistry.js'
-import type { RelayRegistryTrust } from './relayRegistryTrust.js'
+import {
+  type RelayRegistryReader,
+  type RelayRegistryServices,
+  discoverRelays,
+} from './relayRegistry.js'
 
 const LEGACY_DEFAULT_PORT = 9988
 const DEFAULT_HOST = 'localhost'
@@ -63,7 +66,7 @@ export const configuredRelayUrl = (
 
 export const resolveRelayTargets = (
   settings: Settings,
-  trust: RelayRegistryTrust,
+  registryReader: RelayRegistryReader,
 ): Effect.Effect<
   ReadonlyArray<RelayTarget>,
   never,
@@ -72,16 +75,18 @@ export const resolveRelayTargets = (
   Option.match(configuredRelayUrl(settings), {
     onSome: url => Effect.succeed([fixedTarget(url)]),
     onNone: () =>
-      Effect.map(discoverRelays(settings.projectRoot, trust), records =>
-        Array.match(records, {
-          onEmpty: () => [
-            fixedTarget(relayUrl(DEFAULT_HOST, LEGACY_DEFAULT_PORT)),
-          ],
-          onNonEmpty: Array.map((record): RelayTarget => ({
-            key: record.id,
-            url: record.url,
-            maybeProjectRoot: Option.some(record.root),
-          })),
-        }),
+      Effect.map(
+        discoverRelays(settings.projectRoot, registryReader),
+        records =>
+          Array.match(records, {
+            onEmpty: () => [
+              fixedTarget(relayUrl(DEFAULT_HOST, LEGACY_DEFAULT_PORT)),
+            ],
+            onNonEmpty: Array.map((record): RelayTarget => ({
+              key: record.id,
+              url: record.url,
+              maybeProjectRoot: Option.some(record.root),
+            })),
+          }),
       ),
   })

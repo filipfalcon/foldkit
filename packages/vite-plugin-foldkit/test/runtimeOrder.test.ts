@@ -1,5 +1,5 @@
 import { createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 import type { WebSocket } from 'ws'
 
 import { foldkit } from '../src/index.ts'
@@ -15,14 +15,6 @@ const RUNTIME_COUNT = 10
 const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
-
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 const startServer = async () => {
   const relayPort = await findFreePort()

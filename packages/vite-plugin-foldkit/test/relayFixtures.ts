@@ -1,11 +1,11 @@
-import { Array, ConfigProvider, Effect } from 'effect'
+import { Array, ConfigProvider, Effect, Option } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { connect, createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ViteDevServer } from 'vite'
-import { afterEach, beforeEach, expect, onTestFinished } from 'vitest'
+import { beforeEach, expect, onTestFinished, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
@@ -57,27 +57,32 @@ export const serverPort = (server: ViteDevServer): number => {
   return address.port
 }
 
+// NOTE: Vitest runs afterEach hooks before onTestFinished callbacks, so an
+// afterEach cleanup would remove the directories and restore the variable
+// while the dev servers a test closes in onTestFinished still use them.
+// Registered first, this cleanup runs after every callback the test adds.
 export const useRelayRegistry = () => {
   const directories = { registry: '', root: '' }
-  let previousRegistryDirectory: string | undefined
 
-  beforeEach(async () => {
-    previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
+  beforeEach(async ({ onTestFinished }) => {
+    const previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
     directories.registry = await mkdtemp(join(tmpdir(), 'foldkit-registry-'))
     directories.root = await realpath(
       await mkdtemp(join(tmpdir(), 'foldkit-app-')),
     )
     process.env[RELAY_DIRECTORY_VARIABLE] = directories.registry
-  })
+    vi.spyOn(console, 'log').mockImplementation(() => {})
 
-  afterEach(async () => {
-    if (previousRegistryDirectory === undefined) {
-      delete process.env[RELAY_DIRECTORY_VARIABLE]
-    } else {
-      process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
-    }
-    await rm(directories.registry, { recursive: true, force: true })
-    await rm(directories.root, { recursive: true, force: true })
+    onTestFinished(async () => {
+      vi.restoreAllMocks()
+      if (previousRegistryDirectory === undefined) {
+        delete process.env[RELAY_DIRECTORY_VARIABLE]
+      } else {
+        process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
+      }
+      await rm(directories.registry, { recursive: true, force: true })
+      await rm(directories.root, { recursive: true, force: true })
+    })
   })
 
   return directories
@@ -105,11 +110,10 @@ export const waitUntilPublished = async (
       timeout: POLL_TIMEOUT,
     })
     .toBe(1)
-  const [record] = await publishedRecords(root)
-  if (record === undefined) {
-    throw new Error('relay record vanished')
-  }
-  return record
+  return Option.getOrThrowWith(
+    Array.head(await publishedRecords(root)),
+    () => new Error('relay record vanished'),
+  )
 }
 
 export const openWebSocket = async (url: string, protocol?: string) => {

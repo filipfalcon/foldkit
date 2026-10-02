@@ -252,6 +252,7 @@ export const makeRelayClient = <Services>(
 
     const listRelayRuntimes = ({
       socket,
+      target,
     }: RelaySocket): Effect.Effect<ReadonlyArray<typeof RuntimeInfo.Type>> =>
       exchange(
         socket,
@@ -259,10 +260,16 @@ export const makeRelayClient = <Services>(
         Option.none(),
         LIST_RUNTIMES_TIMEOUT,
       ).pipe(
-        Effect.map(response =>
-          response._tag === 'ResponseRuntimes' ? response.runtimes : [],
+        Effect.flatMap(response =>
+          response._tag === 'ResponseRuntimes'
+            ? Effect.succeed(response.runtimes)
+            : Effect.fail(new Error(`the relay answered ${response._tag}`)),
         ),
-        Effect.orElseSucceed(() => []),
+        Effect.catch(error =>
+          Console.error(
+            `[foldkit-devtools-mcp] listing runtimes at ${relayUrlForLog(target.url)} failed: ${errorReason(error)}`,
+          ).pipe(Effect.as([])),
+        ),
       )
 
     const listRuntimes: Effect.Effect<

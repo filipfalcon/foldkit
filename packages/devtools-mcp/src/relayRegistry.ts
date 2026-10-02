@@ -4,9 +4,11 @@ import {
   Console,
   Effect,
   FileSystem,
+  HashSet,
   Option,
   Order,
   Path,
+  Ref,
   Schema,
   String,
   pipe,
@@ -20,7 +22,10 @@ import {
 import { tmpdir } from 'node:os'
 import platformPath from 'node:path'
 
-import type { RelayRegistryTrust } from './relayRegistryTrust.js'
+import {
+  type RelayRegistryTrust,
+  makeRelayRegistryTrust,
+} from './relayRegistryTrust.js'
 
 const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 const RECORD_FILE_EXTENSION = '.json'
@@ -28,13 +33,16 @@ const RETIRING_RECORD_SUFFIX = '.retiring'
 
 export type RelayRegistryServices = FileSystem.FileSystem | Path.Path
 
-type RootPathApi = Pick<typeof platformPath, 'isAbsolute' | 'relative' | 'sep'>
+export type RelayRegistryReader = Readonly<{
+  trust: RelayRegistryTrust
+  reportedRefusals: Ref.Ref<HashSet.HashSet<string>>
+}>
+
+type RootPathApi = Pick<Path.Path, 'isAbsolute' | 'relative' | 'sep'>
 
 const decodeRelayRecord = Schema.decodeUnknownOption(
   Schema.fromJsonString(RelayRecord),
 )
-
-const reportedRefusals = new Set<string>()
 
 const relayRegistryDirectory: Effect.Effect<string, never, Path.Path> =
   Effect.gen(function* () {
@@ -136,19 +144,33 @@ export const isWithinRoot = (
   )
 }
 
-const reportRefusal = (directory: string, reason: string) =>
-  Effect.suspend(() => {
-    const line = `[foldkit-devtools-mcp] ignoring the relay registry at ${directory}: it ${reason}`
-    if (reportedRefusals.has(line)) {
-      return Effect.void
-    }
+export const makeRelayRegistryReader: Effect.Effect<RelayRegistryReader> =
+  Effect.gen(function* () {
+    const trust = yield* makeRelayRegistryTrust
+    const reportedRefusals = yield* Ref.make(HashSet.empty<string>())
+    const registryReader: RelayRegistryReader = { trust, reportedRefusals }
+    return registryReader
+  })
 
-    reportedRefusals.add(line)
-    return Console.error(line)
+const reportRefusal = (
+  reportedRefusals: Ref.Ref<HashSet.HashSet<string>>,
+  directory: string,
+  reason: string,
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    const line = `[foldkit-devtools-mcp] ignoring the relay registry at ${directory}: it ${reason}`
+    const isFirstReport = yield* Ref.modify(reportedRefusals, reported => [
+      !HashSet.has(reported, line),
+      HashSet.add(reported, line),
+    ])
+
+    if (isFirstReport) {
+      yield* Console.error(line)
+    }
   })
 
 const trustedRegistryDirectory = (
-  trust: RelayRegistryTrust,
+  registryReader: RelayRegistryReader,
 ): Effect.Effect<
   Option.Option<string>,
   never,
@@ -164,9 +186,13 @@ const trustedRegistryDirectory = (
       return Option.none()
     }
 
-    const maybeRefusal = yield* trust.refusal(directory)
+    const maybeRefusal = yield* registryReader.trust.refusal(directory)
     if (Option.isSome(maybeRefusal)) {
-      yield* reportRefusal(directory, maybeRefusal.value)
+      yield* reportRefusal(
+        registryReader.reportedRefusals,
+        directory,
+        maybeRefusal.value,
+      )
       return Option.none()
     }
 
@@ -190,14 +216,14 @@ const segmentCount = (root: string, path: Path.Path): number =>
 
 export const discoverRelays = (
   projectRoot: string,
-  trust: RelayRegistryTrust,
+  registryReader: RelayRegistryReader,
 ): Effect.Effect<
   ReadonlyArray<RelayRecord>,
   never,
   RelayRegistryServices | ChildProcessSpawner.ChildProcessSpawner
 > =>
   Effect.gen(function* () {
-    const maybeDirectory = yield* trustedRegistryDirectory(trust)
+    const maybeDirectory = yield* trustedRegistryDirectory(registryReader)
     if (Option.isNone(maybeDirectory)) {
       return []
     }
@@ -224,10 +250,10 @@ export const discoverRelays = (
     )
 
     const recordsInside = Array.filter(rootedRecords, ({ root }) =>
-      isWithinRoot(realProjectRoot, root),
+      isWithinRoot(realProjectRoot, root, path),
     )
     const recordsEnclosing = Array.filter(rootedRecords, ({ root }) =>
-      isWithinRoot(root, realProjectRoot),
+      isWithinRoot(root, realProjectRoot, path),
     )
     const nearestDepth = Array.reduce(recordsEnclosing, 0, (depth, { root }) =>
       Math.max(depth, segmentCount(root, path)),

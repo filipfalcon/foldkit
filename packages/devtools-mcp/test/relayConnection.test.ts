@@ -1,19 +1,18 @@
 import { Array, Effect, Exit, Option } from 'effect'
-import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { createServer as createNetServer } from 'node:net'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
-import { WebSocketServer } from 'ws'
+import { expect, it, onTestFinished } from 'vitest'
+import { type WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
 import {
-  RELAY_DIRECTORY_VARIABLE,
   connectionCount,
   listedIds,
-  openRuntime,
+  loggedErrors,
+  openBrowserRuntime,
   openSession,
   startApplication,
+  useWorkspace,
 } from './relayFixtures.ts'
 
 const TEST_TIMEOUT = 30_000
@@ -22,38 +21,13 @@ const CALL_COUNT = 3
 const CLOSE_DELAY = 100
 const CONNECT_TIMEOUT = 2_000
 
-let workspaceDirectory = ''
-let registryDirectory = ''
-let previousRegistryDirectory: string | undefined
-let errorLog = vi.spyOn(console, 'error')
-
-beforeEach(async () => {
-  errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-  previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
-  workspaceDirectory = await realpath(
-    await mkdtemp(join(tmpdir(), 'foldkit-workspace-')),
-  )
-  registryDirectory = await mkdtemp(join(tmpdir(), 'foldkit-mcp-relay-'))
-  process.env[RELAY_DIRECTORY_VARIABLE] = registryDirectory
-})
-
-afterEach(async () => {
-  vi.restoreAllMocks()
-  if (previousRegistryDirectory === undefined) {
-    delete process.env[RELAY_DIRECTORY_VARIABLE]
-  } else {
-    process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
-  }
-  await rm(registryDirectory, { recursive: true, force: true })
-  await rm(workspaceDirectory, { recursive: true, force: true })
-})
+const workspace = useWorkspace()
 
 const fixedTarget = (url: string) => [
   { key: url, url, maybeProjectRoot: Option.none<string>() },
 ]
 
-const startDroppingRelay = async () => {
+const startRelay = async (onConnection: (socket: WebSocket) => void) => {
   const relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
   onTestFinished(() => new Promise<void>(done => relay.close(() => done())))
   await new Promise<void>(resolveListening =>
@@ -63,12 +37,17 @@ const startDroppingRelay = async () => {
   if (address === null || typeof address === 'string') {
     throw new Error('relay has no port')
   }
+  relay.on('connection', onConnection)
+  return `ws://127.0.0.1:${address.port}`
+}
+
+const startDroppingRelay = async () => {
   const connections = { count: 0 }
-  relay.on('connection', socket => {
+  const url = await startRelay(socket => {
     connections.count += 1
     socket.close()
   })
-  return { url: `ws://127.0.0.1:${address.port}`, connections }
+  return { url, connections }
 }
 
 const startStalledServer = async () => {
@@ -89,7 +68,7 @@ const startStalledServer = async () => {
 it(
   'connects on the first call after the dev server starts',
   async () => {
-    const application = join(workspaceDirectory, 'application')
+    const application = join(workspace.root, 'application')
     const session = await openSession(application)
 
     await expect(listedIds(session)).rejects.toThrow(
@@ -97,13 +76,13 @@ it(
     )
 
     const server = await startApplication(application)
-    await openRuntime(server, 'runtime-application')
+    await openBrowserRuntime(server, 'runtime-application')
 
     await expect
       .poll(() => listedIds(session))
       .toStrictEqual(['runtime-application'])
     expect(await listedIds(session)).toStrictEqual(['runtime-application'])
-    expect(connectionCount(errorLog.mock.calls)).toBe(1)
+    expect(connectionCount()).toBe(1)
   },
   TEST_TIMEOUT,
 )
@@ -111,7 +90,7 @@ it(
 it(
   'follows a dev server restart on the next call',
   async () => {
-    const application = join(workspaceDirectory, 'application')
+    const application = join(workspace.root, 'application')
     const server = await startApplication(application)
     const session = await openSession(application)
     expect(await listedIds(session)).toStrictEqual([])
@@ -119,7 +98,7 @@ it(
     await server.restart()
 
     await expect.poll(() => listedIds(session)).toStrictEqual([])
-    expect(connectionCount(errorLog.mock.calls)).toBe(2)
+    expect(connectionCount()).toBe(2)
   },
   TEST_TIMEOUT,
 )
@@ -147,6 +126,25 @@ it(
 
     expect(relay.connections.count).toBeGreaterThan(0)
     expect(relay.connections.count).toBeLessThanOrEqual(CALL_COUNT)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reports a relay that does not answer a listing and lists nothing from it',
+  async () => {
+    const url = await startRelay(() => {})
+    const client = await Effect.runPromise(
+      makeRelayClient(Effect.succeed(fixedTarget(url))),
+    )
+    onTestFinished(() => Effect.runPromise(client.close))
+
+    expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
+    expect(loggedErrors()).toContainEqual(
+      expect.stringContaining(
+        `[foldkit-devtools-mcp] listing runtimes at ${url}/ failed: `,
+      ),
+    )
   },
   TEST_TIMEOUT,
 )

@@ -1,6 +1,6 @@
 import { connect } from 'node:net'
 import { createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 import { WebSocket } from 'ws'
 
 import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'
@@ -14,14 +14,6 @@ import {
 const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
-
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 const startServer = async (options: FoldkitPluginOptions = {}) => {
   const server = await createServer({
