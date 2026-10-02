@@ -9,16 +9,9 @@ import {
   Schema,
 } from 'effect'
 import { RelayRecord } from 'foldkit/devtools-protocol'
-import {
-  chmod,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from 'node:fs/promises'
+import { chmod, readFile, readdir, writeFile } from 'node:fs/promises'
 import { connect, createServer as createNetServer } from 'node:net'
-import { networkInterfaces, tmpdir } from 'node:os'
+import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   type HmrContext,
@@ -27,15 +20,7 @@ import {
   type ViteDevServer,
   createServer,
 } from 'vite'
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  onTestFinished,
-  vi,
-} from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
@@ -51,7 +36,11 @@ import {
   makeRelayRegistryTrust,
   relayRegistryDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
-import { publishedRecords, waitUntilPublished } from './relayFixtures.ts'
+import {
+  publishedRecords,
+  useRelayRegistry,
+  waitUntilPublished,
+} from './relayFixtures.ts'
 
 const PACKAGE_ROOT = resolve(import.meta.dirname, '..')
 const TEST_TIMEOUT = 20_000
@@ -495,23 +484,7 @@ describe('DevTools MCP relay', () => {
 })
 
 describe('DevTools MCP relay discovery', () => {
-  let registryDirectory = ''
-  let previousRegistryDirectory: string | undefined
-
-  beforeEach(async () => {
-    previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
-    registryDirectory = await mkdtemp(join(tmpdir(), 'foldkit-relay-test-'))
-    process.env[RELAY_DIRECTORY_VARIABLE] = registryDirectory
-  })
-
-  afterEach(async () => {
-    if (previousRegistryDirectory === undefined) {
-      delete process.env[RELAY_DIRECTORY_VARIABLE]
-    } else {
-      process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
-    }
-    await rm(registryDirectory, { recursive: true, force: true })
-  })
+  const directories = useRelayRegistry()
 
   it(
     'publishes a loopback relay of its own for a dev server',
@@ -726,7 +699,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'publishes under XDG_RUNTIME_DIR when no registry directory is configured',
     async () => {
-      const runtimeDirectory = withRuntimeDirectory(registryDirectory)
+      const runtimeDirectory = withRuntimeDirectory(directories.registry)
       delete process.env[RELAY_DIRECTORY_VARIABLE]
       const server = await startMiddlewareServer({})
 
@@ -745,7 +718,7 @@ describe('DevTools MCP relay discovery', () => {
   it.skipIf(process.getuid === undefined)(
     'refuses a registry directory that other users can read',
     async () => {
-      await chmod(registryDirectory, 0o755)
+      await chmod(directories.registry, 0o755)
       const logged = vi.spyOn(console, 'log').mockImplementation(() => {})
       const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
       onTestFinished(() => {
@@ -765,7 +738,7 @@ describe('DevTools MCP relay discovery', () => {
       expect(joinedLogLines(logged.mock.calls)).toContainEqual(
         expect.stringContaining('MCP relay listening at'),
       )
-      expect(await readdir(registryDirectory)).toEqual([])
+      expect(await readdir(directories.registry)).toEqual([])
     },
     TEST_TIMEOUT,
   )
@@ -773,7 +746,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'keeps listening and names the remedy when the registry cannot be written',
     async () => {
-      const notADirectory = join(registryDirectory, 'registry-file')
+      const notADirectory = join(directories.registry, 'registry-file')
       await writeFile(notADirectory, '', 'utf-8')
       process.env[RELAY_DIRECTORY_VARIABLE] = notADirectory
       const logged = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -809,7 +782,7 @@ describe('DevTools MCP relay discovery', () => {
       const info = await Effect.runPromise(
         Effect.gen(function* () {
           const fileSystem = yield* FileSystem.FileSystem
-          return yield* fileSystem.stat(registryDirectory)
+          return yield* fileSystem.stat(directories.registry)
         }).pipe(Effect.provide(NodeServices.layer)),
       )
       const ownedByAnother = {
@@ -834,7 +807,7 @@ describe('DevTools MCP relay discovery', () => {
     const info = await Effect.runPromise(
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
-        return yield* fileSystem.stat(registryDirectory)
+        return yield* fileSystem.stat(directories.registry)
       }).pipe(Effect.provide(NodeServices.layer)),
     )
     const privateMode = { ...info, mode: 0o700, uid: Option.none<number>() }
@@ -879,7 +852,7 @@ describe('DevTools MCP relay discovery', () => {
       await runRegistry(publish(second))
 
       expect(
-        Array.sort(await readdir(registryDirectory), Order.String),
+        Array.sort(await readdir(directories.registry), Order.String),
       ).toStrictEqual(['first.json', 'second.json'])
 
       await runRegistry(retireRelayRecord(second.id))
@@ -896,7 +869,7 @@ describe('DevTools MCP relay discovery', () => {
       const record = await waitUntilPublished(server.config.root)
 
       const raw = await readFile(
-        join(registryDirectory, `${encodeURIComponent(record.id)}.json`),
+        join(directories.registry, `${encodeURIComponent(record.id)}.json`),
         'utf-8',
       )
 
@@ -936,7 +909,7 @@ describe('DevTools MCP relay discovery', () => {
     'removes the record of a dev server that is gone when it publishes',
     async () => {
       await writeFile(
-        join(registryDirectory, 'gone.json'),
+        join(directories.registry, 'gone.json'),
         JSON.stringify({
           version: 1,
           id: 'gone',
@@ -950,7 +923,7 @@ describe('DevTools MCP relay discovery', () => {
       const server = await startMiddlewareServer({})
       const record = await waitUntilPublished(server.config.root)
 
-      expect(await readdir(registryDirectory)).toStrictEqual([
+      expect(await readdir(directories.registry)).toStrictEqual([
         `${encodeURIComponent(record.id)}.json`,
       ])
     },
@@ -960,7 +933,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'keeps a record an older relay republishes while a dead one is removed',
     async () => {
-      const legacyPath = join(registryDirectory, 'legacy.json')
+      const legacyPath = join(directories.registry, 'legacy.json')
       const dead: RelayRecord = {
         version: 1,
         id: 'dead',
@@ -1011,7 +984,7 @@ describe('DevTools MCP relay discovery', () => {
         republished,
       )
       expect(
-        Array.sort(await readdir(registryDirectory), Order.String),
+        Array.sort(await readdir(directories.registry), Order.String),
       ).toStrictEqual(['legacy.json', 'published.json'])
     },
     TEST_TIMEOUT,

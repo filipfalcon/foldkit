@@ -1,6 +1,6 @@
 import { createServer as createHttpServer } from 'node:http'
 import { type Plugin, createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 import { WebSocket } from 'ws'
 
 import { foldkit } from '../src/index.ts'
@@ -16,14 +16,6 @@ const OBSERVATION_WINDOW = 500
 const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
-
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 // NOTE: Models a full-stack dev plugin, such as a Workers runtime, that treats
 // every non-Vite WebSocket upgrade as an application request and destroys the

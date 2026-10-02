@@ -1,5 +1,6 @@
 import {
   Array,
+  Data,
   Duration,
   Effect,
   FileSystem,
@@ -26,7 +27,11 @@ const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
 
 const SECURITY_DESCRIPTOR_PATTERN =
   /^O:(S-1-[0-9-]+|[A-Z]{2})(?:G:(?:S-1-[0-9-]+|[A-Z]{2}))?(?:D:([A-Z_]*)((?:\([^()]*\))*))?(?:S:.*)?$/
+const OWNER_GROUP = 1
+const ACCESS_CONTROL_FLAGS_GROUP = 2
+const ACCESS_CONTROL_ENTRIES_GROUP = 3
 const ACCESS_CONTROL_ENTRY_PATTERN = /\(([^()]*)\)/g
+const ACCESS_CONTROL_ENTRY_GROUP = 1
 const ACCESS_CONTROL_ENTRY_FIELD_COUNT = 6
 const NO_ACCESS_CONTROL_FLAG = 'NO_ACCESS_CONTROL'
 const ALLOW_ENTRY_TYPES: ReadonlyArray<string> = ['A', 'OA']
@@ -44,12 +49,15 @@ const CREATOR_ACCOUNTS: ReadonlyArray<string> = [
   'S-1-3-4',
 ]
 const QUOTED_CSV_FIELD_PATTERN = /"([^"]*)"/g
+const QUOTED_CSV_FIELD_GROUP = 1
 const SECURITY_IDENTIFIER_PATTERN = /^S-1-[0-9-]+$/
 
 type AccessControlEntry = Readonly<{
   type: string
   account: string
 }>
+
+class WindowsProbeFailed extends Data.TaggedError('WindowsProbeFailed')<{}> {}
 
 export type RelayRegistryTrust = Readonly<{
   refusal: (
@@ -84,6 +92,12 @@ export const relayRegistryDirectoryRefusal = (
     },
   })
 
+const capturedGroup = (
+  match: RegExpMatchArray,
+  group: number,
+): Option.Option<string> =>
+  Option.flatMap(Array.get(match, group), Option.fromNullishOr)
+
 const parseAccessControlEntry = (
   entry: string,
 ): Option.Option<AccessControlEntry> => {
@@ -108,8 +122,11 @@ const parseAccessControlEntries = (
 ): Option.Option<ReadonlyArray<AccessControlEntry>> =>
   pipe(
     Array.fromIterable(entries.matchAll(ACCESS_CONTROL_ENTRY_PATTERN)),
-    Array.map(([, entry]) =>
-      Option.flatMap(Option.fromNullishOr(entry), parseAccessControlEntry),
+    Array.map(entry =>
+      Option.flatMap(
+        capturedGroup(entry, ACCESS_CONTROL_ENTRY_GROUP),
+        parseAccessControlEntry,
+      ),
     ),
     Option.all,
   )
@@ -118,24 +135,27 @@ export const windowsDirectoryRefusal = (
   sddl: string,
   currentUserSid: string,
 ): Option.Option<string> => {
-  const descriptor = SECURITY_DESCRIPTOR_PATTERN.exec(sddl)
-  if (descriptor === null) {
+  const maybeDescriptor = Option.fromNullishOr(
+    SECURITY_DESCRIPTOR_PATTERN.exec(sddl),
+  )
+  if (Option.isNone(maybeDescriptor)) {
     return Option.some(UNVERIFIED_OWNERSHIP)
   }
 
-  const [, owner, flags, entries] = descriptor
-  const maybeEntries = Option.flatMap(
-    Option.fromNullishOr(entries),
-    parseAccessControlEntries,
-  )
-  if (
-    owner === undefined ||
-    flags === undefined ||
-    Option.isNone(maybeEntries)
-  ) {
+  const descriptor = maybeDescriptor.value
+  const maybeAccessControl = Option.all([
+    capturedGroup(descriptor, OWNER_GROUP),
+    capturedGroup(descriptor, ACCESS_CONTROL_FLAGS_GROUP),
+    Option.flatMap(
+      capturedGroup(descriptor, ACCESS_CONTROL_ENTRIES_GROUP),
+      parseAccessControlEntries,
+    ),
+  ])
+  if (Option.isNone(maybeAccessControl)) {
     return Option.some(UNVERIFIED_PERMISSIONS)
   }
 
+  const [owner, flags, entries] = maybeAccessControl.value
   if (String.includes(NO_ACCESS_CONTROL_FLAG)(flags)) {
     return Option.some(SHARED_WITH_OTHER_USERS)
   }
@@ -147,7 +167,7 @@ export const windowsDirectoryRefusal = (
 
   const trustedAccounts = [...trustedOwners, ...CREATOR_ACCOUNTS]
   const isSharedWithOtherUsers = Array.some(
-    maybeEntries.value,
+    entries,
     ({ type, account }) =>
       Array.contains(ALLOW_ENTRY_TYPES, type) &&
       !Array.contains(trustedAccounts, account),
@@ -171,12 +191,14 @@ export const powershellPath = (systemRoot: string): string =>
 const currentUserSidFromCsv = (identity: string): Option.Option<string> =>
   pipe(
     Array.fromIterable(identity.matchAll(QUOTED_CSV_FIELD_PATTERN)),
-    Array.map(([, field]) => Option.fromNullishOr(field)),
+    Array.map(field => capturedGroup(field, QUOTED_CSV_FIELD_GROUP)),
     Array.getSomes,
     Array.findLast(field => SECURITY_IDENTIFIER_PATTERN.test(field)),
   )
 
-const probeOutputRefusal = (output: string): Option.Option<string> => {
+const probeOutputRefusal = (
+  output: string,
+): Effect.Effect<Option.Option<string>, WindowsProbeFailed> => {
   const lines = pipe(
     output,
     String.split(/\r?\n/),
@@ -190,18 +212,18 @@ const probeOutputRefusal = (output: string): Option.Option<string> => {
   )
 
   return Option.match(Option.all([maybeDescriptor, maybeCurrentUserSid]), {
-    onNone: () => Option.some(UNVERIFIED_OWNERSHIP),
+    onNone: () => Effect.fail(new WindowsProbeFailed()),
     onSome: ([descriptor, currentUserSid]) =>
-      windowsDirectoryRefusal(descriptor, currentUserSid),
+      Effect.succeed(windowsDirectoryRefusal(descriptor, currentUserSid)),
   })
 }
 
-export const probeWindowsDirectory = (
+const readWindowsDirectoryRefusal = (
   directory: string,
   executable: string,
 ): Effect.Effect<
   Option.Option<string>,
-  never,
+  WindowsProbeFailed,
   ChildProcessSpawner.ChildProcessSpawner
 > =>
   Effect.gen(function* () {
@@ -224,51 +246,85 @@ export const probeWindowsDirectory = (
     )
 
     if (exitCode === 0) {
-      return probeOutputRefusal(output)
+      return yield* probeOutputRefusal(output)
     } else {
-      return Option.some(UNVERIFIED_OWNERSHIP)
+      return yield* Effect.fail(new WindowsProbeFailed())
     }
   }).pipe(
     Effect.scoped,
+    Effect.mapError(() => new WindowsProbeFailed()),
     Effect.timeoutOrElse({
       duration: PROBE_TIMEOUT,
-      orElse: () => Effect.succeed(Option.some(UNVERIFIED_OWNERSHIP)),
+      orElse: () => Effect.fail(new WindowsProbeFailed()),
     }),
+  )
+
+export const probeWindowsDirectory = (
+  directory: string,
+  executable: string,
+): Effect.Effect<
+  Option.Option<string>,
+  never,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
+  readWindowsDirectoryRefusal(directory, executable).pipe(
     Effect.orElseSucceed(() => Option.some(UNVERIFIED_OWNERSHIP)),
   )
 
-export const makeRelayRegistryTrust: Effect.Effect<RelayRegistryTrust> =
+export const makeCachedWindowsProbe = (
+  maybeExecutable: Option.Option<string>,
+): Effect.Effect<
+  (
+    directory: string,
+    info: FileSystem.File.Info,
+  ) => Effect.Effect<
+    Option.Option<string>,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner
+  >
+> =>
   Effect.gen(function* () {
     const verdictsByDirectory = yield* Ref.make(
       HashMap.empty<string, Option.Option<string>>(),
     )
 
-    const probeDirectory = (directory: string) =>
-      Option.match(Option.fromNullishOr(process.env['SystemRoot']), {
-        onNone: () => Effect.succeed(Option.some(UNVERIFIED_OWNERSHIP)),
-        onSome: systemRoot =>
-          probeWindowsDirectory(directory, powershellPath(systemRoot)),
+    const readVerdict = (directory: string) =>
+      Option.match(maybeExecutable, {
+        onNone: () => Effect.fail(new WindowsProbeFailed()),
+        onSome: executable =>
+          readWindowsDirectoryRefusal(directory, executable),
       })
 
-    const windowsRefusal = (directory: string, info: FileSystem.File.Info) =>
+    const cachedVerdict = (directory: string, key: string) =>
+      Effect.gen(function* () {
+        const maybeVerdict = HashMap.get(
+          yield* Ref.get(verdictsByDirectory),
+          key,
+        )
+        if (Option.isSome(maybeVerdict)) {
+          return maybeVerdict.value
+        }
+
+        const verdict = yield* readVerdict(directory)
+        yield* Ref.update(verdictsByDirectory, HashMap.set(key, verdict))
+        return verdict
+      })
+
+    return (directory: string, info: FileSystem.File.Info) =>
       Option.match(info.ino, {
-        onNone: () => probeDirectory(directory),
-        onSome: inode =>
-          Effect.gen(function* () {
-            const key = `${info.dev}:${inode}`
-            const maybeVerdict = HashMap.get(
-              yield* Ref.get(verdictsByDirectory),
-              key,
-            )
-            if (Option.isSome(maybeVerdict)) {
-              return maybeVerdict.value
-            }
+        onNone: () => readVerdict(directory),
+        onSome: inode => cachedVerdict(directory, `${info.dev}:${inode}`),
+      }).pipe(Effect.orElseSucceed(() => Option.some(UNVERIFIED_OWNERSHIP)))
+  })
 
-            const verdict = yield* probeDirectory(directory)
-            yield* Ref.update(verdictsByDirectory, HashMap.set(key, verdict))
-            return verdict
-          }),
-      })
+export const makeRelayRegistryTrust: Effect.Effect<RelayRegistryTrust> =
+  Effect.gen(function* () {
+    const windowsRefusal = yield* makeCachedWindowsProbe(
+      Option.map(
+        Option.fromNullishOr(process.env['SystemRoot']),
+        powershellPath,
+      ),
+    )
 
     const refusal = (directory: string) =>
       Effect.gen(function* () {

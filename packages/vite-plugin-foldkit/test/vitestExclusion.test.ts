@@ -5,15 +5,7 @@ import {
   type UserConfig,
   createServer,
 } from 'vite'
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  onTestFinished,
-  vi,
-} from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 
 import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'
 import {
@@ -25,15 +17,6 @@ import {
 const SETTLE = 500
 
 const directories = useRelayRegistry()
-let log = vi.spyOn(console, 'log')
-
-beforeEach(() => {
-  log = vi.spyOn(console, 'log').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 const vitestRuns: ReadonlyArray<
   Readonly<{
@@ -88,7 +71,10 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
       }
 
       const relayLines = () =>
-        log.mock.calls.filter(call => String(call[0]).includes('MCP relay'))
+        vi
+          .mocked(console.log)
+          .mock.calls.map(call => call.map(String).join(' '))
+          .filter(line => line.includes('MCP relay'))
 
       it('starts no relay by default', async () => {
         const server = await startServer({})

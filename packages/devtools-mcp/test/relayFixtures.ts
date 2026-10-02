@@ -1,9 +1,10 @@
-import { ConfigProvider, Effect, Option } from 'effect'
+import { Array, ConfigProvider, Effect, Option } from 'effect'
 import { Request, type Response } from 'foldkit/devtools-protocol'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Plugin, type ViteDevServer, createServer } from 'vite'
-import { expect, onTestFinished } from 'vitest'
+import { beforeEach, expect, onTestFinished, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
@@ -11,12 +12,16 @@ import { foldkit } from '@foldkit/vite-plugin'
 
 import { type RelayClient, makeRelayClient } from '../src/relayClient.ts'
 import { resolveRelayTargets } from '../src/relayLocation.ts'
-import { makeRelayRegistryTrust } from '../src/relayRegistryTrust.ts'
+import {
+  type RelayRegistryReader,
+  makeRelayRegistryReader,
+} from '../src/relayRegistry.ts'
 
 export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
+export const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
 const DECLINE_DELAY = 50
-const RUNTIME_RESPONSE_DELAY = 100
+const RUNTIME_RESPONSE_DELAY = 2 * DECLINE_DELAY
 
 export const runWithNode = <A, E>(
   effect: Effect.Effect<A, E, NodeServices.NodeServices>,
@@ -60,20 +65,70 @@ const serverPort = (server: ViteDevServer): number => {
   return address.port
 }
 
-const resolveTargetsFor = (projectRoot: string) =>
-  Effect.flatMap(makeRelayRegistryTrust, trust =>
-    resolveRelayTargets(
-      {
-        maybeConfiguredPort: Option.none(),
-        maybeConfiguredHost: Option.none(),
-        projectRoot,
-      },
-      trust,
+const restoreVariable = (name: string, previousValue: string | undefined) => {
+  if (previousValue === undefined) {
+    delete process.env[name]
+  } else {
+    process.env[name] = previousValue
+  }
+}
+
+// NOTE: Vitest runs afterEach hooks before onTestFinished callbacks, so an
+// afterEach cleanup would remove the directories and restore the variables
+// while the dev servers a test closes in onTestFinished still use them.
+// Registered first, this cleanup runs after every callback the test adds.
+export const useWorkspace = () => {
+  const workspace = { root: '', registry: '' }
+
+  beforeEach(async ({ onTestFinished }) => {
+    const previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
+    const previousRuntimeDirectory = process.env[RUNTIME_DIRECTORY_VARIABLE]
+    workspace.root = await realpath(
+      await mkdtemp(join(tmpdir(), 'foldkit-workspace-')),
+    )
+    workspace.registry = await mkdtemp(join(tmpdir(), 'foldkit-mcp-relay-'))
+    process.env[RELAY_DIRECTORY_VARIABLE] = workspace.registry
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    onTestFinished(async () => {
+      vi.restoreAllMocks()
+      restoreVariable(RELAY_DIRECTORY_VARIABLE, previousRegistryDirectory)
+      restoreVariable(RUNTIME_DIRECTORY_VARIABLE, previousRuntimeDirectory)
+      await rm(workspace.registry, { recursive: true, force: true })
+      await rm(workspace.root, { recursive: true, force: true })
+    })
+  })
+
+  return workspace
+}
+
+// NOTE: With no relay published, the MCP server falls back to the fixed port
+// 9988, where a developer may run a dev server of their own. Sessions here
+// reach only discovered relays, so such a server cannot answer them.
+const discoveredTargets = (
+  projectRoot: string,
+  registryReader: RelayRegistryReader,
+) =>
+  resolveRelayTargets(
+    {
+      maybeConfiguredPort: Option.none(),
+      maybeConfiguredHost: Option.none(),
+      projectRoot,
+    },
+    registryReader,
+  ).pipe(
+    Effect.map(
+      Array.filter(({ maybeProjectRoot }) => Option.isSome(maybeProjectRoot)),
     ),
   )
 
 const publishedRelayCount = (root: string) =>
-  runWithNode(resolveTargetsFor(root)).then(
+  runWithNode(
+    Effect.flatMap(makeRelayRegistryReader, registryReader =>
+      discoveredTargets(root, registryReader),
+    ),
+  ).then(
     targets =>
       targets.filter(({ maybeProjectRoot }) =>
         Option.contains(maybeProjectRoot, root),
@@ -99,10 +154,7 @@ export const startApplication = async (
   return server
 }
 
-// NOTE: Stands in for the browser bridge of one application: it announces a
-// Runtime over Vite's HMR socket and answers each replay request addressed to
-// that Runtime, slower than the catch-all plugin declines an upgrade.
-export const openRuntime = async (
+export const openBrowserRuntime = async (
   server: ViteDevServer,
   connectionId: string,
 ): Promise<void> => {
@@ -154,17 +206,8 @@ export const openSession = async (
   projectRoot: string,
 ): Promise<RelayClient> => {
   const client = await runWithNode(
-    Effect.flatMap(makeRelayRegistryTrust, trust =>
-      makeRelayClient(
-        resolveRelayTargets(
-          {
-            maybeConfiguredPort: Option.none(),
-            maybeConfiguredHost: Option.none(),
-            projectRoot,
-          },
-          trust,
-        ),
-      ),
+    Effect.flatMap(makeRelayRegistryReader, registryReader =>
+      makeRelayClient(discoveredTargets(projectRoot, registryReader)),
     ),
   )
   onTestFinished(() => Effect.runPromise(client.close))
@@ -195,7 +238,8 @@ export const replay = (
       ),
   )
 
-export const connectionCount = (
-  calls: ReadonlyArray<ReadonlyArray<unknown>>,
-): number =>
-  calls.filter(call => String(call[0]).includes('] connected to ')).length
+export const loggedErrors = (): ReadonlyArray<string> =>
+  vi.mocked(console.error).mock.calls.map(call => call.map(String).join(' '))
+
+export const connectionCount = (): number =>
+  loggedErrors().filter(line => line.includes('] connected to ')).length
