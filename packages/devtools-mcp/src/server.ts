@@ -18,7 +18,7 @@ import {
   loadSettings,
   resolveRelayTargets,
 } from './relayLocation.js'
-import { makeRelayRegistryTrust } from './relayRegistryTrust.js'
+import { makeRelayRegistryReader } from './relayRegistry.js'
 import { buildTools } from './tools.js'
 
 const main = Effect.gen(function* () {
@@ -33,9 +33,9 @@ const main = Effect.gen(function* () {
         `[foldkit-devtools-mcp] connecting to the DevTools MCP relay at ${url}`,
       ),
   })
-  const trust = yield* makeRelayRegistryTrust
+  const registryReader = yield* makeRelayRegistryReader
   const relayClient = yield* makeRelayClient(
-    resolveRelayTargets(settings, trust),
+    resolveRelayTargets(settings, registryReader),
   )
   const tools = buildTools(relayClient)
   const toolsByName = HashMap.fromIterable(

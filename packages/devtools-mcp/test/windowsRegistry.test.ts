@@ -1,33 +1,29 @@
 import { Effect } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import { execFileSync } from 'node:child_process'
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  realpath,
-  rm,
-  writeFile,
-} from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { join, win32 } from 'node:path'
 import { createServer } from 'vite'
-import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest'
+import { expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '@foldkit/vite-plugin'
 
-import { discoverRelays } from '../src/relayRegistry.ts'
-import { makeRelayRegistryTrust } from '../src/relayRegistryTrust.ts'
+import {
+  discoverRelays,
+  makeRelayRegistryReader,
+} from '../src/relayRegistry.ts'
 import {
   RELAY_DIRECTORY_VARIABLE,
+  RUNTIME_DIRECTORY_VARIABLE,
   listedIds,
-  openRuntime,
+  loggedErrors,
+  openBrowserRuntime,
   openSession,
   runWithNode,
   startApplication,
+  useWorkspace,
 } from './relayFixtures.ts'
 
-const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 const USERS_GROUP_SID = 'S-1-5-32-545'
 const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
 const TEST_TIMEOUT = 30_000
@@ -40,43 +36,16 @@ const icaclsPath = (): string => {
   return win32.join(systemRoot, 'System32', 'icacls.exe')
 }
 
-let workspaceDirectory = ''
-let previousRegistryDirectory: string | undefined
-let previousRuntimeDirectory: string | undefined
-
-beforeEach(async () => {
-  previousRegistryDirectory = process.env[RELAY_DIRECTORY_VARIABLE]
-  previousRuntimeDirectory = process.env[RUNTIME_DIRECTORY_VARIABLE]
-  workspaceDirectory = await realpath(
-    await mkdtemp(join(tmpdir(), 'foldkit-workspace-')),
-  )
-})
-
-afterEach(async () => {
-  vi.restoreAllMocks()
-  if (previousRegistryDirectory === undefined) {
-    delete process.env[RELAY_DIRECTORY_VARIABLE]
-  } else {
-    process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
-  }
-  if (previousRuntimeDirectory === undefined) {
-    delete process.env[RUNTIME_DIRECTORY_VARIABLE]
-  } else {
-    process.env[RUNTIME_DIRECTORY_VARIABLE] = previousRuntimeDirectory
-  }
-  await rm(workspaceDirectory, { recursive: true, force: true })
-})
+const workspace = useWorkspace()
 
 it.runIf(process.platform === 'win32')(
   'publishes under the temporary directory and discovers through it',
   async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
     delete process.env[RELAY_DIRECTORY_VARIABLE]
     delete process.env[RUNTIME_DIRECTORY_VARIABLE]
-    const application = join(workspaceDirectory, 'application')
+    const application = join(workspace.root, 'application')
     const server = await startApplication(application)
-    await openRuntime(server, 'runtime-application')
+    await openBrowserRuntime(server, 'runtime-application')
     const session = await openSession(application)
 
     await expect
@@ -89,10 +58,8 @@ it.runIf(process.platform === 'win32')(
 it.runIf(process.platform === 'win32')(
   'neither publishes to nor reads from a directory other users can read',
   async () => {
-    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    const registryDirectory = join(workspaceDirectory, 'registry')
-    const application = join(workspaceDirectory, 'application')
+    const registryDirectory = join(workspace.root, 'registry')
+    const application = join(workspace.root, 'application')
     await mkdir(registryDirectory)
     await mkdir(application)
     execFileSync(icaclsPath(), [
@@ -125,13 +92,13 @@ it.runIf(process.platform === 'win32')(
     await server.listen()
 
     await expect
-      .poll(() => reported.mock.calls.map(call => call.join(' ')))
+      .poll(loggedErrors)
       .toContainEqual(expect.stringContaining(SHARED_WITH_OTHER_USERS))
     expect(await readdir(registryDirectory)).toStrictEqual(['planted.json'])
     expect(
       await runWithNode(
-        Effect.flatMap(makeRelayRegistryTrust, trust =>
-          discoverRelays(application, trust),
+        Effect.flatMap(makeRelayRegistryReader, registryReader =>
+          discoverRelays(application, registryReader),
         ),
       ),
     ).toStrictEqual([])

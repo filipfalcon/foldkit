@@ -16,8 +16,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
-import { discoverRelays, isWithinRoot } from '../src/relayRegistry.ts'
-import { makeRelayRegistryTrust } from '../src/relayRegistryTrust.ts'
+import {
+  type RelayRegistryReader,
+  discoverRelays,
+  isWithinRoot,
+  makeRelayRegistryReader,
+} from '../src/relayRegistry.ts'
 
 const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
@@ -76,10 +80,18 @@ describe('discoverRelays', () => {
 
   const discover = (projectRoot: string) =>
     runWithNode(
-      Effect.flatMap(makeRelayRegistryTrust, trust =>
-        discoverRelays(projectRoot, trust),
+      Effect.flatMap(makeRelayRegistryReader, registryReader =>
+        discoverRelays(projectRoot, registryReader),
       ),
     )
+
+  const discoverWith = (
+    registryReader: RelayRegistryReader,
+    projectRoot: string,
+  ) => runWithNode(discoverRelays(projectRoot, registryReader))
+
+  const refusalLine = () =>
+    `[foldkit-devtools-mcp] ignoring the relay registry at ${registryDirectory}: it is readable or writable by other users`
 
   const discoverWithReplacementsDuringCleanup = (
     projectRoot: string,
@@ -89,7 +101,7 @@ describe('discoverRelays', () => {
     runWithNode(
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
-        const trust = yield* makeRelayRegistryTrust
+        const registryReader = yield* makeRelayRegistryReader
         let didStartCleanup = false
 
         const publishBeforeCleanup = () =>
@@ -121,7 +133,7 @@ describe('discoverRelays', () => {
           },
         }
 
-        return yield* discoverRelays(projectRoot, trust).pipe(
+        return yield* discoverRelays(projectRoot, registryReader).pipe(
           Effect.provideService(FileSystem.FileSystem, interceptingFileSystem),
         )
       }),
@@ -275,12 +287,34 @@ describe('discoverRelays', () => {
       const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
       await publish('planted', record('/workspace/app', 4900))
       await chmod(registryDirectory, SHARED_DIRECTORY_MODE)
+      const registryReader = await Effect.runPromise(makeRelayRegistryReader)
+
+      expect(
+        await discoverWith(registryReader, '/workspace/app'),
+      ).toStrictEqual([])
+      expect(
+        await discoverWith(registryReader, '/workspace/app'),
+      ).toStrictEqual([])
+
+      expect(reported.mock.calls.map(call => call.join(' '))).toStrictEqual([
+        refusalLine(),
+      ])
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'reports a refused registry directory once in each session',
+    async () => {
+      const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+      await publish('planted', record('/workspace/app', 4910))
+      await chmod(registryDirectory, SHARED_DIRECTORY_MODE)
 
       expect(await discover('/workspace/app')).toStrictEqual([])
       expect(await discover('/workspace/app')).toStrictEqual([])
 
       expect(reported.mock.calls.map(call => call.join(' '))).toStrictEqual([
-        `[foldkit-devtools-mcp] ignoring the relay registry at ${registryDirectory}: it is readable or writable by other users`,
+        refusalLine(),
+        refusalLine(),
       ])
     },
   )
