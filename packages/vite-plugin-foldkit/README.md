@@ -213,7 +213,7 @@ Because the relay listens on loopback, an agent on another host cannot reach it.
 plugins: [foldkit({ devToolsMcpPort: 9988 })]
 ```
 
-Set `FOLDKIT_DEVTOOLS_MCP_PORT` to the same value for the MCP server, and `FOLDKIT_DEVTOOLS_MCP_HOST` to the dev server's host when the agent runs elsewhere. A fixed port opens a separate socket on every interface and does not require a token.
+Set `FOLDKIT_DEVTOOLS_MCP_PORT` to the same value for the MCP server, and `FOLDKIT_DEVTOOLS_MCP_HOST` to the dev server's host when the agent runs elsewhere. A fixed port opens a separate socket on every interface and does not require a token. Do not use a fixed port on a shared or untrusted network.
 
 `devToolsMcpPort: false` disables the relay. The relay does not start during Vitest runs or in production builds.
 
