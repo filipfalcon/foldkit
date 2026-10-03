@@ -100,7 +100,8 @@ export type FoldkitPluginOptions = Readonly<{
    *
    * A number starts an unauthenticated listener on that port on every
    * interface; set `FOLDKIT_DEVTOOLS_MCP_PORT` in the MCP server to match.
-   * `false` disables the relay. Vitest never starts it.
+   * Do not use a fixed port on a shared or untrusted network. `false`
+   * disables the relay. Vitest never starts it.
    */
   devToolsMcpPort?: number | false
   /**
@@ -921,7 +922,7 @@ const reportRelayBindFailed = (
 }
 
 const unpublishedRelayMessage = (reason: string): string =>
-  `[foldkit:devTools] Cannot publish the MCP relay address: ${reason}. Set matching devToolsMcpPort and FOLDKIT_DEVTOOLS_MCP_PORT values for MCP access, or set FOLDKIT_DEVTOOLS_RELAY_DIRECTORY to a directory private to your user.`
+  `[foldkit:devTools] Cannot publish the MCP relay address: ${reason}. Set matching devToolsMcpPort and FOLDKIT_DEVTOOLS_MCP_PORT values for MCP access on a trusted network, or set FOLDKIT_DEVTOOLS_RELAY_DIRECTORY to a directory private to your user.`
 
 const publishRelay = (root: string, relay: Relay, trust: RelayRegistryTrust) =>
   Effect.gen(function* () {
