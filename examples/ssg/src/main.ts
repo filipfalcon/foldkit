@@ -1,4 +1,4 @@
-import { Effect, Match, Option, Schema } from 'effect'
+import { Effect, Equal, Match, Option, Schema } from 'effect'
 import { Command, Render, Runtime, type Update } from 'foldkit'
 import { type Document, type Html, type HtmlBuilder } from 'foldkit/html'
 import { defineMessageUnion } from 'foldkit/message'
@@ -19,7 +19,6 @@ import { AppRoute, aboutRouter, homeRouter, urlToAppRoute } from './route'
 
 export const Model = Schema.Struct({
   route: AppRoute,
-  url: Url,
   count: Schema.Number,
 })
 export type Model = typeof Model.Type
@@ -45,7 +44,7 @@ export const init: Runtime.RoutingApplicationInit<Model, Message> = (
   url: Url,
   loadType: LoadType,
 ) => ({
-  model: { route: urlToAppRoute(url), url, count: 0 },
+  model: { route: urlToAppRoute(url), count: 0 },
   commands: [
     DisableBrowserScrollRestoration(),
     ...Match.value(loadType).pipe(
@@ -86,7 +85,7 @@ const DisableBrowserScrollRestoration = Command.define(
   },
 )
 
-const ScrollToTop = Command.define('ScrollToTop', {
+export const ScrollToTop = Command.define('ScrollToTop', {
   messages: [Message.CompletedScrollToTop],
   execute: Effect.sync(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -94,7 +93,7 @@ const ScrollToTop = Command.define('ScrollToTop', {
   }),
 })
 
-const RestoreScrollPosition = Command.define('RestoreScrollPosition', {
+export const RestoreScrollPosition = Command.define('RestoreScrollPosition', {
   args: ScrollPosition.fields,
   messages: [Message.CompletedRestoreScrollPosition],
   execute: ({ x, y }) =>
@@ -115,8 +114,8 @@ const restoreScrollPositionCommands = (
 type UpdateReturn = Update.Return<Model, Message>
 
 const scrollCommandsForUrlChange = (
-  currentUrl: Url,
-  nextUrl: Url,
+  currentRoute: AppRoute,
+  nextRoute: AppRoute,
   urlChangeType: UrlChangeType,
 ): ReadonlyArray<Command.Command<Message>> =>
   UrlChangeType.match(urlChangeType, {
@@ -124,7 +123,7 @@ const scrollCommandsForUrlChange = (
       Option.toArray(
         Option.liftPredicate(
           ScrollToTop(),
-          () => nextUrl.pathname !== currentUrl.pathname,
+          () => !Equal.equals(nextRoute, currentRoute),
         ),
       ),
     Replace: () => [],
@@ -148,13 +147,18 @@ export const update = (model: Model, message: Message) =>
           commands: [LoadExternal({ href })],
         }),
       }),
-    ChangedUrl: ({ url, urlChangeType }) => ({
-      model: modifyFields(model, {
-        route: () => urlToAppRoute(url),
-        url: () => url,
-      }),
-      commands: scrollCommandsForUrlChange(model.url, url, urlChangeType),
-    }),
+    ChangedUrl: ({ url, urlChangeType }) => {
+      const nextRoute = urlToAppRoute(url)
+
+      return {
+        model: modifyFields(model, { route: () => nextRoute }),
+        commands: scrollCommandsForUrlChange(
+          model.route,
+          nextRoute,
+          urlChangeType,
+        ),
+      }
+    },
     CompletedNavigateInternal: () => ({ model }),
     CompletedLoadExternal: () => ({ model }),
     CompletedDisableBrowserScrollRestoration: () => ({ model }),

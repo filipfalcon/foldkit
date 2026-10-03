@@ -1,4 +1,4 @@
-import { Array, Effect, Match, Option, Schema } from 'effect'
+import { Array, Effect, Equal, Match, Option, Schema } from 'effect'
 import { Command, Render, Runtime, Subscription, Update } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { defineMessageUnion } from 'foldkit/message'
@@ -37,7 +37,6 @@ export { AppRoute } from './route'
 
 export const Model = Schema.Struct({
   route: AppRoute,
-  url: Url,
   peoplePage: People.Model,
 })
 
@@ -76,7 +75,7 @@ export const init: Runtime.RoutingApplicationInit<Model, Message> = (
   )
 
   const peopleInit = Update.foldChildInit(People.init(initialPeopleRoute), {
-    toParentModel: peoplePage => ({ route, url, peoplePage }),
+    toParentModel: peoplePage => ({ route, peoplePage }),
     toParentMessage: message => Message.GotPeopleMessage({ message }),
   })
 
@@ -176,15 +175,19 @@ const foldPeople = foldPeopleEntry(People.update)
 
 const foldPeopleRouteChanged = foldPeopleEntry(People.informRouteChanged)
 
-const setRouteAndUrl =
-  (nextRoute: AppRoute, nextUrl: Url): Update.Step<Model, Message> =>
-  model => ({
-    model: modifyFields(model, { route: () => nextRoute, url: () => nextUrl }),
-  })
+const setRoute =
+  (nextRoute: AppRoute): Update.Step<Model, Message> =>
+  model => ({ model: modifyFields(model, { route: () => nextRoute }) })
+
+const isPeopleRoute = AppRoute.isAnyOf(['People'])
+
+const isSamePage = (currentRoute: AppRoute, nextRoute: AppRoute): boolean =>
+  Equal.equals(currentRoute, nextRoute) ||
+  (isPeopleRoute(currentRoute) && isPeopleRoute(nextRoute))
 
 const scrollCommandsForUrlChange = (
-  currentUrl: Url,
-  nextUrl: Url,
+  currentRoute: AppRoute,
+  nextRoute: AppRoute,
   urlChangeType: UrlChangeType,
 ): ReadonlyArray<Command.Command<Message>> =>
   UrlChangeType.match(urlChangeType, {
@@ -192,7 +195,7 @@ const scrollCommandsForUrlChange = (
       Option.toArray(
         Option.liftPredicate(
           ScrollToTop(),
-          () => nextUrl.pathname !== currentUrl.pathname,
+          () => !isSamePage(currentRoute, nextRoute),
         ),
       ),
     Replace: () => [],
@@ -233,11 +236,15 @@ export const update = (model: Model, message: Message) =>
 
       const scrollToRoute: Update.Step<Model, Message> = stepModel => ({
         model: stepModel,
-        commands: scrollCommandsForUrlChange(model.url, url, urlChangeType),
+        commands: scrollCommandsForUrlChange(
+          model.route,
+          nextRoute,
+          urlChangeType,
+        ),
       })
 
       return Update.combine(model, [
-        setRouteAndUrl(nextRoute, url),
+        setRoute(nextRoute),
         ...routeSteps,
         scrollToRoute,
       ])

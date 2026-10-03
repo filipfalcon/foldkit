@@ -184,7 +184,7 @@ The [Route Transition API reference](/api-reference/route-transition) lists ever
 
 ## Scroll Position
 
-Foldkit tells update how the reader arrived at a history entry and, when they reload the page or return to an earlier entry, where they were scrolled on it. Foldkit does not scroll the window itself. It leaves the decision to update, which returns the Command that scrolls, for example to the saved position after Back, or to the top after a link to a new page.
+Foldkit tells update how the reader arrived at a history entry and, when they reload the page or return to an earlier entry, where they were scrolled on it. Foldkit never scrolls the window itself and never changes `history.scrollRestoration`. It leaves the decision to update, which returns the Command that scrolls, for example to the saved position after Back, or to the top after a link to a new page.
 
 `routing.onUrlChange` receives a `UrlChangeType` after the URL:
 
@@ -204,14 +204,16 @@ Only the first routing `init` in a page receives `Reload` or `Traverse`. Any lat
 
 One case looks like Back without being Back. The browser reports every `popstate` the same way, so a fragment navigation that did not go through `pushUrl`, such as `location.hash = '#details'`, arrives as `Traverse` although it created a new entry. That entry has no recorded position, so its `maybeSavedScrollPosition` is `Option.none()`.
 
-Foldkit never scrolls the window itself and never changes `history.scrollRestoration`. Pass the `UrlChangeType` into your Message from the routing config, `onUrlChange: (url, urlChangeType) => Message.ChangedUrl({ url, urlChangeType })`, and match on it where the route changes:
+Pass the `UrlChangeType` into your Message from the routing config, `onUrlChange: (url, urlChangeType) => Message.ChangedUrl({ url, urlChangeType })`, and match on it where the route changes:
 
 ::Snippet{name="routingScrollPosition" label="scroll position example"}
 
 `RestoreScrollPosition` waits for `Render.afterCommit` before it scrolls. Without that wait, it scrolls the page that is still on screen, and returning to a longer page stops short at the bottom of the shorter one.
 
+The example decides whether a link leads to a new page by comparing routes. A route that carries a query, such as a search, then counts as a new page whenever the query changes. The [Routing example](/example-apps/routing) treats every People route as one page, so a new search keeps the position.
+
 The example turns the browser's own restoration off from `init`. With the default, `auto`, the browser restores the position itself during Back and Forward, while the page the reader is leaving is still on screen. That page jumps for one frame before the new route renders, and when the page being returned to is longer, the position is cut off at the bottom of the page being left. Setting `manual` stops both. It also stops the browser restoring after a reload, which is why `init` restores on `Reload`.
 
 Because the restore is a Command update returns, update can also wait with it. If the page the reader returns to renders its content only after a fetch, the saved position may be further down than the page is tall until the data arrives. Keep the position in the Model and return the restore when the data has loaded.
 
-An app that hydrates server-rendered HTML needs one more rule. The server has no history entry, so its `init` always receives `LoadType.Push()`, while the browser's `init` receives the real `LoadType`. Keep what the view renders independent of the `LoadType`, and act on it only through Commands. Otherwise the browser's first render differs from the HTML the server sent.
+An app that hydrates server-rendered HTML needs two more rules. The server has no history entry, so its `init` always receives `LoadType.Push()`, while the browser's `init` receives the real `LoadType`. Keep what the view renders independent of the `LoadType`, and act on it only through Commands. Otherwise the browser's first render differs from the HTML the server sent. The server also renders from its own URL, such as `http://localhost/about` during a static build, so keep the full URL out of the Model. Hydration needs the server and the browser to build the same first Model, which is why the example keeps only the route.

@@ -17,17 +17,13 @@ import {
   update,
 } from './main'
 
+const home = Model.make({ route: AppRoute.Home(), counter: Counter.init })
+
 const urlOrThrow = (raw: string) =>
   Option.getOrThrowWith(
     fromString(raw),
     () => new Error(`Failed to parse url: ${raw}`),
   )
-
-const home = Model.make({
-  route: AppRoute.Home(),
-  url: urlOrThrow('http://localhost/'),
-  counter: Counter.init,
-})
 
 const resolveScrollToTop = () =>
   Command.resolve(ScrollToTop, Message.CompletedScrollToTop())

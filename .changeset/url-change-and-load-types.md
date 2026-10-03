@@ -18,4 +18,4 @@ const message = routing.onUrlChange(url, UrlChangeType.Push())
 
 `renderToString` from `foldkit/experimental/server` passes `LoadType.Push()` to a routing `init`, and its `RoutingApplicationConfig` and `RoutingApplicationConfigWithFlags` types carry the new `init` parameter.
 
-The Scroll Position section of the routing guide shows how to scroll to the top on `Push` and restore the position on `Reload` and `Traverse`. The `create-foldkit-app` SSG template follows that pattern, so a new SSG app restores the position on Back, Forward, and reload, and so do the routing, personal blog, and SSG examples.
+The Scroll Position section of the routing guide shows how to scroll to the top on `Push` and restore the position on `Reload` and `Traverse`. In `create-foldkit-app`, the SSG template and the `routing` starter (`--example routing`) follow that pattern, so a new app created from either restores the position on Back, Forward, and reload. The personal blog and SSG examples follow it too.

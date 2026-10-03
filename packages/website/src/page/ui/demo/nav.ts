@@ -9,8 +9,13 @@ import type { Message } from '../message'
 
 // DEMO CONTENT
 
-const NavDemoSection = Schema.Literals(['Home', 'Search', 'Library', 'Profile'])
-type NavDemoSection = typeof NavDemoSection.Type
+export const NavDemoSection = Schema.Literals([
+  'Home',
+  'Search',
+  'Library',
+  'Profile',
+])
+export type NavDemoSection = typeof NavDemoSection.Type
 
 const demoSections: ReadonlyArray<NavDemoSection> = [
   'Home',
@@ -26,7 +31,7 @@ const defaultSection: NavDemoSection = 'Home'
 const sectionToHref = (section: NavDemoSection): string =>
   `?${NAV_SECTION_QUERY_KEY}=${section.toLowerCase()}`
 
-const sectionFromUrl = (url: Url): NavDemoSection =>
+export const navDemoSectionFromUrl = (url: Url): NavDemoSection =>
   pipe(
     url.search,
     Option.flatMapNullishOr(search =>
@@ -74,9 +79,10 @@ const urlBar = (currentSection: NavDemoSection): Html =>
     ],
   )
 
-export const basicDemo = (url: Url, h: HtmlBuilder<Message>) => {
-  const currentSection = sectionFromUrl(url)
-
+export const basicDemo = (
+  currentSection: NavDemoSection,
+  h: HtmlBuilder<Message>,
+) => {
   return [
     h.div(
       [h.Class('w-full max-w-lg mx-auto')],

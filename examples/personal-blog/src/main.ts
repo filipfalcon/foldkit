@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { Effect, Match, Option, Schema } from 'effect'
+import { Effect, Equal, Match, Option, Schema } from 'effect'
 import { Command, Render, Runtime, Update } from 'foldkit'
 import { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { defineMessageUnion } from 'foldkit/message'
@@ -27,7 +27,6 @@ export { AppRoute } from './route'
 
 export const Model = Schema.Struct({
   route: Route.AppRoute,
-  url: Url,
   counter: Counter.Model,
 })
 export type Model = typeof Model.Type
@@ -53,7 +52,7 @@ export const init: Runtime.RoutingApplicationInit<Model, Message> = (
   url: Url,
   loadType: LoadType,
 ) => ({
-  model: { route: Route.urlToAppRoute(url), url, counter: Counter.init },
+  model: { route: Route.urlToAppRoute(url), counter: Counter.init },
   commands: [
     DisableBrowserScrollRestoration(),
     ...Match.value(loadType).pipe(
@@ -131,8 +130,8 @@ const foldCounter = Update.foldChild({
 })
 
 const scrollCommandsForUrlChange = (
-  currentUrl: Url,
-  nextUrl: Url,
+  currentRoute: Route.AppRoute,
+  nextRoute: Route.AppRoute,
   urlChangeType: UrlChangeType,
 ): ReadonlyArray<Command.Command<Message>> =>
   UrlChangeType.match(urlChangeType, {
@@ -140,7 +139,7 @@ const scrollCommandsForUrlChange = (
       Option.toArray(
         Option.liftPredicate(
           ScrollToTop(),
-          () => nextUrl.pathname !== currentUrl.pathname,
+          () => !Equal.equals(nextRoute, currentRoute),
         ),
       ),
     Replace: () => [],
@@ -166,8 +165,12 @@ export const update = (model: Model, message: Message) =>
       const nextRoute = Route.urlToAppRoute(url)
 
       return {
-        model: modifyFields(model, { route: () => nextRoute, url: () => url }),
-        commands: scrollCommandsForUrlChange(model.url, url, urlChangeType),
+        model: modifyFields(model, { route: () => nextRoute }),
+        commands: scrollCommandsForUrlChange(
+          model.route,
+          nextRoute,
+          urlChangeType,
+        ),
       }
     },
 

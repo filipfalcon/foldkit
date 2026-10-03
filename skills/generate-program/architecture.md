@@ -498,7 +498,7 @@ The runtime never scrolls the window. An app that manages the scroll position fo
 
 - init returns a Command that sets `history.scrollRestoration = 'manual'`, and restores `maybeSavedScrollPosition` on `Reload` or `Traverse`.
 - `ChangedUrl` carries `urlChangeType`.
-- update scrolls to the top on `Push` when the pathname changed, and restores `maybeSavedScrollPosition` on `Traverse`.
+- update scrolls to the top on `Push` when the route changed, comparing routes rather than keeping the URL in the Model, and restores `maybeSavedScrollPosition` on `Traverse`.
 - Each restore is a Command that yields `Render.afterCommit` before `window.scrollTo`.
 
 For the canonical update-handler shapes (the exact `UrlRequest` tag names, how to dispatch `pushUrl` vs an external load Command, and how to derive the route from a `Url`), see `repos/foldkit/examples/routing/src/main.ts`.

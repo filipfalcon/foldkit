@@ -331,6 +331,47 @@ describe('application', () => {
     )
   })
 
+  test('init builds the same Model from the build URL and the reader URL', () => {
+    const buildInit = init(
+      flags,
+      parseUrl('http://localhost/newsletter'),
+      LoadType.Push(),
+    )
+    const readerInit = init(
+      flags,
+      parseUrl('https://foldkit.dev/newsletter/?ref=social#subscribe'),
+      LoadType.Reload({
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 2400 }),
+      }),
+    )
+
+    expect(readerInit.model).toStrictEqual(buildInit.model)
+  })
+
+  test('a link to another Nav demo section keeps the scroll position and shows that section', () => {
+    story(
+      update,
+      given(initAt(parseUrl('https://foldkit.dev/ui/nav'))),
+      message(
+        Message.ChangedUrl({
+          url: parseUrl('https://foldkit.dev/ui/nav?section=library'),
+          urlChangeType: UrlChangeType.Push(),
+        }),
+      ),
+      model(model => {
+        expect(model.navDemoSection).toBe('Library')
+      }),
+      Command.expectNone(),
+    )
+  })
+
+  test('the Nav demo shows the section in the URL it loads with', () => {
+    expect(
+      initAt(parseUrl('https://foldkit.dev/ui/nav?section=profile'))
+        .navDemoSection,
+    ).toBe('Profile')
+  })
+
   test('late Home Messages are ignored while Home is absent', () => {
     story(
       update,

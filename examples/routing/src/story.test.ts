@@ -23,12 +23,6 @@ import {
   peopleRouter,
 } from './route'
 
-const urlOrThrow = (raw: string) =>
-  Option.getOrThrowWith(
-    fromString(raw),
-    () => new Error(`Failed to parse url: ${raw}`),
-  )
-
 const peoplePageWith = (searchInput: string) =>
   People.Model.make({
     searchInput,
@@ -43,19 +37,22 @@ const initialPeoplePage = peoplePageWith('')
 
 const home = Model.make({
   route: AppRoute.Home(),
-  url: urlOrThrow('http://localhost/'),
   peoplePage: initialPeoplePage,
 })
 
-const onPeople = (searchInput: string) => {
-  const searchText = Option.liftPredicate(String.isNonEmpty)(searchInput)
-
-  return Model.make({
-    route: AppRoute.People({ searchText }),
-    url: urlOrThrow(`http://localhost${peopleRouter({ searchText })}`),
+const onPeople = (searchInput: string) =>
+  Model.make({
+    route: AppRoute.People({
+      searchText: Option.liftPredicate(String.isNonEmpty)(searchInput),
+    }),
     peoplePage: peoplePageWith(searchInput),
   })
-}
+
+const urlOrThrow = (raw: string) =>
+  Option.getOrThrowWith(
+    fromString(raw),
+    () => new Error(`Failed to parse url: ${raw}`),
+  )
 
 const resolveScrollToTop = () =>
   Command.resolve(ScrollToTop, Message.CompletedScrollToTop())
@@ -299,6 +296,26 @@ describe('update', () => {
         ),
         Command.expectExact(People.FetchPeople),
         resolveFetch('designer'),
+      )
+    })
+
+    test('a link from one person to another scrolls to the top', () => {
+      story(
+        update,
+        given(
+          Model.make({
+            route: AppRoute.Person({ personId: 1 }),
+            peoplePage: initialPeoplePage,
+          }),
+        ),
+        message(
+          Message.ChangedUrl({
+            url: urlOrThrow('http://localhost/people/3'),
+            urlChangeType: UrlChangeType.Push(),
+          }),
+        ),
+        Command.expectExact(ScrollToTop()),
+        resolveScrollToTop(),
       )
     })
 

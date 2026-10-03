@@ -1,39 +1,18 @@
-import { Option } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
-import { fromString } from 'foldkit/url'
 import { describe, test } from 'vitest'
 
 import { Counter } from './island'
 import { AppRoute, Model, update, view } from './main'
 
-const urlOrThrow = (raw: string) =>
-  Option.getOrThrowWith(
-    fromString(raw),
-    () => new Error(`Failed to parse url: ${raw}`),
-  )
-
-const home = Model.make({
-  route: AppRoute.Home(),
-  url: urlOrThrow('http://localhost/'),
-  counter: Counter.init,
-})
+const home = Model.make({ route: AppRoute.Home(), counter: Counter.init })
 const postsIndex = Model.make({
   route: AppRoute.Posts(),
-  url: urlOrThrow('http://localhost/posts'),
   counter: Counter.init,
 })
 const post = (slug: string) =>
-  Model.make({
-    route: AppRoute.Post({ slug }),
-    url: urlOrThrow(`http://localhost/posts/${slug}`),
-    counter: Counter.init,
-  })
+  Model.make({ route: AppRoute.Post({ slug }), counter: Counter.init })
 const notFound = (path: string) =>
-  Model.make({
-    route: AppRoute.NotFound({ path }),
-    url: urlOrThrow(`http://localhost${path}`),
-    counter: Counter.init,
-  })
+  Model.make({ route: AppRoute.NotFound({ path }), counter: Counter.init })
 
 describe('view', () => {
   test('the header renders the site title and navigation on every route', () => {

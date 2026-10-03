@@ -1,6 +1,7 @@
 import {
   DateTime,
   Effect,
+  Equal,
   Layer,
   Match,
   Option,
@@ -258,7 +259,7 @@ export const init: Runtime.RoutingApplicationInit<
         exampleDetail,
       }) => ({
         route: initialRoute,
-        url,
+        navDemoSection: Ui.NavPage.navDemoSectionFromUrl(url),
         deployment: flags.deployment,
         snippetCopy: snippetCopyInit.model,
         maybeGitHubStarCount: Option.fromNullishOr(githubStarCount),
@@ -350,8 +351,6 @@ type UpdateStep = Update.Step<
   Message,
   AppResources | AppManagedResources
 >
-
-const isPathnameEqual = (a: Url, b: Url): boolean => a.pathname === b.pathname
 
 const foldThemeMenuOutMessage = Menu.OutMessage.match<
   Update.Step<Model, Message>,
@@ -674,14 +673,16 @@ export const update = (model: Model, message: Message) =>
         Match.orElse(() => []),
       )
 
+      const isNewPage = !Equal.equals(nextRoute, model.route)
+
       const maybeScrollSidebar = Option.liftPredicate(
         ScrollSidebarActiveLinkIntoView(),
-        () => !isPathnameEqual(model.url, url),
+        () => isNewPage,
       )
 
       const maybeScrollToTop = Option.liftPredicate(
         ScrollToTop(),
-        () => !isPathnameEqual(model.url, url),
+        () => isNewPage,
       )
 
       const nextPlaygroundRoute = pipe(
@@ -693,7 +694,7 @@ export const update = (model: Model, message: Message) =>
       const writeRouteFields: UpdateStep = model => ({
         model: modifyFields(model, {
           route: () => nextRoute,
-          url: () => url,
+          navDemoSection: () => Ui.NavPage.navDemoSectionFromUrl(url),
           playground: () => nextPlaygroundRoute,
           sidebarGroups: () => nextSidebarGroups,
         }),
@@ -735,13 +736,7 @@ export const update = (model: Model, message: Message) =>
 
     ClickedCopyLink: ({ hash }) => ({
       model,
-      commands: [
-        CopyLink({
-          url: urlToString(
-            modifyFields(model.url, { hash: () => Option.some(hash) }),
-          ),
-        }),
-      ],
+      commands: [CopyLink({ hash })],
     }),
 
     ClickedOpenMobileMenu: () =>
@@ -909,12 +904,19 @@ const InjectSpeedInsights = Command.define('InjectSpeedInsights', {
   ),
 })
 
+const currentUrlWithHash = (hash: string): string => {
+  const url = new URL(window.location.href)
+  url.hash = hash
+
+  return url.href
+}
+
 const CopyLink = Command.define('CopyLink', {
-  args: { url: Schema.String },
+  args: { hash: Schema.String },
   messages: [Message.SucceededCopyLink, Message.FailedCopyLink],
-  execute: ({ url }) =>
+  execute: ({ hash }) =>
     Effect.tryPromise({
-      try: () => navigator.clipboard.writeText(url),
+      try: () => navigator.clipboard.writeText(currentUrlWithHash(hash)),
       catch: () => new Error('Failed to copy link to clipboard'),
     }).pipe(
       Effect.as(Message.SucceededCopyLink()),

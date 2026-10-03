@@ -1,4 +1,4 @@
-import { Effect, Match, Option } from 'effect'
+import { Effect, Equal, Match, Option } from 'effect'
 import { Command, Render, Runtime } from 'foldkit'
 import {
   type LoadType,
@@ -52,7 +52,7 @@ const init: Runtime.RoutingApplicationInit<Model, Message> = (
   url: Url,
   loadType: LoadType,
 ) => ({
-  model: { route: urlToAppRoute(url), url },
+  model: { route: urlToAppRoute(url) },
   commands: [
     DisableBrowserScrollRestoration(),
     ...Match.value(loadType).pipe(
@@ -67,21 +67,22 @@ const init: Runtime.RoutingApplicationInit<Model, Message> = (
 })
 
 // ...and the ChangedUrl handler decides for every navigation after that:
-ChangedUrl: ({ url, urlChangeType }) => ({
-  model: modifyFields(model, {
-    route: () => urlToAppRoute(url),
-    url: () => url,
-  }),
-  commands: UrlChangeType.match(urlChangeType, {
-    Push: () =>
-      Option.toArray(
-        Option.liftPredicate(
-          ScrollToTop(),
-          () => url.pathname !== model.url.pathname,
+ChangedUrl: ({ url, urlChangeType }) => {
+  const nextRoute = urlToAppRoute(url)
+
+  return {
+    model: modifyFields(model, { route: () => nextRoute }),
+    commands: UrlChangeType.match(urlChangeType, {
+      Push: () =>
+        Option.toArray(
+          Option.liftPredicate(
+            ScrollToTop(),
+            () => !Equal.equals(nextRoute, model.route),
+          ),
         ),
-      ),
-    Replace: () => [],
-    Traverse: ({ maybeSavedScrollPosition }) =>
-      restoreCommands(maybeSavedScrollPosition),
-  }),
-})
+      Replace: () => [],
+      Traverse: ({ maybeSavedScrollPosition }) =>
+        restoreCommands(maybeSavedScrollPosition),
+    }),
+  }
+}
