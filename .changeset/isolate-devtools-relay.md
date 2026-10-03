@@ -16,7 +16,7 @@ Several applications, agent sessions, and dev servers now work at once:
 
 This breaks two setups:
 
-- The relay no longer follows `server.host`, so an agent on another host cannot reach a discovered relay. Set `devToolsMcpPort` in the Vite config, and set `FOLDKIT_DEVTOOLS_MCP_PORT` and `FOLDKIT_DEVTOOLS_MCP_HOST` for the MCP server.
+- The relay no longer follows `server.host`, so an agent on another host cannot reach a discovered relay. Set `devToolsMcpPort` in the Vite config, and set `FOLDKIT_DEVTOOLS_MCP_PORT` and `FOLDKIT_DEVTOOLS_MCP_HOST` for the MCP server. That port has no token, so do not use it on a shared or untrusted network.
 - `FOLDKIT_DEVTOOLS_MCP_HOST` no longer replaces the host of a discovered relay. Like `FOLDKIT_DEVTOOLS_MCP_PORT`, it now skips discovery and connects to that host on the configured port, or on `9988`.
 
 `devToolsMcpPort`, the token, the registry location, the record format, the `9988` fallback, and every tool name and input are unchanged. An MCP server from an earlier release still discovers the new records, but the connection only survives beside other upgrade handlers once the plugin is upgraded.

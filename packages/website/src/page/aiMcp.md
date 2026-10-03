@@ -44,6 +44,8 @@ If automatic discovery is unavailable, or the agent runs on another host, set a 
 
 ::Snippet{name="aiMcpViteConfig" label="Vite config snippet for a fixed port"}
 
+When the agent runs on another host, also set `FOLDKIT_DEVTOOLS_MCP_HOST` to the dev server's host. The fixed port opens a separate socket on every interface without a token. Do not use a fixed port on a shared or untrusted network.
+
 To let an agent dispatch Messages, pass the application's `Message` Schema to `Runtime.makeApplication`:
 
 ::Snippet{name="aiMcpApplicationConfig" label="application config snippet"}
