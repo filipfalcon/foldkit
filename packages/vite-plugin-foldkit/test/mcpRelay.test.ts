@@ -10,7 +10,7 @@ import {
 } from 'effect'
 import { RelayRecord } from 'foldkit/devtools-protocol'
 import { chmod, readFile, readdir, writeFile } from 'node:fs/promises'
-import { connect, createServer as createNetServer } from 'node:net'
+import { createServer as createNetServer } from 'node:net'
 import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
@@ -37,6 +37,12 @@ import {
   relayRegistryDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
 import {
+  POLL_TIMEOUT,
+  RELAY_DIRECTORY_VARIABLE,
+  RELAY_PATH,
+  findFreePort,
+  isPortAccepting,
+  openWebSocket,
   publishedRecords,
   useRelayRegistry,
   waitUntilPublished,
@@ -44,40 +50,7 @@ import {
 
 const PACKAGE_ROOT = resolve(import.meta.dirname, '..')
 const TEST_TIMEOUT = 20_000
-const POLL_TIMEOUT = 10_000
 const MODEL_PRESERVATION_RESPONSE_BUDGET = 500
-
-const findFreePort = () =>
-  new Promise<number>((resolvePort, reject) => {
-    const probe = createNetServer()
-    probe.on('error', error => {
-      probe.close()
-      reject(error)
-    })
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      if (address === null || typeof address === 'string') {
-        probe.close()
-        reject(new Error('Could not determine a free port'))
-        return
-      }
-      const { port } = address
-      probe.close(() => resolvePort(port))
-    })
-  })
-
-const isPortAccepting = (port: number) =>
-  new Promise<boolean>(resolveAccepting => {
-    const socket = connect({ port, host: '127.0.0.1' })
-    socket.on('connect', () => {
-      socket.destroy()
-      resolveAccepting(true)
-    })
-    socket.on('error', () => {
-      socket.destroy()
-      resolveAccepting(false)
-    })
-  })
 
 const startMiddlewareModeServer = async (devToolsMcpPort: number) => {
   const server = await createServer({
@@ -203,8 +176,6 @@ const requestModel = (client: WebSocket, id: string) => {
   return restored
 }
 
-const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
-const RELAY_PATH = '/__foldkit/devtools-mcp'
 const NO_RELAY_SETTLE = 300
 
 const startMiddlewareServer = async (options: FoldkitPluginOptions) => {
@@ -273,33 +244,23 @@ const connectionRefused = (url: string) =>
 
 const RELAY_TOKEN_PATTERN = /^[0-9a-f]{64}$/
 
-const connectClientAt = async (url: string) => {
-  const client = new WebSocket(url)
-  onTestFinished(() => client.terminate())
-  await new Promise<void>((resolveOpen, reject) => {
-    client.on('open', () => resolveOpen())
-    client.on('error', reject)
-  })
-  return client
-}
-
 const settle = () =>
   new Promise<void>(done => setTimeout(done, NO_RELAY_SETTLE))
 
 const expectOwnLoopbackRelay = async (
   record: RelayRecord,
-  devServerPort: Option.Option<number>,
+  maybeDevServerPort: Option.Option<number>,
 ) => {
   const url = new URL(record.url)
   expect(url.protocol).toBe('ws:')
   expect(url.hostname).toBe('127.0.0.1')
   expect(Number(url.port)).toBeGreaterThan(0)
-  if (Option.isSome(devServerPort)) {
-    expect(Number(url.port)).not.toBe(devServerPort.value)
+  if (Option.isSome(maybeDevServerPort)) {
+    expect(Number(url.port)).not.toBe(maybeDevServerPort.value)
   }
   expect(url.pathname).toBe(RELAY_PATH)
   expect(url.searchParams.get('token')).toMatch(RELAY_TOKEN_PATTERN)
-  const client = await connectClientAt(record.url)
+  const client = await openWebSocket(record.url)
   expect(client.readyState).toBe(client.OPEN)
   return url
 }
@@ -655,7 +616,7 @@ describe('DevTools MCP relay discovery', () => {
         beforeUrl.searchParams.get('token'),
       )
       expect(await connectionRefused(before.url)).toBe(true)
-      const client = await connectClientAt(after.url)
+      const client = await openWebSocket(after.url)
       expect(client.readyState).toBe(client.OPEN)
 
       await server.close()
@@ -683,7 +644,7 @@ describe('DevTools MCP relay discovery', () => {
         )
         .toBe(true)
       const after = await waitUntilPublished(root)
-      const client = await connectClientAt(after.url)
+      const client = await openWebSocket(after.url)
       expect(client.readyState).toBe(client.OPEN)
       expect(await isPortAccepting(Number(new URL(before.url).port))).toBe(
         false,
