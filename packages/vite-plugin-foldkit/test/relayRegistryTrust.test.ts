@@ -18,7 +18,6 @@ import {
   makeCachedWindowsProbe,
   makeRelayRegistryTrust,
   powershellPath,
-  probeWindowsDirectory,
   windowsDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
 
@@ -117,6 +116,39 @@ describe('powershellPath', () => {
   })
 })
 
+const temporaryDirectory = async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'foldkit-registry-'))
+  onTestFinished(() => rm(directory, { recursive: true, force: true }))
+  return directory
+}
+
+type CachedWindowsProbe = Effect.Success<
+  ReturnType<typeof makeCachedWindowsProbe>
+>
+
+const probedVerdict = (
+  cachedProbe: CachedWindowsProbe,
+  probedDirectory: string,
+  identifyingDirectory: string,
+) =>
+  Effect.runPromise(
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem
+      const info = yield* fileSystem.stat(identifyingDirectory)
+      return yield* cachedProbe(probedDirectory, info)
+    }).pipe(Effect.provide(NodeServices.layer)),
+  )
+
+const verdictFor = (cachedProbe: CachedWindowsProbe, target: string) =>
+  probedVerdict(cachedProbe, target, target)
+
+const freshProbeVerdict = async (executable: string, target: string) => {
+  const cachedProbe = await Effect.runPromise(
+    makeCachedWindowsProbe(Option.some(executable)),
+  )
+  return probedVerdict(cachedProbe, target, await temporaryDirectory())
+}
+
 const standInProbe = async (body: string) => {
   const directory = await mkdtemp(join(tmpdir(), 'foldkit-probe-'))
   onTestFinished(() => rm(directory, { recursive: true, force: true }))
@@ -126,16 +158,11 @@ const standInProbe = async (body: string) => {
   return {
     directory,
     executable,
-    probe: (target: string) =>
-      Effect.runPromise(
-        probeWindowsDirectory(target, executable).pipe(
-          Effect.provide(NodeServices.layer),
-        ),
-      ),
+    probe: (target: string) => freshProbeVerdict(executable, target),
   }
 }
 
-describe('probeWindowsDirectory', () => {
+describe('makeCachedWindowsProbe', () => {
   it.skipIf(process.platform === 'win32')(
     'reads the descriptor and the user from the probe output',
     async () => {
@@ -201,35 +228,11 @@ describe('probeWindowsDirectory', () => {
   it('refuses when the probe cannot start', async () => {
     const missing = join(tmpdir(), 'foldkit-missing-probe', 'powershell.exe')
 
-    expect(
-      await Effect.runPromise(
-        probeWindowsDirectory('C:\\registry', missing).pipe(
-          Effect.provide(NodeServices.layer),
-        ),
-      ),
-    ).toStrictEqual(UNVERIFIED_OWNERSHIP)
+    expect(await freshProbeVerdict(missing, 'C:\\registry')).toStrictEqual(
+      UNVERIFIED_OWNERSHIP,
+    )
   })
-})
 
-const verdictFor = (
-  cachedProbe: Effect.Success<ReturnType<typeof makeCachedWindowsProbe>>,
-  target: string,
-) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem
-      const info = yield* fileSystem.stat(target)
-      return yield* cachedProbe(target, info)
-    }).pipe(Effect.provide(NodeServices.layer)),
-  )
-
-const temporaryDirectory = async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'foldkit-registry-'))
-  onTestFinished(() => rm(directory, { recursive: true, force: true }))
-  return directory
-}
-
-describe('makeCachedWindowsProbe', () => {
   it.skipIf(process.platform === 'win32')(
     'probes again after a probe that failed and keeps a verdict it read',
     async () => {
