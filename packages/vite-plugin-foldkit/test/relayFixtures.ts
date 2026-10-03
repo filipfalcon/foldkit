@@ -14,12 +14,15 @@ import { readRelayRecords } from '../src/relayRegistry.ts'
 
 export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
-const POLL_TIMEOUT = 10_000
+export const POLL_TIMEOUT = 10_000
 
 export const findFreePort = () =>
   new Promise<number>((resolvePort, reject) => {
     const probe = createNetServer()
-    probe.on('error', reject)
+    probe.on('error', error => {
+      probe.close()
+      reject(error)
+    })
     probe.listen(0, '127.0.0.1', () => {
       const address = probe.address()
       if (address === null || typeof address === 'string') {
