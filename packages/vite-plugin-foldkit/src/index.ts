@@ -689,7 +689,7 @@ type Relay = Readonly<{
   id: string
   wss: WebSocketServer
   url: string
-  detach: () => void
+  closeListener: () => void
 }>
 
 const relayId = Effect.gen(function* () {
@@ -812,7 +812,7 @@ const acceptRelayUpgrades = (
       id,
       wss,
       url: loopbackRelayUrl(httpServer, token),
-      detach: () => {
+      closeListener: () => {
         httpServer.close()
       },
     }
@@ -893,7 +893,7 @@ const bindStandaloneRelay = (
           id,
           wss,
           url: `ws://${RELAY_CONFIGURED_PORT_HOST}:${listeningPort}`,
-          detach: () => undefined,
+          closeListener: () => undefined,
         }),
       )
     }
@@ -998,7 +998,7 @@ const startMcpRelay = (
     ),
     relay =>
       Effect.gen(function* () {
-        relay.detach()
+        relay.closeListener()
         for (const client of relay.wss.clients) {
           client.terminate()
         }
