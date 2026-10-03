@@ -166,7 +166,7 @@ export type ApplicationInit<
  *  Receives the Flags, when the app declares them, then the current URL and how
  *  the reader arrived at the page: `LoadType.Push()` for a new visit,
  *  `LoadType.Reload` for a reload, and `LoadType.Traverse` for Back or Forward
- *  into the page. `Reload` and `Traverse` carry `savedScrollPosition`, the
+ *  into the page. `Reload` and `Traverse` carry `maybeSavedScrollPosition`, the
  *  scroll position the reader last had on this history entry, or
  *  `Option.none()` when none was recorded.
  *

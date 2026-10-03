@@ -186,7 +186,7 @@ describe('application', () => {
         Message.ChangedUrl({
           url: homeUrl,
           urlChangeType: UrlChangeType.Traverse({
-            savedScrollPosition: Option.some({ x: 0, y: 1500 }),
+            maybeSavedScrollPosition: Option.some({ x: 0, y: 1500 }),
           }),
         }),
       ),
@@ -210,7 +210,7 @@ describe('application', () => {
       flags,
       newsletterUrl,
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 2400 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 2400 }),
       }),
     )
 
@@ -233,7 +233,7 @@ describe('application', () => {
         Message.ChangedUrl({
           url: newsletterSubscribeUrl,
           urlChangeType: UrlChangeType.Traverse({
-            savedScrollPosition: Option.some({ x: 0, y: 900 }),
+            maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
           }),
         }),
       ),
@@ -257,7 +257,7 @@ describe('application', () => {
       flags,
       newsletterSubscribeUrl,
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 900 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
       }),
     )
 
@@ -280,7 +280,7 @@ describe('application', () => {
         Message.ChangedUrl({
           url: newsletterSubscribeUrl,
           urlChangeType: UrlChangeType.Traverse({
-            savedScrollPosition: Option.none(),
+            maybeSavedScrollPosition: Option.none(),
           }),
         }),
       ),
@@ -304,7 +304,7 @@ describe('application', () => {
         Message.ChangedUrl({
           url: newsletterUrl,
           urlChangeType: UrlChangeType.Traverse({
-            savedScrollPosition: Option.none(),
+            maybeSavedScrollPosition: Option.none(),
           }),
         }),
       ),
@@ -317,7 +317,7 @@ describe('application', () => {
     const reloadInit = init(
       flags,
       newsletterSubscribeUrl,
-      LoadType.Reload({ savedScrollPosition: Option.none() }),
+      LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
     )
 
     expect(reloadInit.commands).toContainEqual(

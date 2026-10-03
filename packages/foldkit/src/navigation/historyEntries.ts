@@ -360,7 +360,7 @@ export const recordLeavingEntryAndTraverse = (
   markBrowserRestorePending()
 
   return UrlChangeType.Traverse({
-    savedScrollPosition: storedScrollPosition(entryKey),
+    maybeSavedScrollPosition: storedScrollPosition(entryKey),
   })
 }
 
@@ -372,7 +372,7 @@ const navigationTimingType = (
     : Option.none()
 
 const initialLoadType = (): LoadType => {
-  const savedScrollPosition = Option.flatMap(
+  const maybeSavedScrollPosition = Option.flatMap(
     entryKeyInHistoryState(),
     storedScrollPosition,
   )
@@ -386,9 +386,11 @@ const initialLoadType = (): LoadType => {
       onSome: type =>
         Match.value(type).pipe(
           Match.withReturnType<LoadType>(),
-          Match.when('reload', () => LoadType.Reload({ savedScrollPosition })),
+          Match.when('reload', () =>
+            LoadType.Reload({ maybeSavedScrollPosition }),
+          ),
           Match.when('back_forward', () =>
-            LoadType.Traverse({ savedScrollPosition }),
+            LoadType.Traverse({ maybeSavedScrollPosition }),
           ),
           Match.orElse(() => LoadType.Push()),
         ),

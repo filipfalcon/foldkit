@@ -494,11 +494,11 @@ With `makeElement`, the runtime does not manage the title or document metadata.
 
 `onUrlRequest` fires when the user clicks a link. The Message receives a `UrlRequest` (a tagged union from the `Navigation` namespace) which you handle in update by matching on its `_tag`. `onUrlChange` fires when the browser URL changes, after `pushUrl`, `replaceUrl`, or Back and Forward. It receives the new URL and a `UrlChangeType` from `foldkit/navigation`: `Push`, `Replace`, or `Traverse`. The handler updates the route from the new URL. Handling the `UrlChangeType`, and the `LoadType` that init receives, is optional.
 
-The runtime never scrolls the window. An app that manages the scroll position follows the Scroll Position section of `repos/foldkit/packages/website/src/page/routing.md`, whose code is `repos/foldkit/packages/website/src/snippet/routingScrollPosition.ts`:
+The runtime never scrolls the window. An app that manages the scroll position follows the Scroll Position section of `repos/foldkit/packages/website/src/page/routing.md`, whose code is `repos/foldkit/packages/website/src/snippet/routingScrollPosition.ts`. `repos/foldkit/examples/routing/src/main.ts` applies the pattern in a whole app:
 
-- init returns a Command that sets `history.scrollRestoration = 'manual'`, and restores `savedScrollPosition` on `Reload` or `Traverse`.
+- init returns a Command that sets `history.scrollRestoration = 'manual'`, and restores `maybeSavedScrollPosition` on `Reload` or `Traverse`.
 - `ChangedUrl` carries `urlChangeType`.
-- update scrolls to the top on `Push` when the pathname changed, and restores `savedScrollPosition` on `Traverse`.
+- update scrolls to the top on `Push` when the pathname changed, and restores `maybeSavedScrollPosition` on `Traverse`.
 - Each restore is a Command that yields `Render.afterCommit` before `window.scrollTo`.
 
 For the canonical update-handler shapes (the exact `UrlRequest` tag names, how to dispatch `pushUrl` vs an external load Command, and how to derive the route from a `Url`), see `repos/foldkit/examples/routing/src/main.ts`.

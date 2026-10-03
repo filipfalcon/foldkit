@@ -325,8 +325,8 @@ export const init: Runtime.RoutingApplicationInit<
       ...Match.value(loadType).pipe(
         Match.withReturnType<ReadonlyArray<Command.Command<Message>>>(),
         Match.tag('Push', () => anchorCommands),
-        Match.tag('Reload', 'Traverse', ({ savedScrollPosition }) =>
-          restoreScrollPositionOr(savedScrollPosition, anchorCommands),
+        Match.tag('Reload', 'Traverse', ({ maybeSavedScrollPosition }) =>
+          restoreScrollPositionOr(maybeSavedScrollPosition, anchorCommands),
         ),
         Match.exhaustive,
       ),
@@ -335,10 +335,10 @@ export const init: Runtime.RoutingApplicationInit<
 }
 
 const restoreScrollPositionOr = (
-  savedScrollPosition: Option.Option<ScrollPosition>,
+  maybeSavedScrollPosition: Option.Option<ScrollPosition>,
   commandsWithoutPosition: ReadonlyArray<Command.Command<Message>>,
 ): ReadonlyArray<Command.Command<Message>> =>
-  Option.match(savedScrollPosition, {
+  Option.match(maybeSavedScrollPosition, {
     onNone: () => commandsWithoutPosition,
     onSome: scrollPosition => [RestoreScrollPosition(scrollPosition)],
   })
@@ -710,8 +710,11 @@ export const update = (model: Model, message: Message) =>
           ...Match.value(urlChangeType).pipe(
             Match.withReturnType<ReadonlyArray<Command.Command<Message>>>(),
             Match.tag('Push', 'Replace', () => anchorOrTopCommands),
-            Match.tag('Traverse', ({ savedScrollPosition }) =>
-              restoreScrollPositionOr(savedScrollPosition, anchorOrTopCommands),
+            Match.tag('Traverse', ({ maybeSavedScrollPosition }) =>
+              restoreScrollPositionOr(
+                maybeSavedScrollPosition,
+                anchorOrTopCommands,
+              ),
             ),
             Match.exhaustive,
           ),

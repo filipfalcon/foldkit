@@ -1,9 +1,17 @@
 import { Array, Option, String } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
+import { fromString } from 'foldkit/url'
 import { describe, test } from 'vitest'
 
 import { AppRoute, Model, update, view } from './main'
 import { People } from './page'
+import { peopleRouter } from './route'
+
+const urlOrThrow = (raw: string) =>
+  Option.getOrThrowWith(
+    fromString(raw),
+    () => new Error(`Failed to parse url: ${raw}`),
+  )
 
 const peoplePageWith = (searchInput: string) =>
   People.Model.make({
@@ -19,36 +27,44 @@ const initialPeoplePage = peoplePageWith('')
 
 const home = Model.make({
   route: AppRoute.Home(),
+  url: urlOrThrow('http://localhost/'),
   peoplePage: initialPeoplePage,
 })
-const people = (searchInput: string) =>
-  Model.make({
-    route: AppRoute.People({
-      searchText: Option.liftPredicate(String.isNonEmpty)(searchInput),
-    }),
+const people = (searchInput: string) => {
+  const searchText = Option.liftPredicate(String.isNonEmpty)(searchInput)
+
+  return Model.make({
+    route: AppRoute.People({ searchText }),
+    url: urlOrThrow(`http://localhost${peopleRouter({ searchText })}`),
     peoplePage: peoplePageWith(searchInput),
   })
+}
 const person = (personId: number) =>
   Model.make({
     route: AppRoute.Person({ personId }),
+    url: urlOrThrow(`http://localhost/people/${personId}`),
     peoplePage: initialPeoplePage,
   })
 const nested = Model.make({
   route: AppRoute.Nested(),
+  url: urlOrThrow('http://localhost/nested/route/is/very/nested'),
   peoplePage: initialPeoplePage,
 })
 const filesIndex = Model.make({
   route: AppRoute.FilesIndex(),
+  url: urlOrThrow('http://localhost/files'),
   peoplePage: initialPeoplePage,
 })
 const files = (path: Array.NonEmptyReadonlyArray<string>) =>
   Model.make({
     route: AppRoute.Files({ path }),
+    url: urlOrThrow(`http://localhost/files/${Array.join(path, '/')}`),
     peoplePage: initialPeoplePage,
   })
 const notFound = (path: string) =>
   Model.make({
     route: AppRoute.NotFound({ path }),
+    url: urlOrThrow(`http://localhost${path}`),
     peoplePage: initialPeoplePage,
   })
 

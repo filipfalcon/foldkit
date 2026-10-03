@@ -195,7 +195,7 @@ describe('stored scroll positions', () => {
     expect(storedEntryKeys()).toHaveLength(2)
     expect(afterReload.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 2000 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 2000 }),
       }),
     )
   })
@@ -239,7 +239,7 @@ describe('stored scroll positions', () => {
 
     expect(afterReload.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 640 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 640 }),
       }),
     )
   })
@@ -258,7 +258,7 @@ describe('stored scroll positions', () => {
 
     expect(afterReload.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 1800 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 1800 }),
       }),
     )
   })
@@ -280,7 +280,7 @@ describe('entries another script created', () => {
 
     expect(afterReload.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 3000 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 3000 }),
       }),
     )
   })
@@ -304,7 +304,7 @@ describe('unloading while a browser restore may be pending', () => {
 
     expect(thirdLoad.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 640 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 640 }),
       }),
     )
   })
@@ -327,7 +327,7 @@ describe('unloading while a browser restore may be pending', () => {
 
     expect(thirdLoad.claimLoadType()).toEqual(
       LoadType.Reload({
-        savedScrollPosition: Option.some({ x: 0, y: 640 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 640 }),
       }),
     )
   })
@@ -356,7 +356,7 @@ describe('browser restores', () => {
     traverseTo(historyEntries, { foldkitEntryKey: 'first' })
 
     expect(traverseTo(historyEntries, { foldkitEntryKey: 'second' })).toEqual(
-      UrlChangeType.Traverse({ savedScrollPosition: Option.none() }),
+      UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
     )
   })
 
@@ -373,7 +373,7 @@ describe('browser restores', () => {
       traverseTo(historyEntries, { foldkitEntryKey: pushedEntryKey }),
     ).toEqual(
       UrlChangeType.Traverse({
-        savedScrollPosition: Option.some({ x: 0, y: 300 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 300 }),
       }),
     )
   })
@@ -394,7 +394,7 @@ describe('claimLoadType', () => {
 
     expect(afterReturning.claimLoadType()).toEqual(
       LoadType.Traverse({
-        savedScrollPosition: Option.some({ x: 0, y: 900 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
       }),
     )
   })
@@ -418,7 +418,7 @@ describe('claimLoadType', () => {
     const historyEntries = await loadHistoryEntries()
 
     expect(historyEntries.claimLoadType()).toEqual(
-      LoadType.Reload({ savedScrollPosition: Option.none() }),
+      LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
     )
   })
 
@@ -432,7 +432,9 @@ describe('claimLoadType', () => {
     const historyEntries = await loadHistoryEntries()
 
     expect(historyEntries.claimLoadType()).toEqual(
-      LoadType.Reload({ savedScrollPosition: Option.some({ x: 0, y: 500 }) }),
+      LoadType.Reload({
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 500 }),
+      }),
     )
     expect(historyEntries.claimLoadType()).toEqual(LoadType.Push())
     expect(historyEntries.claimLoadType()).toEqual(LoadType.Push())
@@ -447,7 +449,7 @@ describe('sessionStorage failures', () => {
     const historyEntries = await loadHistoryEntries()
 
     expect(historyEntries.claimLoadType()).toEqual(
-      LoadType.Reload({ savedScrollPosition: Option.none() }),
+      LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
     )
   })
 
@@ -461,7 +463,7 @@ describe('sessionStorage failures', () => {
     const historyEntries = await loadHistoryEntries()
 
     expect(historyEntries.claimLoadType()).toEqual(
-      LoadType.Reload({ savedScrollPosition: Option.none() }),
+      LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
     )
   })
 
@@ -480,13 +482,13 @@ describe('sessionStorage failures', () => {
     const historyEntries = await loadHistoryEntries()
 
     expect(historyEntries.claimLoadType()).toEqual(
-      LoadType.Reload({ savedScrollPosition: Option.none() }),
+      LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
     )
 
     stopTracking = historyEntries.startHistoryEntryTracking()
     expect(() => window.dispatchEvent(new Event('pagehide'))).not.toThrow()
     expect(historyEntries.recordLeavingEntryAndTraverse(null)).toEqual(
-      UrlChangeType.Traverse({ savedScrollPosition: Option.none() }),
+      UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
     )
     expect(entryKeyInHistoryState()).toEqual(expect.any(String))
   })

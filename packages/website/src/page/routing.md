@@ -200,9 +200,9 @@ A routing `init` receives a `LoadType` after the URL:
 
 Only the first routing `init` in a page receives `Reload` or `Traverse`. Any later `init` in the same page, of this app or another, for example the one `Runtime.embed` runs after a dispose, receives `Push`, because the document was not loaded again.
 
-`Reload` and `Traverse` carry `savedScrollPosition`, the window position the reader last had on that entry. It is `Option.none()` when Foldkit never recorded one, for example for an entry created before the app started. To get the positions, Foldkit keeps a key in each entry's `history.state` and saves the positions to `sessionStorage` when the page unloads or the runtime stops.
+`Reload` and `Traverse` carry `maybeSavedScrollPosition`, the window position the reader last had on that entry. It is `Option.none()` when Foldkit never recorded one, for example for an entry created before the app started. To get the positions, Foldkit keeps a key in each entry's `history.state` and saves the positions to `sessionStorage` when the page unloads or the runtime stops.
 
-One case looks like Back without being Back. The browser reports every `popstate` the same way, so a fragment navigation that did not go through `pushUrl`, such as `location.hash = '#details'`, arrives as `Traverse` although it created a new entry. That entry has no recorded position, so its `savedScrollPosition` is `Option.none()`.
+One case looks like Back without being Back. The browser reports every `popstate` the same way, so a fragment navigation that did not go through `pushUrl`, such as `location.hash = '#details'`, arrives as `Traverse` although it created a new entry. That entry has no recorded position, so its `maybeSavedScrollPosition` is `Option.none()`.
 
 Foldkit never scrolls the window itself and never changes `history.scrollRestoration`. Pass the `UrlChangeType` into your Message from the routing config, `onUrlChange: (url, urlChangeType) => Message.ChangedUrl({ url, urlChangeType })`, and match on it where the route changes:
 

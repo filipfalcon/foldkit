@@ -297,7 +297,7 @@ describe('addNavigationEventListeners', () => {
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 800 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 800 }),
         }),
       ],
     ])
@@ -335,7 +335,7 @@ describe('addNavigationEventListeners', () => {
     expect(urlChanges).toEqual([
       [
         '/elsewhere',
-        UrlChangeType.Traverse({ savedScrollPosition: Option.none() }),
+        UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
       ],
     ])
     expect(entryKeyInHistoryState()).toEqual(expect.any(String))
@@ -349,7 +349,10 @@ describe('addNavigationEventListeners', () => {
     window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
 
     expect(urlChanges).toEqual([
-      ['/a', UrlChangeType.Traverse({ savedScrollPosition: Option.none() })],
+      [
+        '/a',
+        UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
+      ],
     ])
     expect(entryKeyInHistoryState()).toEqual(expect.any(String))
   })
@@ -362,7 +365,7 @@ describe('addNavigationEventListeners', () => {
     expect(urlChanges).toEqual([
       [
         '/elsewhere',
-        UrlChangeType.Traverse({ savedScrollPosition: Option.none() }),
+        UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
       ],
     ])
     expect(window.history.state).toEqual({
@@ -399,7 +402,7 @@ describe('addNavigationEventListeners', () => {
     expect(urlChanges).toContainEqual([
       '/b',
       UrlChangeType.Traverse({
-        savedScrollPosition: Option.some({ x: 0, y: 1500 }),
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 1500 }),
       }),
     ])
   })
@@ -477,7 +480,7 @@ describe('addNavigationEventListeners', () => {
       Option.some([
         '/b',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1500 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1500 }),
         }),
       ]),
     )
@@ -503,7 +506,7 @@ describe('addNavigationEventListeners', () => {
       Option.some([
         '/d',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1500 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1500 }),
         }),
       ]),
     )
@@ -531,13 +534,13 @@ describe('addNavigationEventListeners', () => {
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1000 }),
         }),
       ],
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 3000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 3000 }),
         }),
       ],
     ])
@@ -562,13 +565,13 @@ describe('addNavigationEventListeners', () => {
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 3000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 3000 }),
         }),
       ],
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1000 }),
         }),
       ],
     ])
@@ -587,7 +590,7 @@ describe('addNavigationEventListeners', () => {
       [
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1000 }),
         }),
       ],
     ])
@@ -613,7 +616,7 @@ describe('addNavigationEventListeners', () => {
       Option.some([
         '/a',
         UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 1000 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1000 }),
         }),
       ]),
     )
@@ -750,7 +753,7 @@ describe('addNavigationEventListeners', () => {
       [
         '/a',
         freshNavigation.UrlChangeType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 500 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 500 }),
         }),
       ],
     ])

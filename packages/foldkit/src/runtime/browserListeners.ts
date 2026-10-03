@@ -15,7 +15,7 @@ import { Url } from '../url/index.js'
  *  `onUrlChange` receives the new URL and how it changed:
  *  `UrlChangeType.Push()` from `pushUrl`, `UrlChangeType.Replace()` from
  *  `replaceUrl`, and `UrlChangeType.Traverse` for Back and Forward, carrying
- *  `savedScrollPosition`, the scroll position the reader last had on that
+ *  `maybeSavedScrollPosition`, the scroll position the reader last had on that
  *  entry, or `Option.none()` when none was recorded. */
 export type RoutingConfig<Message> = Readonly<{
   onUrlRequest: (request: UrlRequest) => Message

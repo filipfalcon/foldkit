@@ -16,7 +16,7 @@ import { ScrollPosition } from './scrollPosition.js'
  *  the one `Runtime.embed` runs after a dispose, receives `Push`, because the
  *  document was not loaded again.
  *
- *  `Reload` and `Traverse` carry `savedScrollPosition`, the window scroll
+ *  `Reload` and `Traverse` carry `maybeSavedScrollPosition`, the window scroll
  *  position the reader last had on the current history entry, or
  *  `Option.none()` when none was recorded. A server render always passes
  *  `Push`.
@@ -26,8 +26,8 @@ import { ScrollPosition } from './scrollPosition.js'
  *  Command that `init` returns. */
 export const LoadType = defineTaggedUnion({
   Push: {},
-  Reload: { savedScrollPosition: Schema.Option(ScrollPosition) },
-  Traverse: { savedScrollPosition: Schema.Option(ScrollPosition) },
+  Reload: { maybeSavedScrollPosition: Schema.Option(ScrollPosition) },
+  Traverse: { maybeSavedScrollPosition: Schema.Option(ScrollPosition) },
 })
 /** How the reader arrived at the page: `Push`, `Reload`, or `Traverse`. */
 export type LoadType = typeof LoadType.Type

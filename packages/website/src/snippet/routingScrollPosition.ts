@@ -43,9 +43,9 @@ const RestoreScrollPosition = Command.define('RestoreScrollPosition', {
 
 // ...when a position was recorded for the entry:
 const restoreCommands = (
-  savedScrollPosition: Option.Option<ScrollPosition>,
+  maybeSavedScrollPosition: Option.Option<ScrollPosition>,
 ): ReadonlyArray<Command.Command<Message>> =>
-  Option.toArray(Option.map(savedScrollPosition, RestoreScrollPosition))
+  Option.toArray(Option.map(maybeSavedScrollPosition, RestoreScrollPosition))
 
 // init restores after a reload, or after Back or Forward into the app...
 const init: Runtime.RoutingApplicationInit<Model, Message> = (
@@ -58,8 +58,8 @@ const init: Runtime.RoutingApplicationInit<Model, Message> = (
     ...Match.value(loadType).pipe(
       Match.withReturnType<ReadonlyArray<Command.Command<Message>>>(),
       Match.tag('Push', () => []),
-      Match.tag('Reload', 'Traverse', ({ savedScrollPosition }) =>
-        restoreCommands(savedScrollPosition),
+      Match.tag('Reload', 'Traverse', ({ maybeSavedScrollPosition }) =>
+        restoreCommands(maybeSavedScrollPosition),
       ),
       Match.exhaustive,
     ),
@@ -81,6 +81,7 @@ ChangedUrl: ({ url, urlChangeType }) => ({
         ),
       ),
     Replace: () => [],
-    Traverse: ({ savedScrollPosition }) => restoreCommands(savedScrollPosition),
+    Traverse: ({ maybeSavedScrollPosition }) =>
+      restoreCommands(maybeSavedScrollPosition),
   }),
 })

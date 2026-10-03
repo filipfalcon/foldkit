@@ -216,7 +216,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
       [
         '/articles',
         LoadType.Reload({
-          savedScrollPosition: Option.some({ x: 0, y: 2400 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 2400 }),
         }),
       ],
     ])
@@ -235,7 +235,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
         { theme: 'Dark' },
         '/articles',
         LoadType.Reload({
-          savedScrollPosition: Option.some({ x: 0, y: 1200 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 1200 }),
         }),
       ],
     ])
@@ -253,7 +253,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
       [
         '/articles',
         LoadType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 700 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 700 }),
         }),
       ],
     ])
@@ -282,7 +282,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
       [
         '/articles',
         LoadType.Traverse({
-          savedScrollPosition: Option.some({ x: 0, y: 900 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
         }),
       ],
     ])
@@ -314,7 +314,10 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
     await unloadPage()
 
     expect(initCalls).toEqual([
-      ['/articles', LoadType.Reload({ savedScrollPosition: Option.none() })],
+      [
+        '/articles',
+        LoadType.Reload({ maybeSavedScrollPosition: Option.none() }),
+      ],
     ])
     expect(setItem).toHaveBeenCalled()
   })
@@ -380,7 +383,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
       [
         '/articles',
         LoadType.Reload({
-          savedScrollPosition: Option.some({ x: 0, y: 600 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 600 }),
         }),
       ],
       ['/articles/next', LoadType.Push()],
@@ -433,7 +436,7 @@ describe('routing init', { timeout: BOOT_TEST_TIMEOUT_MS }, () => {
         { theme: 'Dark' },
         '/articles',
         LoadType.Reload({
-          savedScrollPosition: Option.some({ x: 0, y: 900 }),
+          maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
         }),
       ],
     ])
