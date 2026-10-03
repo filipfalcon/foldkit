@@ -1,3 +1,4 @@
+import { Array, Option, pipe } from 'effect'
 import { execFile } from 'node:child_process'
 import {
   mkdir,
@@ -153,6 +154,23 @@ const TRANSITIVE_ONLY_UI: Files = {
   ),
 }
 
+const DECLARED_MARKDOWN_PEER: Files = {
+  ...appPackage({
+    foldkit: '*',
+    '@foldkit/markdown': '*',
+    'md-consumer': '*',
+  }),
+  ...entry('foldkit', 'md-consumer'),
+  ...foldkitPackage('node_modules/foldkit', 'ROOT_COPY'),
+  ...markdownPackage('node_modules/@foldkit/markdown'),
+  ...relayPackage(
+    'node_modules/md-consumer',
+    'md-consumer',
+    '@foldkit/markdown',
+    { peerDependencies: { '@foldkit/markdown': '*' } },
+  ),
+}
+
 const UNDECLARED_MARKDOWN_PEER: Files = {
   ...appPackage({ foldkit: '*', 'md-consumer': '*' }),
   ...entry('foldkit', 'md-consumer'),
@@ -170,6 +188,13 @@ const UNDECLARED_MARKDOWN_PEER: Files = {
 
 // BUILDS
 
+const pluginConfig = (root: string): InlineConfig => ({
+  root,
+  configFile: false,
+  logLevel: 'silent',
+  plugins: foldkit(),
+})
+
 const buildFixture = async (
   root: string,
   target: 'Client' | 'Ssr',
@@ -178,10 +203,7 @@ const buildFixture = async (
   const outDir = join(root, `dist-${target}`)
 
   await build({
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    plugins: foldkit(),
+    ...pluginConfig(root),
     ...config,
     build: {
       outDir,
@@ -198,12 +220,15 @@ const buildFixture = async (
     },
   })
 
-  const files = await readdir(outDir)
-  const entryFile = files.find(
-    file => file.startsWith('entry') && file.endsWith('.js'),
+  const entryFile = pipe(
+    await readdir(outDir),
+    Array.findFirst(file => file.startsWith('entry') && file.endsWith('.js')),
+    Option.getOrThrowWith(
+      () => new Error(`No entry*.js file in the build output at ${outDir}`),
+    ),
   )
-  expect(entryFile).toBeDefined()
-  return join(outDir, entryFile ?? '')
+
+  return join(outDir, entryFile)
 }
 
 const loadBuild = async (
@@ -344,22 +369,7 @@ describe('Foldkit packages in builds', () => {
   })
 
   it('shares one copy in an SSR build with a package that peer-depends only on @foldkit/markdown', async () => {
-    const root = await makeRoot({
-      ...appPackage({
-        foldkit: '*',
-        '@foldkit/markdown': '*',
-        'md-consumer': '*',
-      }),
-      ...entry('foldkit', 'md-consumer'),
-      ...foldkitPackage('node_modules/foldkit', 'ROOT_COPY'),
-      ...markdownPackage('node_modules/@foldkit/markdown'),
-      ...relayPackage(
-        'node_modules/md-consumer',
-        'md-consumer',
-        '@foldkit/markdown',
-        { peerDependencies: { '@foldkit/markdown': '*' } },
-      ),
-    })
+    const root = await makeRoot(DECLARED_MARKDOWN_PEER)
 
     const output = await loadBuild(root, 'Ssr')
 
@@ -504,13 +514,7 @@ describe('Foldkit packages in builds', () => {
     const root = await makeRoot(NESTED_UI_CONSUMER)
 
     const config = await resolveConfig(
-      {
-        root,
-        configFile: false,
-        logLevel: 'silent',
-        plugins: foldkit(),
-        ssr: { external: ['ui-consumer'] },
-      },
+      { ...pluginConfig(root), ssr: { external: ['ui-consumer'] } },
       'build',
     )
 
@@ -584,6 +588,61 @@ describe('Foldkit packages in builds', () => {
     )
 
     expect(withPackages).toBe(withoutPackages)
+  })
+
+  it('skips malformed dependency fields without dropping valid ones', async () => {
+    const root = await makeRoot({
+      ...appPackage({
+        'ui-consumer': '*',
+        'malformed-dependent': '*',
+        'partly-malformed-dependent': '*',
+      }),
+      ...consumerPackage(
+        'node_modules/ui-consumer',
+        'ui-consumer',
+        '@foldkit/ui',
+        {
+          peerDependencies: { '@foldkit/ui': '*' },
+        },
+      ),
+      'node_modules/malformed-dependent/package.json': JSON.stringify({
+        name: 'malformed-dependent',
+        version: '1.0.0',
+        dependencies: 'foldkit',
+        peerDependencies: ['foldkit'],
+      }),
+      'node_modules/partly-malformed-dependent/package.json': JSON.stringify({
+        name: 'partly-malformed-dependent',
+        version: '1.0.0',
+        dependencies: null,
+        peerDependencies: { '@foldkit/ui': '*' },
+      }),
+    })
+
+    const config = await resolveConfig(pluginConfig(root), 'build')
+    const noExternal = config.environments['ssr']?.resolve.noExternal
+
+    expect(noExternal).toEqual(
+      expect.arrayContaining(['ui-consumer', 'partly-malformed-dependent']),
+    )
+    expect(noExternal).not.toContain('malformed-dependent')
+  })
+})
+
+describe('Foldkit packages in the dev server', () => {
+  it('bundles crawled dependents into the server render', async () => {
+    const root = await makeRoot(DECLARED_MARKDOWN_PEER)
+
+    const serveConfig = await resolveConfig(pluginConfig(root), 'serve')
+    const buildConfig = await resolveConfig(pluginConfig(root), 'build')
+    const serveNoExternal = serveConfig.environments['ssr']?.resolve.noExternal
+
+    expect(serveNoExternal).toEqual(
+      expect.arrayContaining(['@foldkit/markdown', 'md-consumer']),
+    )
+    expect(serveNoExternal).toEqual(
+      buildConfig.environments['ssr']?.resolve.noExternal,
+    )
   })
 })
 

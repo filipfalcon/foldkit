@@ -335,6 +335,10 @@ const isFoldkitSingletonPackageSpecifier = (specifier: string): boolean =>
       specifier === packageName || specifier.startsWith(`${packageName}/`),
   )
 
+const isMarkdownPackageSpecifier = (specifier: string): boolean =>
+  specifier === '@foldkit/markdown' ||
+  specifier.startsWith('@foldkit/markdown/')
+
 // A string that only exists inside Foldkit's own source. If the server bundle
 // inlined the framework rather than importing it, this travels with it.
 const FOLDKIT_INTERNAL_MARKER = 'data-foldkit-build'
@@ -364,10 +368,13 @@ const assertServerBundleContainsFoldkitSingletons = (
     'the server bundle contains no Foldkit build marker, so the framework was ' +
       'not bundled into the artifact that renders pages.',
   )
+  const externalMarkdownImports = specifiers.filter(isMarkdownPackageSpecifier)
+
   assertConsumer(
-    !specifiers.includes('@foldkit/markdown'),
+    externalMarkdownImports.length === 0,
     'the server bundle imports @foldkit/markdown externally, so its Foldkit ' +
-      'imports load a second framework instance at runtime.',
+      'imports load a second framework instance at runtime: ' +
+      [...new Set(externalMarkdownImports)].join(', '),
   )
   log('Server bundle contains Foldkit singletons and no bare imports')
 }

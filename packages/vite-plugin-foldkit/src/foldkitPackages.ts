@@ -28,13 +28,12 @@ const isFoldkitPackageName = (name: string): boolean =>
   name === 'foldkit' || name.startsWith('@foldkit/')
 
 const decodeDependencyRecord = Schema.decodeUnknownOption(
-  Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
+  Schema.Record(Schema.String, Schema.Unknown),
 )
 
 const dependencyNames = (field: unknown): ReadonlyArray<string> =>
   pipe(
     decodeDependencyRecord(field),
-    Option.flatMap(Option.fromUndefinedOr),
     Option.match({ onNone: () => [], onSome: Record.keys }),
   )
 
@@ -48,6 +47,9 @@ const dependsOnFoldkit = (packageJson: Record<string, unknown>): boolean =>
 const toCrawlRoot = (root: string): string => {
   const absoluteRoot = resolve(root)
 
+  // NOTE: vitefu realpaths each dependency's package.json and compares it with
+  // workspaceRoot. An unresolved root that runs through a symlink would stop
+  // private workspace packages from being recognized.
   try {
     return realpathSync(absoluteRoot)
   } catch {
@@ -55,8 +57,8 @@ const toCrawlRoot = (root: string): string => {
   }
 }
 
-/** Finds the installed packages an application's server build must bundle and
- * the Foldkit packages Vite must deduplicate.
+/** Finds the installed packages an application's server render must bundle
+ * and the Foldkit packages Vite must deduplicate.
  *
  * @internal
  */
@@ -65,14 +67,8 @@ export const crawlFoldkitPackages = async (
   isBuild: boolean,
   viteUserConfig: UserConfig,
 ): Promise<
-  Readonly<{
-    dedupe: ReadonlyArray<string>
-    ssrNoExternal: ReadonlyArray<string>
-  }>
+  Readonly<{ dedupe: Array<string>; ssrNoExternal: Array<string> }>
 > => {
-  // NOTE: vitefu realpaths each dependency's package.json and compares it with
-  // workspaceRoot. An unresolved root that runs through a symlink would stop
-  // private workspace packages from being recognized.
   const crawlRoot = toCrawlRoot(root)
 
   const crawl = await crawlFrameworkPkgs({

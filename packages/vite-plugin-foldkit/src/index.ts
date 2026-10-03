@@ -1144,15 +1144,15 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
           exclude: ['foldkit'],
         },
         resolve: {
-          dedupe: [...foldkitPackages.dedupe],
+          dedupe: foldkitPackages.dedupe,
         },
         ssr: {
-          noExternal: [...foldkitPackages.ssrNoExternal],
+          noExternal: foldkitPackages.ssrNoExternal,
         },
         environments: {
           ssr: {
             resolve: {
-              noExternal: [...foldkitPackages.ssrNoExternal],
+              noExternal: foldkitPackages.ssrNoExternal,
             },
           },
         },
