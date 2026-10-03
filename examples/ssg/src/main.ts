@@ -74,7 +74,7 @@ const LoadExternal = Command.define('LoadExternal', {
     load(href).pipe(Effect.as(Message.CompletedLoadExternal())),
 })
 
-const DisableBrowserScrollRestoration = Command.define(
+export const DisableBrowserScrollRestoration = Command.define(
   'DisableBrowserScrollRestoration',
   {
     messages: [Message.CompletedDisableBrowserScrollRestoration],

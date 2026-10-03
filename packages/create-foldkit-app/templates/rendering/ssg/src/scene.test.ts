@@ -5,6 +5,7 @@ import { fromString } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
 
 import {
+  DisableBrowserScrollRestoration,
   Message,
   Model,
   RestoreScrollPosition,
@@ -76,6 +77,20 @@ describe('ChangedUrl', () => {
     )
   })
 
+  test('a replaced URL keeps the scroll position', () => {
+    Story.story(
+      update,
+      Story.given(initialModel),
+      Story.message(
+        Message.ChangedUrl({
+          url: urlOrThrow('http://localhost/about'),
+          urlChangeType: UrlChangeType.Replace(),
+        }),
+      ),
+      Story.Command.expectNone(),
+    )
+  })
+
   test('Back and Forward restore the position the reader left', () => {
     Story.story(
       update,
@@ -95,6 +110,22 @@ describe('ChangedUrl', () => {
       ),
     )
   })
+
+  test('Back or Forward to an entry without a recorded position keeps the scroll position', () => {
+    Story.story(
+      update,
+      Story.given(initialModel),
+      Story.message(
+        Message.ChangedUrl({
+          url: urlOrThrow('http://localhost/about'),
+          urlChangeType: UrlChangeType.Traverse({
+            maybeSavedScrollPosition: Option.none(),
+          }),
+        }),
+      ),
+      Story.Command.expectNone(),
+    )
+  })
 })
 
 describe('init', () => {
@@ -111,5 +142,38 @@ describe('init', () => {
     )
 
     expect(readerInit.model).toStrictEqual(buildInit.model)
+  })
+
+  test('a reload restores the position the reader had on the page', () => {
+    const reloadInit = init(
+      urlOrThrow('http://localhost/about'),
+      LoadType.Reload({
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 2400 }),
+      }),
+    )
+
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({
+        name: RestoreScrollPosition.name,
+        args: { x: 0, y: 2400 },
+      }),
+    )
+    expect(reloadInit.commands).toContainEqual(
+      expect.objectContaining({ name: DisableBrowserScrollRestoration.name }),
+    )
+  })
+
+  test('a new visit turns off browser scroll restoration without restoring a position', () => {
+    const visitInit = init(
+      urlOrThrow('http://localhost/about'),
+      LoadType.Push(),
+    )
+
+    expect(visitInit.commands).toContainEqual(
+      expect.objectContaining({ name: DisableBrowserScrollRestoration.name }),
+    )
+    expect(visitInit.commands).not.toContainEqual(
+      expect.objectContaining({ name: RestoreScrollPosition.name }),
+    )
   })
 })

@@ -15,7 +15,11 @@ const { tableOfContents, view: renderPage } = slotDocPage<'basic'>(
 )
 
 export { tableOfContents }
-export { NavDemoSection, navDemoSectionFromUrl } from './demo/nav'
+export {
+  NavDemoSection,
+  defaultNavDemoSection,
+  navDemoSectionFromUrl,
+} from './demo/nav'
 
 type ViewInputs = Readonly<{
   renderCopyButton: CodeBlock.RenderCopyButton

@@ -9,7 +9,10 @@ import { Dialog, Menu } from '@foldkit/ui'
 
 import { Deployment } from './deployment'
 import {
+  ApplyTheme,
+  CopyLink,
   DisableBrowserScrollRestoration,
+  LoadBrowserEnvironment,
   LoadPlayground,
   RestoreScrollPosition,
   ScrollSidebarActiveLinkIntoView,
@@ -332,12 +335,12 @@ describe('application', () => {
   })
 
   test('init builds the same Model from the build URL and the reader URL', () => {
-    const buildInit = init(
+    const newsletterBuildInit = init(
       flags,
       parseUrl('http://localhost/newsletter'),
       LoadType.Push(),
     )
-    const readerInit = init(
+    const newsletterReaderInit = init(
       flags,
       parseUrl('https://foldkit.dev/newsletter/?ref=social#subscribe'),
       LoadType.Reload({
@@ -345,7 +348,22 @@ describe('application', () => {
       }),
     )
 
-    expect(readerInit.model).toStrictEqual(buildInit.model)
+    expect(newsletterReaderInit.model).toStrictEqual(newsletterBuildInit.model)
+
+    const navBuildInit = init(
+      flags,
+      parseUrl('http://localhost/ui/nav'),
+      LoadType.Push(),
+    )
+    const navReaderInit = init(
+      flags,
+      parseUrl('https://foldkit.dev/ui/nav?section=library'),
+      LoadType.Reload({
+        maybeSavedScrollPosition: Option.some({ x: 0, y: 900 }),
+      }),
+    )
+
+    expect(navReaderInit.model).toStrictEqual(navBuildInit.model)
   })
 
   test('a link to another Nav demo section keeps the scroll position and shows that section', () => {
@@ -365,11 +383,46 @@ describe('application', () => {
     )
   })
 
-  test('the Nav demo shows the section in the URL it loads with', () => {
-    expect(
-      initAt(parseUrl('https://foldkit.dev/ui/nav?section=profile'))
-        .navDemoSection,
-    ).toBe('Profile')
+  test('the Nav demo shows the section in the address bar once the browser environment loads', () => {
+    const profileUrl = parseUrl('https://foldkit.dev/ui/nav?section=profile')
+    const profileInit = init(flags, profileUrl, LoadType.Push())
+
+    expect(profileInit.commands).toContainEqual(
+      expect.objectContaining({ name: LoadBrowserEnvironment.name }),
+    )
+
+    story(
+      update,
+      given(profileInit.model),
+      model(model => {
+        expect(model.navDemoSection).toBe('Home')
+      }),
+      message(
+        Message.CompletedLoadBrowserEnvironment({
+          maybeThemePreference: Option.none(),
+          maybeSidebarState: Option.none(),
+          systemTheme: 'Light',
+          isPlaygroundSupported: false,
+          currentYear: flags.currentYear,
+          today: flags.today,
+          maybeUrl: Option.some(profileUrl),
+        }),
+      ),
+      model(model => {
+        expect(model.navDemoSection).toBe('Profile')
+      }),
+      Command.resolve(ApplyTheme, Message.CompletedApplyTheme()),
+    )
+  })
+
+  test('copying a heading link copies a link to that heading', () => {
+    story(
+      update,
+      given(initAt(newsletterUrl)),
+      message(Message.ClickedCopyLink({ hash: 'some-heading' })),
+      Command.expectExact(CopyLink({ hash: 'some-heading' })),
+      Command.resolve(CopyLink, Message.SucceededCopyLink()),
+    )
   })
 
   test('late Home Messages are ignored while Home is absent', () => {

@@ -28,7 +28,11 @@ import {
   pushUrl,
 } from 'foldkit/navigation'
 import { modifyFields } from 'foldkit/struct'
-import { Url, toString as urlToString } from 'foldkit/url'
+import {
+  Url,
+  fromString as urlFromString,
+  toString as urlToString,
+} from 'foldkit/url'
 import { githubStarCount } from 'virtual:landing-data'
 
 import { BrowserKeyValueStore } from '@effect/platform-browser'
@@ -163,6 +167,8 @@ const loadBrowserEnvironment = Effect.gen(function* () {
 
   const today = yield* Calendar.today.local
 
+  const maybeUrl = yield* Effect.sync(() => urlFromString(window.location.href))
+
   return Message.CompletedLoadBrowserEnvironment({
     maybeThemePreference: themePreference,
     maybeSidebarState,
@@ -170,6 +176,7 @@ const loadBrowserEnvironment = Effect.gen(function* () {
     isPlaygroundSupported,
     currentYear,
     today,
+    maybeUrl,
   })
 })
 
@@ -259,7 +266,7 @@ export const init: Runtime.RoutingApplicationInit<
         exampleDetail,
       }) => ({
         route: initialRoute,
-        navDemoSection: Ui.NavPage.navDemoSectionFromUrl(url),
+        navDemoSection: Ui.NavPage.defaultNavDemoSection,
         deployment: flags.deployment,
         snippetCopy: snippetCopyInit.model,
         maybeGitHubStarCount: Option.fromNullishOr(githubStarCount),
@@ -788,6 +795,7 @@ export const update = (model: Model, message: Message) =>
       isPlaygroundSupported,
       currentYear,
       today,
+      maybeUrl,
     }) => {
       const themePreference: ThemePreference = Option.getOrElse(
         maybeThemePreference,
@@ -812,6 +820,11 @@ export const update = (model: Model, message: Message) =>
           maybeThemePreference: () => Option.some(themePreference),
           systemTheme: () => systemTheme,
           resolvedTheme: () => resolvedTheme,
+          navDemoSection: navDemoSection =>
+            Option.match(maybeUrl, {
+              onNone: () => navDemoSection,
+              onSome: Ui.NavPage.navDemoSectionFromUrl,
+            }),
         }),
         commands: [ApplyTheme({ theme: resolvedTheme })],
       })
@@ -892,7 +905,7 @@ const InjectAnalytics = Command.define('InjectAnalytics', {
   ),
 })
 
-const LoadBrowserEnvironment = Command.define('LoadBrowserEnvironment', {
+export const LoadBrowserEnvironment = Command.define('LoadBrowserEnvironment', {
   messages: [Message.CompletedLoadBrowserEnvironment],
   execute: loadBrowserEnvironment,
 })
@@ -904,24 +917,28 @@ const InjectSpeedInsights = Command.define('InjectSpeedInsights', {
   ),
 })
 
-const currentUrlWithHash = (hash: string): string => {
-  const url = new URL(window.location.href)
-  url.hash = hash
+const currentUrlWithHash = (hash: string): Option.Option<string> =>
+  pipe(
+    urlFromString(window.location.href),
+    Option.map(url =>
+      urlToString(modifyFields(url, { hash: () => Option.some(hash) })),
+    ),
+  )
 
-  return url.href
-}
-
-const CopyLink = Command.define('CopyLink', {
+export const CopyLink = Command.define('CopyLink', {
   args: { hash: Schema.String },
   messages: [Message.SucceededCopyLink, Message.FailedCopyLink],
   execute: ({ hash }) =>
-    Effect.tryPromise({
-      try: () => navigator.clipboard.writeText(currentUrlWithHash(hash)),
-      catch: () => new Error('Failed to copy link to clipboard'),
-    }).pipe(
-      Effect.as(Message.SucceededCopyLink()),
-      Effect.catch(() => Effect.succeed(Message.FailedCopyLink())),
-    ),
+    Effect.gen(function* () {
+      const link = yield* Effect.fromOption(currentUrlWithHash(hash))
+
+      yield* Effect.tryPromise({
+        try: () => navigator.clipboard.writeText(link),
+        catch: () => new Error('Failed to copy link to clipboard'),
+      })
+
+      return Message.SucceededCopyLink()
+    }).pipe(Effect.catch(() => Effect.succeed(Message.FailedCopyLink()))),
 })
 
 export const ScrollToTop = Command.define('ScrollToTop', {
@@ -1005,7 +1022,7 @@ const setThemeColorMeta = (color: string): void => {
   }
 }
 
-const ApplyTheme = Command.define('ApplyTheme', {
+export const ApplyTheme = Command.define('ApplyTheme', {
   args: { theme: ResolvedTheme },
   messages: [Message.CompletedApplyTheme],
   execute: ({ theme }) =>

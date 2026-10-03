@@ -26,7 +26,7 @@ const demoSections: ReadonlyArray<NavDemoSection> = [
 
 const NAV_SECTION_QUERY_KEY = 'section'
 
-const defaultSection: NavDemoSection = 'Home'
+export const defaultNavDemoSection: NavDemoSection = 'Home'
 
 const sectionToHref = (section: NavDemoSection): string =>
   `?${NAV_SECTION_QUERY_KEY}=${section.toLowerCase()}`
@@ -43,7 +43,7 @@ export const navDemoSectionFromUrl = (url: Url): NavDemoSection =>
         section => section.toLowerCase() === sectionParam.toLowerCase(),
       ),
     ),
-    Option.getOrElse(() => defaultSection),
+    Option.getOrElse(() => defaultNavDemoSection),
   )
 
 const navClassName =
@@ -82,29 +82,27 @@ const urlBar = (currentSection: NavDemoSection): Html =>
 export const basicDemo = (
   currentSection: NavDemoSection,
   h: HtmlBuilder<Message>,
-) => {
-  return [
-    h.div(
-      [h.Class('w-full max-w-lg mx-auto')],
-      [
-        Nav.view<NavDemoSection>({
-          items: demoSections,
-          ariaLabel: 'App sections',
-          toHref: sectionToHref,
-          isItemCurrent: section => section === currentSection,
-          toView: ({ nav, items }) =>
-            h.nav(
-              [...nav, h.Class(navClassName)],
-              items.map(item =>
-                h.a(
-                  [...item.link, h.Class(linkClassName)],
-                  [h.span([], [item.value])],
-                ),
+) => [
+  h.div(
+    [h.Class('w-full max-w-lg mx-auto')],
+    [
+      Nav.view<NavDemoSection>({
+        items: demoSections,
+        ariaLabel: 'App sections',
+        toHref: sectionToHref,
+        isItemCurrent: section => section === currentSection,
+        toView: ({ nav, items }) =>
+          h.nav(
+            [...nav, h.Class(navClassName)],
+            items.map(item =>
+              h.a(
+                [...item.link, h.Class(linkClassName)],
+                [h.span([], [item.value])],
               ),
             ),
-        }),
-        urlBar(currentSection),
-      ],
-    ),
-  ]
-}
+          ),
+      }),
+      urlBar(currentSection),
+    ],
+  ),
+]

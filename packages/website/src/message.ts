@@ -49,6 +49,7 @@ export const Message = defineMessageUnion({
     isPlaygroundSupported: Schema.Boolean,
     currentYear: Schema.Number,
     today: Calendar.CalendarDate,
+    maybeUrl: Schema.Option(Url),
   },
   CompletedScrollSidebarActiveLinkIntoView: {},
   CompletedScrollMobileMenuActiveLinkIntoView: {},
