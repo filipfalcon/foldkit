@@ -1,9 +1,9 @@
-import { HashSet, Option, pipe } from 'effect'
+import { Effect, HashSet, Option, pipe } from 'effect'
 import { Calendar } from 'foldkit'
 import { LoadType, UrlChangeType } from 'foldkit/navigation'
 import { Command, given, message, model, story } from 'foldkit/story'
 import * as Url from 'foldkit/url'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { Dialog, Menu } from '@foldkit/ui'
 
@@ -505,5 +505,38 @@ describe('application', () => {
         }),
       ),
     )
+  })
+})
+
+describe('commands', () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/')
+    vi.restoreAllMocks()
+  })
+
+  test('LoadBrowserEnvironment reads the URL in the address bar', async () => {
+    window.history.replaceState(null, '', '/ui/nav?section=profile')
+
+    const completed = await Effect.runPromise(LoadBrowserEnvironment().effect)
+
+    expect(Option.map(completed.maybeUrl, Url.toString)).toStrictEqual(
+      Option.some(`${window.location.origin}/ui/nav?section=profile`),
+    )
+  })
+
+  test('CopyLink copies the URL in the address bar with the heading as its hash', async () => {
+    window.history.replaceState(null, '', '/newsletter?ref=feed#intro')
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue(undefined)
+
+    const result = await Effect.runPromise(
+      CopyLink({ hash: 'subscribe' }).effect,
+    )
+
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/newsletter?ref=feed#subscribe`,
+    )
+    expect(result).toStrictEqual(Message.SucceededCopyLink())
   })
 })
