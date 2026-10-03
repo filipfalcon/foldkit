@@ -744,6 +744,7 @@ const requestPresentsToken = (url: URL, token: string): boolean => {
 }
 
 const refuseUpgrade = (socket: Duplex, status: RefusedUpgradeStatus): void => {
+  socket.on('error', () => socket.destroy())
   socket.once('finish', () => socket.destroy())
   socket.end(
     `HTTP/1.1 ${status} ${STATUS_CODES[status] ?? ''}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
@@ -920,7 +921,7 @@ const reportRelayBindFailed = (
 }
 
 const unpublishedRelayMessage = (reason: string): string =>
-  `[foldkit:devTools] Cannot publish the MCP relay address: ${reason}. Set matching devToolsMcpPort and FOLDKIT_DEVTOOLS_MCP_PORT values for MCP access, or set FOLDKIT_DEVTOOLS_RELAY_DIRECTORY to a private directory on a platform that verifies ownership.`
+  `[foldkit:devTools] Cannot publish the MCP relay address: ${reason}. Set matching devToolsMcpPort and FOLDKIT_DEVTOOLS_MCP_PORT values for MCP access, or set FOLDKIT_DEVTOOLS_RELAY_DIRECTORY to a directory private to your user.`
 
 const publishRelay = (root: string, relay: Relay, trust: RelayRegistryTrust) =>
   Effect.gen(function* () {

@@ -102,16 +102,24 @@ export const publishedRecords = (
     ),
   )
 
+const recordsPublishedInThisProcess = async (
+  root: string,
+): Promise<ReadonlyArray<RelayRecord>> =>
+  Array.filter(
+    await publishedRecords(root),
+    record => record.pid === process.pid,
+  )
+
 export const waitUntilPublished = async (
   root: string,
 ): Promise<RelayRecord> => {
   await expect
-    .poll(async () => (await publishedRecords(root)).length, {
+    .poll(async () => (await recordsPublishedInThisProcess(root)).length, {
       timeout: POLL_TIMEOUT,
     })
     .toBe(1)
   return Option.getOrThrowWith(
-    Array.head(await publishedRecords(root)),
+    Array.head(await recordsPublishedInThisProcess(root)),
     () => new Error('relay record vanished'),
   )
 }

@@ -83,7 +83,12 @@ const relayUrlForLog = (url: string): string => {
   return parsed.toString()
 }
 
-const errorReason = (error: Error): string =>
+/**
+ * Read a display string from a caught error. Effect's `TimeoutError` carries no
+ * `message`, so `error.message` is `undefined` on a relay timeout; fall back to
+ * the error's string form (its tag) rather than surfacing `Error: undefined`.
+ */
+export const errorReason = (error: Error): string =>
   error.message ? error.message : String(error)
 
 const attemptOpen = (url: string): Effect.Effect<WebSocket, Error> =>

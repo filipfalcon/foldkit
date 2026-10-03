@@ -259,18 +259,6 @@ const readWindowsDirectoryRefusal = (
     }),
   )
 
-export const probeWindowsDirectory = (
-  directory: string,
-  executable: string,
-): Effect.Effect<
-  Option.Option<string>,
-  never,
-  ChildProcessSpawner.ChildProcessSpawner
-> =>
-  readWindowsDirectoryRefusal(directory, executable).pipe(
-    Effect.orElseSucceed(() => Option.some(UNVERIFIED_OWNERSHIP)),
-  )
-
 export const makeCachedWindowsProbe = (
   maybeExecutable: Option.Option<string>,
 ): Effect.Effect<

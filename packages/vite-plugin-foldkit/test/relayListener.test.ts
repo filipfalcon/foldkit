@@ -7,6 +7,7 @@ import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'
 import {
   RELAY_PATH,
   openWebSocket,
+  serverPort,
   useRelayRegistry,
   waitUntilPublished,
 } from './relayFixtures.ts'
@@ -39,6 +40,19 @@ const rawExchange = (port: number, request: string) =>
     socket.on('close', () => resolveResponse(chunks.join('')))
     socket.on('error', reject)
     socket.on('connect', () => socket.write(request))
+  })
+
+const RESETTING_CLIENTS_PER_TARGET = 100
+const REFUSED_TARGETS = ['/elsewhere', 'http://[', RELAY_PATH]
+
+const sendUpgradeAndReset = (port: number, request: string) =>
+  new Promise<void>(resolveClosed => {
+    const socket = connect({ port, host: '127.0.0.1' })
+    socket.on('error', () => undefined)
+    socket.on('close', () => resolveClosed())
+    socket.on('connect', () => {
+      socket.write(request, () => socket.resetAndDestroy())
+    })
   })
 
 const upgradeRequest = (target: string) =>
@@ -105,6 +119,44 @@ it(
 
     const client = await openWebSocket(url.toString())
     expect(client.readyState).toBe(WebSocket.OPEN)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'keeps serving after clients reset refused upgrades',
+  async () => {
+    const uncaughtErrors: Array<Error> = []
+    const collectUncaughtError = (error: Error) => {
+      uncaughtErrors.push(error)
+    }
+    process.on('uncaughtException', collectUncaughtError)
+    onTestFinished(() => {
+      process.off('uncaughtException', collectUncaughtError)
+    })
+
+    const server = await startServer()
+    const url = await publishedRelayUrl()
+    const port = Number(url.port)
+
+    await Promise.all(
+      REFUSED_TARGETS.flatMap(target =>
+        Array.from({ length: RESETTING_CLIENTS_PER_TARGET }, () =>
+          sendUpgradeAndReset(port, upgradeRequest(target)),
+        ),
+      ),
+    )
+
+    const client = await openWebSocket(url.toString())
+    expect(client.readyState).toBe(WebSocket.OPEN)
+
+    const response = await fetch(
+      `http://127.0.0.1:${serverPort(server)}/@vite/client`,
+    )
+    expect(response.status).toBe(200)
+    await response.arrayBuffer()
+
+    expect(uncaughtErrors).toEqual([])
   },
   TEST_TIMEOUT,
 )
