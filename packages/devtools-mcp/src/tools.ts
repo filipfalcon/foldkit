@@ -5,7 +5,11 @@ import {
   Response,
 } from 'foldkit/devtools-protocol'
 
-import type { ListedRuntime, RelayClient } from './relayClient.js'
+import {
+  type ListedRuntime,
+  type RelayClient,
+  errorReason,
+} from './relayClient.js'
 
 const RUNTIME_ID_DESCRIPTION =
   'Optional connection id of a specific Foldkit runtime. Defaults to the most recently connected runtime of the most recently started dev server. Call `foldkit_list_runtimes` to find runtimes in other applications, each with its `projectRoot`.'
@@ -212,14 +216,6 @@ const formatError = (reason: string): ToolResult => ({
   content: [{ type: 'text', text: `Error: ${reason}` }],
   isError: true,
 })
-
-/**
- * Read a display string from a caught error. Effect's `TimeoutError` carries no
- * `message`, so `error.message` is `undefined` on a relay timeout; fall back to
- * the error's string form (its tag) rather than surfacing `Error: undefined`.
- */
-const errorReason = (error: Error): string =>
-  error.message ? error.message : String(error)
 
 /**
  * Decode a tool's raw input against its Effect Schema. Failure surfaces as an

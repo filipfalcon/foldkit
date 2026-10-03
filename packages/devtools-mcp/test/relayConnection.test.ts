@@ -150,7 +150,7 @@ it(
 )
 
 it(
-  'closes without an uncaught error while a connection is still opening',
+  'closes only after a call still connecting fails at the connect timeout, without an uncaught error',
   async () => {
     const url = await startStalledServer()
     const uncaught: Array<unknown> = []
@@ -162,14 +162,22 @@ it(
     const client = await Effect.runPromise(
       makeRelayClient(Effect.succeed(fixedTarget(url))),
     )
+    const settledOperations: Array<string> = []
 
     const startedAt = Date.now()
-    const pending = Effect.runPromise(Effect.exit(client.listRuntimes))
+    const pending = Effect.runPromise(Effect.exit(client.listRuntimes)).then(
+      exit => {
+        settledOperations.push('listRuntimes')
+        return exit
+      },
+    )
     await new Promise(done => setTimeout(done, CLOSE_DELAY))
     await Effect.runPromise(client.close)
+    settledOperations.push('close')
     const exit = await pending
     await new Promise(done => setTimeout(done, CLOSE_DELAY))
 
+    expect(settledOperations).toStrictEqual(['listRuntimes', 'close'])
     expect(Exit.isFailure(exit)).toBe(true)
     expect(Date.now() - startedAt).toBeGreaterThanOrEqual(CONNECT_TIMEOUT)
     expect(uncaught).toStrictEqual([])
