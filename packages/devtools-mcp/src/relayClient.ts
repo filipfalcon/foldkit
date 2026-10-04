@@ -8,6 +8,7 @@ import {
   Exit,
   HashMap,
   HashSet,
+  Match,
   Option,
   Ref,
   Schema,
@@ -266,9 +267,20 @@ export const makeRelayClient = <Services>(
         LIST_RUNTIMES_TIMEOUT,
       ).pipe(
         Effect.flatMap(response =>
-          response._tag === 'ResponseRuntimes'
-            ? Effect.succeed(response.runtimes)
-            : Effect.fail(new Error(`the relay answered ${response._tag}`)),
+          Match.value(response).pipe(
+            Match.withReturnType<
+              Effect.Effect<ReadonlyArray<typeof RuntimeInfo.Type>, Error>
+            >(),
+            Match.tag('ResponseRuntimes', ({ runtimes }) =>
+              Effect.succeed(runtimes),
+            ),
+            Match.tag('ResponseError', ({ reason }) =>
+              Effect.fail(new Error(reason)),
+            ),
+            Match.orElse(({ _tag }) =>
+              Effect.fail(new Error(`the relay answered ${_tag}`)),
+            ),
+          ),
         ),
         Effect.catch(error =>
           Console.error(

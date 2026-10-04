@@ -22,6 +22,7 @@ import {
   isWithinRoot,
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
+import { makeUncheckedRegistryReader } from './relayFixtures.ts'
 
 const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
@@ -80,7 +81,7 @@ describe('discoverRelays', () => {
 
   const discover = (projectRoot: string) =>
     runWithNode(
-      Effect.flatMap(makeRelayRegistryReader, registryReader =>
+      Effect.flatMap(makeUncheckedRegistryReader, registryReader =>
         discoverRelays(projectRoot, registryReader),
       ),
     )
@@ -101,7 +102,7 @@ describe('discoverRelays', () => {
     runWithNode(
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
-        const registryReader = yield* makeRelayRegistryReader
+        const registryReader = yield* makeUncheckedRegistryReader
         let didStartCleanup = false
 
         const publishBeforeCleanup = () =>
@@ -309,8 +310,14 @@ describe('discoverRelays', () => {
       await publish('planted', record('/workspace/app', 4910))
       await chmod(registryDirectory, SHARED_DIRECTORY_MODE)
 
-      expect(await discover('/workspace/app')).toStrictEqual([])
-      expect(await discover('/workspace/app')).toStrictEqual([])
+      const discoverInNewSession = async () =>
+        discoverWith(
+          await Effect.runPromise(makeRelayRegistryReader),
+          '/workspace/app',
+        )
+
+      expect(await discoverInNewSession()).toStrictEqual([])
+      expect(await discoverInNewSession()).toStrictEqual([])
 
       expect(reported.mock.calls.map(call => call.join(' '))).toStrictEqual([
         refusalLine(),

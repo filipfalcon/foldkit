@@ -13,6 +13,7 @@ import {
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
 import {
+  POLL_TIMEOUT,
   RELAY_DIRECTORY_VARIABLE,
   RUNTIME_DIRECTORY_VARIABLE,
   listedIds,
@@ -49,7 +50,7 @@ it.runIf(process.platform === 'win32')(
     const session = await openSession(application)
 
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-application'])
   },
   TEST_TIMEOUT,
@@ -92,7 +93,7 @@ it.runIf(process.platform === 'win32')(
     await server.listen()
 
     await expect
-      .poll(loggedErrors)
+      .poll(loggedErrors, { timeout: POLL_TIMEOUT })
       .toContainEqual(expect.stringContaining(SHARED_WITH_OTHER_USERS))
     expect(await readdir(registryDirectory)).toStrictEqual(['planted.json'])
     expect(

@@ -1,4 +1,12 @@
-import { Array, ConfigProvider, Effect, Option } from 'effect'
+import {
+  Array,
+  ConfigProvider,
+  Effect,
+  HashSet,
+  Match,
+  Option,
+  Ref,
+} from 'effect'
 import { Request, type Response } from 'foldkit/devtools-protocol'
 import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -20,6 +28,7 @@ import {
 export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 export const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
+export const POLL_TIMEOUT = 10_000
 const DECLINE_DELAY = 50
 const RUNTIME_RESPONSE_DELAY = 2 * DECLINE_DELAY
 
@@ -103,6 +112,19 @@ export const useWorkspace = () => {
   return workspace
 }
 
+// NOTE: On Windows, each new reader checks the registry directory through a
+// PowerShell probe. Tests that are not about that check read through this
+// reader, which accepts every directory, so they start no probe.
+export const makeUncheckedRegistryReader: Effect.Effect<RelayRegistryReader> =
+  Effect.gen(function* () {
+    const reportedRefusals = yield* Ref.make(HashSet.empty<string>())
+    const registryReader: RelayRegistryReader = {
+      trust: { refusal: () => Effect.succeedNone },
+      reportedRefusals,
+    }
+    return registryReader
+  })
+
 // NOTE: With no relay published, the MCP server falls back to the fixed port
 // 9988, where a developer may run a dev server of their own. Sessions here
 // reach only discovered relays, so such a server cannot answer them.
@@ -123,12 +145,11 @@ const discoveredTargets = (
     ),
   )
 
-const publishedRelayCount = (root: string) =>
-  runWithNode(
-    Effect.flatMap(makeRelayRegistryReader, registryReader =>
-      discoveredTargets(root, registryReader),
-    ),
-  ).then(
+const publishedRelayCount = (
+  root: string,
+  registryReader: RelayRegistryReader,
+) =>
+  runWithNode(discoveredTargets(root, registryReader)).then(
     targets =>
       targets.filter(({ maybeProjectRoot }) =>
         Option.contains(maybeProjectRoot, root),
@@ -140,7 +161,8 @@ export const startApplication = async (
   plugins: ReadonlyArray<Plugin> = [],
 ): Promise<ViteDevServer> => {
   await mkdir(join(root, 'src'), { recursive: true })
-  const relaysBefore = await publishedRelayCount(root)
+  const registryReader = await Effect.runPromise(makeUncheckedRegistryReader)
+  const relaysBefore = await publishedRelayCount(root, registryReader)
   const server = await createServer({
     root,
     configFile: false,
@@ -150,7 +172,11 @@ export const startApplication = async (
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  await expect.poll(() => publishedRelayCount(root)).toBe(relaysBefore + 1)
+  await expect
+    .poll(() => publishedRelayCount(root, registryReader), {
+      timeout: POLL_TIMEOUT,
+    })
+    .toBe(relaysBefore + 1)
   return server
 }
 
@@ -232,7 +258,10 @@ export const replay = (
       )
       .pipe(
         Effect.map((response: typeof Response.Type) =>
-          response._tag === 'ResponseReplayed' ? response.model : response._tag,
+          Match.value(response).pipe(
+            Match.tag('ResponseReplayed', ({ model }) => model),
+            Match.orElse(({ _tag }) => _tag),
+          ),
         ),
         Effect.catch(error => Effect.succeed(String(error))),
       ),
