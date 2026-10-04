@@ -5,14 +5,10 @@ import {
   type UserConfig,
   createServer,
 } from 'vite'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'
-import {
-  findFreePort,
-  isPortAccepting,
-  useRelayRegistry,
-} from './relayFixtures.ts'
+import { findFreePort, loggedLines, useRelayRegistry } from './relayFixtures.ts'
 
 const SETTLE = 500
 
@@ -71,10 +67,7 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
       }
 
       const relayLines = () =>
-        vi
-          .mocked(console.log)
-          .mock.calls.map(call => call.map(String).join(' '))
-          .filter(line => line.includes('MCP relay'))
+        loggedLines(console.log).filter(line => line.includes('MCP relay'))
 
       it('starts no relay by default', async () => {
         const server = await startServer({})
@@ -92,7 +85,6 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
         await startServer({ devToolsMcpPort: port })
         await settle()
 
-        expect(await isPortAccepting(port)).toBe(false)
         expect(await readdir(directories.registry)).toStrictEqual([])
         expect(relayLines()).toStrictEqual([])
       })

@@ -20,7 +20,7 @@ import {
   type ViteDevServer,
   createServer,
 } from 'vite'
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { WebSocket } from 'ws'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
@@ -40,10 +40,12 @@ import {
   POLL_TIMEOUT,
   RELAY_DIRECTORY_VARIABLE,
   RELAY_PATH,
-  findFreePort,
   isPortAccepting,
+  loggedLines,
   openWebSocket,
   publishedRecords,
+  serverPort,
+  startOnConfiguredRelayPort,
   useRelayRegistry,
   waitUntilPublished,
 } from './relayFixtures.ts'
@@ -64,15 +66,12 @@ const startMiddlewareModeServer = async (devToolsMcpPort: number) => {
   return server
 }
 
-const startStandaloneServer = async (
-  devToolsMcpPort: number,
-  serverPort: number,
-) => {
+const startStandaloneServer = async (devToolsMcpPort: number) => {
   const server = await createServer({
     root: PACKAGE_ROOT,
     configFile: false,
     logLevel: 'silent',
-    server: { port: serverPort, strictPort: true, host: '127.0.0.1' },
+    server: { port: 0, host: '127.0.0.1' },
     plugins: [foldkit({ devToolsMcpPort })],
   })
   onTestFinished(() => server.close().catch(() => undefined))
@@ -95,13 +94,18 @@ const connectClient = async (port: number) => {
 
 // NOTE: Binds every interface, the way `ws` does. Holding only 127.0.0.1
 // leaves the relay free to bind `::` and the contention never happens.
-const holdPort = async (port: number) => {
+const holdFreePort = async (): Promise<number> => {
   const squatter = createNetServer()
   onTestFinished(() => new Promise<void>(done => squatter.close(() => done())))
   await new Promise<void>((resolveListening, reject) => {
     squatter.on('error', reject)
-    squatter.listen(port, () => resolveListening())
+    squatter.listen(0, () => resolveListening())
   })
+  const address = squatter.address()
+  if (address === null || typeof address === 'string') {
+    throw new Error('The squatter has no bound port')
+  }
+  return address.port
 }
 
 const requestPreservedModel = async (port: number) => {
@@ -192,7 +196,6 @@ const startMiddlewareServer = async (options: FoldkitPluginOptions) => {
 
 const startListeningServer = async (
   options: FoldkitPluginOptions,
-  serverPort: number,
   plugins: ReadonlyArray<Plugin> = [],
   host = '127.0.0.1',
 ) => {
@@ -200,7 +203,7 @@ const startListeningServer = async (
     root: PACKAGE_ROOT,
     configFile: false,
     logLevel: 'silent',
-    server: { port: serverPort, strictPort: true, host },
+    server: { port: 0, host },
     plugins: [...plugins, foldkit(options)],
   })
   onTestFinished(() => server.close().catch(() => undefined))
@@ -281,25 +284,24 @@ const withRuntimeDirectory = (runtimeDirectory: string) => {
   return join(runtimeDirectory, REGISTRY_DIRECTORY_NAME)
 }
 
-const joinedLogLines = (calls: ReadonlyArray<ReadonlyArray<unknown>>) =>
-  calls.map(call => call.map(String).join(' '))
-
 const maybeNetworkAddress = Array.findFirst(
   Object.values(networkInterfaces()).flatMap(addresses => addresses ?? []),
   address => address.family === 'IPv4' && !address.internal,
 ).pipe(Option.map(address => address.address))
 
 describe('DevTools MCP relay', () => {
+  useRelayRegistry()
+
   it(
     'releases its port when a middleware-mode dev server closes',
     async () => {
-      const port = await findFreePort()
-      const server = await startMiddlewareModeServer(port)
-      await waitUntilRelayListening(port)
+      const { server, relayPort } = await startOnConfiguredRelayPort(
+        startMiddlewareModeServer,
+      )
 
       await server.close()
 
-      expect(await isPortAccepting(port)).toBe(false)
+      expect(await isPortAccepting(relayPort)).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -307,8 +309,7 @@ describe('DevTools MCP relay', () => {
   it(
     'keeps an event for the replaced server out of the replacement',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort)
+      const server = await startListeningServer({})
       // NOTE: Vite restarts a server in place, so a copy taken now keeps the
       // replaced server's config and hot channel after the restart.
       const replacedServer: ViteDevServer = { ...server }
@@ -327,7 +328,7 @@ describe('DevTools MCP relay', () => {
       await server.restart()
       expect(server.config).not.toBe(replacedServer.config)
 
-      const client = await openHmrClient(serverPort)
+      const client = await openHmrClient(serverPort(server))
       sendCustom(client, 'foldkit:preserve-model', {
         id: 'app',
         model: { count: 1 },
@@ -352,15 +353,15 @@ describe('DevTools MCP relay', () => {
   it(
     'closes connected MCP clients when the dev server closes',
     async () => {
-      const port = await findFreePort()
-      const server = await startMiddlewareModeServer(port)
-      await waitUntilRelayListening(port)
-      const client = await connectClient(port)
+      const { server, relayPort } = await startOnConfiguredRelayPort(
+        startMiddlewareModeServer,
+      )
+      const client = await connectClient(relayPort)
 
       await server.close()
 
       await expect.poll(() => client.readyState === client.CLOSED).toBe(true)
-      expect(await isPortAccepting(port)).toBe(false)
+      expect(await isPortAccepting(relayPort)).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -368,14 +369,13 @@ describe('DevTools MCP relay', () => {
   it(
     'releases its port when a standalone dev server closes',
     async () => {
-      const port = await findFreePort()
-      const serverPort = await findFreePort()
-      const server = await startStandaloneServer(port, serverPort)
-      await waitUntilRelayListening(port)
+      const { server, relayPort } = await startOnConfiguredRelayPort(
+        startStandaloneServer,
+      )
 
       await server.close()
 
-      expect(await isPortAccepting(port)).toBe(false)
+      expect(await isPortAccepting(relayPort)).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -383,19 +383,19 @@ describe('DevTools MCP relay', () => {
   it(
     'hands the relay over to the replacement when a dev server restarts',
     async () => {
-      const port = await findFreePort()
-      const server = await startMiddlewareModeServer(port)
-      await waitUntilRelayListening(port)
+      const { server, relayPort } = await startOnConfiguredRelayPort(
+        startMiddlewareModeServer,
+      )
 
       await server.restart()
 
-      await waitUntilRelayListening(port)
-      const client = await connectClient(port)
+      await waitUntilRelayListening(relayPort)
+      const client = await connectClient(relayPort)
       expect(client.readyState).toBe(client.OPEN)
 
       await server.close()
 
-      expect(await isPortAccepting(port)).toBe(false)
+      expect(await isPortAccepting(relayPort)).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -403,14 +403,12 @@ describe('DevTools MCP relay', () => {
   it(
     'serves Model-preservation requests while a contended bind is still retrying',
     async () => {
-      const port = await findFreePort()
-      const serverPort = await findFreePort()
-      await holdPort(port)
-      await startStandaloneServer(port, serverPort)
+      const port = await holdFreePort()
+      const server = await startStandaloneServer(port)
 
       await expect(
         Promise.race([
-          requestPreservedModel(serverPort),
+          requestPreservedModel(serverPort(server)),
           new Promise((_, reject) =>
             setTimeout(
               () =>
@@ -429,8 +427,7 @@ describe('DevTools MCP relay', () => {
   it(
     'closes promptly while a contended bind is still retrying',
     async () => {
-      const port = await findFreePort()
-      await holdPort(port)
+      const port = await holdFreePort()
       const server = await startMiddlewareModeServer(port)
 
       const startedAt = Date.now()
@@ -450,14 +447,16 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'publishes a loopback relay of its own for a dev server',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort)
+      const server = await startListeningServer({})
       const root = server.config.root
 
       const record = await waitUntilPublished(root)
 
       expect(record.pid).toBe(process.pid)
-      const url = await expectOwnLoopbackRelay(record, Option.some(serverPort))
+      const url = await expectOwnLoopbackRelay(
+        record,
+        Option.some(serverPort(server)),
+      )
 
       await server.close()
 
@@ -470,8 +469,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'refuses a relay connection that lacks the published token',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort)
+      const server = await startListeningServer({})
       const record = await waitUntilPublished(server.config.root)
 
       const withoutToken = new URL(record.url)
@@ -505,13 +503,12 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'leaves other upgrades on the dev server to Vite',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort)
+      const server = await startListeningServer({})
       await waitUntilPublished(server.config.root)
 
       await expect(
         Promise.race([
-          requestPreservedModel(serverPort),
+          requestPreservedModel(serverPort(server)),
           new Promise((_, reject) =>
             setTimeout(
               () =>
@@ -548,17 +545,14 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'keeps a configured port on a socket of its own and publishes it',
     async () => {
-      const port = await findFreePort()
-      const serverPort = await findFreePort()
-      const server = await startListeningServer(
-        { devToolsMcpPort: port },
-        serverPort,
+      const { server, relayPort } = await startOnConfiguredRelayPort(
+        devToolsMcpPort => startListeningServer({ devToolsMcpPort }),
       )
 
       const record = await waitUntilPublished(server.config.root)
 
-      expect(record.url).toBe(`ws://localhost:${port}`)
-      await waitUntilRelayListening(port)
+      expect(record.url).toBe(`ws://localhost:${relayPort}`)
+      await waitUntilRelayListening(relayPort)
     },
     TEST_TIMEOUT,
   )
@@ -566,13 +560,12 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'publishes a loopback relay of its own for an HTTPS dev server',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort, [basicSsl()])
+      const server = await startListeningServer({}, [basicSsl()])
       expect(server.config.server.https).toBeDefined()
 
       const record = await waitUntilPublished(server.config.root)
 
-      await expectOwnLoopbackRelay(record, Option.some(serverPort))
+      await expectOwnLoopbackRelay(record, Option.some(serverPort(server)))
     },
     TEST_TIMEOUT,
   )
@@ -592,8 +585,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'publishes a new relay when a dev server restarts',
     async () => {
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort)
+      const server = await startListeningServer({})
       const root = server.config.root
       const before = await waitUntilPublished(root)
 
@@ -680,23 +672,16 @@ describe('DevTools MCP relay discovery', () => {
     'refuses a registry directory that other users can read',
     async () => {
       await chmod(directories.registry, 0o755)
-      const logged = vi.spyOn(console, 'log').mockImplementation(() => {})
-      const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
-      onTestFinished(() => {
-        logged.mockRestore()
-        reported.mockRestore()
-      })
-
       await startMiddlewareServer({})
 
       await expect
-        .poll(() => joinedLogLines(reported.mock.calls), {
+        .poll(() => loggedLines(console.error), {
           timeout: POLL_TIMEOUT,
         })
         .toContainEqual(
           expect.stringContaining('is readable or writable by other users'),
         )
-      expect(joinedLogLines(logged.mock.calls)).toContainEqual(
+      expect(loggedLines(console.log)).toContainEqual(
         expect.stringContaining('MCP relay listening at'),
       )
       expect(await readdir(directories.registry)).toEqual([])
@@ -710,26 +695,19 @@ describe('DevTools MCP relay discovery', () => {
       const notADirectory = join(directories.registry, 'registry-file')
       await writeFile(notADirectory, '', 'utf-8')
       process.env[RELAY_DIRECTORY_VARIABLE] = notADirectory
-      const logged = vi.spyOn(console, 'log').mockImplementation(() => {})
-      const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
-      onTestFinished(() => {
-        logged.mockRestore()
-        reported.mockRestore()
-      })
-
       await startMiddlewareServer({})
 
       await expect
-        .poll(() => joinedLogLines(reported.mock.calls), {
+        .poll(() => loggedLines(console.error), {
           timeout: POLL_TIMEOUT,
         })
         .toContainEqual(
           expect.stringContaining('the registry could not be written'),
         )
-      expect(joinedLogLines(reported.mock.calls)).toContainEqual(
+      expect(loggedLines(console.error)).toContainEqual(
         expect.stringContaining('FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'),
       )
-      expect(joinedLogLines(logged.mock.calls)).toContainEqual(
+      expect(loggedLines(console.log)).toContainEqual(
         expect.stringContaining('MCP relay listening at'),
       )
     },
@@ -786,12 +764,11 @@ describe('DevTools MCP relay discovery', () => {
     'publishes a loopback relay of its own for a dev server bound to a network address',
     async () => {
       const host = Option.getOrThrow(maybeNetworkAddress)
-      const serverPort = await findFreePort()
-      const server = await startListeningServer({}, serverPort, [], host)
+      const server = await startListeningServer({}, [], host)
 
       const record = await waitUntilPublished(server.config.root)
 
-      await expectOwnLoopbackRelay(record, Option.some(serverPort))
+      await expectOwnLoopbackRelay(record, Option.some(serverPort(server)))
     },
     TEST_TIMEOUT,
   )
@@ -849,10 +826,10 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'keeps the first record when a second dev server for the same root stops',
     async () => {
-      const first = await startListeningServer({}, await findFreePort())
+      const first = await startListeningServer({})
       const root = first.config.root
       const firstRecord = await waitUntilPublished(root)
-      const second = await startListeningServer({}, await findFreePort())
+      const second = await startListeningServer({})
       await expect
         .poll(async () => (await publishedRecords(root)).length, {
           timeout: POLL_TIMEOUT,

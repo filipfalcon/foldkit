@@ -6,7 +6,6 @@ import { WebSocket } from 'ws'
 import { foldkit } from '../src/index.ts'
 import {
   RELAY_PATH,
-  findFreePort,
   useRelayRegistry,
   waitUntilPublished,
 } from './relayFixtures.ts'
@@ -65,12 +64,11 @@ it(
   'keeps an MCP relay connection open beside a plugin that handles every other upgrade',
   async () => {
     const seenPaths: Array<string> = []
-    const serverPort = await findFreePort()
     const server = await createServer({
       root: directories.root,
       configFile: false,
       logLevel: 'silent',
-      server: { port: serverPort, strictPort: true, host: '127.0.0.1' },
+      server: { port: 0, host: '127.0.0.1' },
       plugins: [catchAllUpgrades(seenPaths), foldkit()],
     })
     onTestFinished(() => server.close().catch(() => undefined))
@@ -90,14 +88,12 @@ it(
   'keeps an MCP relay connection open beside a catch-all WebSocket proxy',
   async () => {
     const backendPort = await startDecliningBackend()
-    const serverPort = await findFreePort()
     const server = await createServer({
       root: directories.root,
       configFile: false,
       logLevel: 'silent',
       server: {
-        port: serverPort,
-        strictPort: true,
+        port: 0,
         host: '127.0.0.1',
         proxy: {
           '^/(?!@vite|@fs|@id|src|node_modules).*': {
