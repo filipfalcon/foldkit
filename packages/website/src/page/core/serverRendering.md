@@ -176,7 +176,7 @@ When a preference must affect the server HTML, make it request-visible, such as 
 
 A routing `init` receives two arguments that can differ between the server and the browser: the URL and the `LoadType`.
 
-The server renders from its own URL, not the reader's. A static build renders `http://localhost/about` for every reader of `/about`, and no server receives the hash. Keep the parts of the URL the server cannot know out of the first Model. For a static build, those are:
+The server renders from its own URL, not the reader's. A static build renders each path once, with no query, on the origin set by `ssr.build.prerender.origin`, or `http://localhost` when none is set. Every reader of `/about` gets that one page, whatever host, query, or hash they arrived with. No server receives the hash, even at request time. Keep the parts of the URL the server cannot know out of the first Model. For a static build, those are:
 
 - The origin.
 - The query, including route fields parsed from it, such as a search term.

@@ -4,8 +4,8 @@ import { afterEach, beforeEach, expect, vi } from 'vitest'
 import { describe, it } from '@effect/vitest'
 
 import {
-  entryKeyInHistoryState,
   expectWorkingSessionStorage,
+  rawEntryKeyInHistoryState,
   replaceSessionStorage,
   reportNavigationTimingType,
   scrollWindowTo,
@@ -490,7 +490,7 @@ describe('sessionStorage failures', () => {
     expect(historyEntries.recordLeavingEntryAndTraverse(null)).toEqual(
       UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
     )
-    expect(entryKeyInHistoryState()).toEqual(expect.any(String))
+    expect(rawEntryKeyInHistoryState()).toEqual(expect.any(String))
   })
 
   it('writes the positions a failed write left out on the next write', async () => {

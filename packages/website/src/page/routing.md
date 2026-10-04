@@ -218,4 +218,4 @@ Because the restore is a Command update returns, update can also wait with it. I
 
 An app that hydrates server-rendered HTML needs two more rules. The server has no history entry, so its `init` always receives `LoadType.Push()`, while the browser's `init` receives the real `LoadType`. Keep what the view renders independent of the `LoadType`, and act on it only through Commands. Otherwise the browser's first render differs from the HTML the server sent.
 
-The example keeps only the route it parses from the path, so the server and the browser build the same first Model although the server renders from its own URL. [Server Rendering](/core/server-rendering#flags-and-what-only-the-browser-knows) lists the parts of the URL to keep out of the first Model.
+Also keep the parts of the URL the server cannot know out of the first Model, since the server renders from its own URL, not the reader's. The example keeps only the route it parses from the path, so the server and the browser build the same first Model. [Server Rendering](/core/server-rendering#flags-and-what-only-the-browser-knows) lists those parts of the URL.

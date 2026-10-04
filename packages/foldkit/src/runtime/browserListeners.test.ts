@@ -8,9 +8,9 @@ import { UrlChangeType } from '../navigation/urlChangeType.js'
 import { type UrlRequest } from '../navigation/urlRequest.js'
 import { type CommitNotifier, createCommitNotifier } from '../render/commit.js'
 import {
-  entryKeyInHistoryState,
   expectWorkingSessionStorage,
   nextAnimationFrame,
+  rawEntryKeyInHistoryState,
   replaceSessionStorage,
   scrollWindowTo,
 } from '../test/support/navigation.js'
@@ -305,18 +305,18 @@ describe('addNavigationEventListeners', () => {
 
   it('reports Replace for replaceUrl and keeps the entry key', () => {
     listen()
-    const entryKeyBeforeReplace = entryKeyInHistoryState()
+    const entryKeyBeforeReplace = rawEntryKeyInHistoryState()
 
     Effect.runSync(replaceUrl('/c'))
 
     expect(urlChanges).toEqual([['/c', UrlChangeType.Replace()]])
-    expect(entryKeyInHistoryState()).toEqual(expect.any(String))
-    expect(entryKeyInHistoryState()).toBe(entryKeyBeforeReplace)
+    expect(rawEntryKeyInHistoryState()).toEqual(expect.any(String))
+    expect(rawEntryKeyInHistoryState()).toBe(entryKeyBeforeReplace)
   })
 
   it('gives each entry pushUrl creates its own key', () => {
     listen()
-    const entryKeyBeforePush = entryKeyInHistoryState()
+    const entryKeyBeforePush = rawEntryKeyInHistoryState()
 
     Effect.runSync(pushUrl('/b'))
 
@@ -324,7 +324,7 @@ describe('addNavigationEventListeners', () => {
     expect(window.history.state).toEqual({
       foldkitEntryKey: expect.any(String),
     })
-    expect(entryKeyInHistoryState()).not.toBe(entryKeyBeforePush)
+    expect(rawEntryKeyInHistoryState()).not.toBe(entryKeyBeforePush)
   })
 
   it('reports Traverse without a position for an entry that has no key, and gives it one', () => {
@@ -338,7 +338,7 @@ describe('addNavigationEventListeners', () => {
         UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
       ],
     ])
-    expect(entryKeyInHistoryState()).toEqual(expect.any(String))
+    expect(rawEntryKeyInHistoryState()).toEqual(expect.any(String))
   })
 
   it('reports a native fragment navigation as Traverse without a position', async () => {
@@ -354,7 +354,7 @@ describe('addNavigationEventListeners', () => {
         UrlChangeType.Traverse({ maybeSavedScrollPosition: Option.none() }),
       ],
     ])
-    expect(entryKeyInHistoryState()).toEqual(expect.any(String))
+    expect(rawEntryKeyInHistoryState()).toEqual(expect.any(String))
   })
 
   it('keeps the other properties of a keyless entry it gives a key', () => {
@@ -516,11 +516,11 @@ describe('addNavigationEventListeners', () => {
     window.history.pushState(null, '', '/a')
     await listenAndSettleStartup()
     scrollWindowTo(0, 1000)
-    const entryAKey = entryKeyInHistoryState()
+    const entryAKey = rawEntryKeyInHistoryState()
 
     window.history.pushState(null, '', '/a#modal')
     Effect.runSync(replaceUrl('/a?tab=details#modal'))
-    const modalEntryKey = entryKeyInHistoryState()
+    const modalEntryKey = rawEntryKeyInHistoryState()
     scrollWindowTo(0, 3000)
     window.history.back()
     await commitRenderAndSettle()

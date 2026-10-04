@@ -48,5 +48,5 @@ export const nextAnimationFrame = (): Promise<void> =>
     requestAnimationFrame(() => resolve())
   })
 
-export const entryKeyInHistoryState = (): unknown =>
+export const rawEntryKeyInHistoryState = (): unknown =>
   Reflect.get(Object(window.history.state), 'foldkitEntryKey')

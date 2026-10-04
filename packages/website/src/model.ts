@@ -20,7 +20,6 @@ import * as SnippetCopy from './snippetCopy'
 
 export const Model = Schema.Struct({
   route: AppRoute,
-  navDemoSection: Ui.NavPage.NavDemoSection,
   deployment: Deployment,
   snippetCopy: SnippetCopy.Model,
   maybeGitHubStarCount: Schema.Option(Schema.Number),

@@ -266,7 +266,6 @@ export const init: Runtime.RoutingApplicationInit<
         exampleDetail,
       }) => ({
         route: initialRoute,
-        navDemoSection: Ui.NavPage.defaultNavDemoSection,
         deployment: flags.deployment,
         snippetCopy: snippetCopyInit.model,
         maybeGitHubStarCount: Option.fromNullishOr(githubStarCount),
@@ -541,12 +540,27 @@ const foldApiReferenceRouteChanged = Update.foldChildStep({
   toParentMessage: toGotApiReferenceMessage,
 })
 
+const readUiPages = (model: Model): Option.Option<Ui.Model> =>
+  Option.some(model.uiPages)
+
+const writeUiPages = (model: Model, nextUiPages: Ui.Model): Model =>
+  modifyFields(model, { uiPages: () => nextUiPages })
+
+const toGotUiPageMessage = (message: Ui.Message): Message =>
+  Message.GotUiPageMessage({ message })
+
 const foldUiPages = Update.foldChild({
   update: Ui.update,
-  read: (model: Model) => Option.some(model.uiPages),
-  write: (model, nextUiPages) =>
-    modifyFields(model, { uiPages: () => nextUiPages }),
-  toParentMessage: message => Message.GotUiPageMessage({ message }),
+  read: readUiPages,
+  write: writeUiPages,
+  toParentMessage: toGotUiPageMessage,
+})
+
+const foldUiPagesUrlChanged = Update.foldChild({
+  update: Ui.informUrlChanged,
+  read: readUiPages,
+  write: writeUiPages,
+  toParentMessage: toGotUiPageMessage,
 })
 
 const readExampleDetail = (
@@ -701,7 +715,6 @@ export const update = (model: Model, message: Message) =>
       const writeRouteFields: UpdateStep = model => ({
         model: modifyFields(model, {
           route: () => nextRoute,
-          navDemoSection: () => Ui.NavPage.navDemoSectionFromUrl(url),
           playground: () => nextPlaygroundRoute,
           sidebarGroups: () => nextSidebarGroups,
         }),
@@ -736,6 +749,7 @@ export const update = (model: Model, message: Message) =>
         foldMobileMenuDialogClose,
         foldThemeMenuClose,
         foldSearchRouteChanged,
+        foldUiPagesUrlChanged(url),
         ...routeSteps,
         scrollToRoute,
       ])
@@ -820,11 +834,6 @@ export const update = (model: Model, message: Message) =>
           maybeThemePreference: () => Option.some(themePreference),
           systemTheme: () => systemTheme,
           resolvedTheme: () => resolvedTheme,
-          navDemoSection: navDemoSection =>
-            Option.match(maybeUrl, {
-              onNone: () => navDemoSection,
-              onSome: Ui.NavPage.navDemoSectionFromUrl,
-            }),
         }),
         commands: [ApplyTheme({ theme: resolvedTheme })],
       })
@@ -835,8 +844,9 @@ export const update = (model: Model, message: Message) =>
           Update.foldChildInit(Ui.init(today), {
             toParentModel: uiPages =>
               modifyFields(stepModel, { uiPages: () => uiPages }),
-            toParentMessage: message => Message.GotUiPageMessage({ message }),
+            toParentMessage: toGotUiPageMessage,
           }),
+        ...Option.toArray(Option.map(maybeUrl, foldUiPagesUrlChanged)),
       ])
     },
 

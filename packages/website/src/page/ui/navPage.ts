@@ -15,23 +15,17 @@ const { tableOfContents, view: renderPage } = slotDocPage<'basic'>(
 )
 
 export { tableOfContents }
-export {
-  NavDemoSection,
-  defaultNavDemoSection,
-  navDemoSectionFromUrl,
-} from './demo/nav'
 
 type ViewInputs = Readonly<{
   renderCopyButton: CodeBlock.RenderCopyButton
   renderHeadingLink: RenderHeadingLink
-  navDemoSection: Nav.NavDemoSection
 }>
 
 export const view = Submodel.defineView<Model, Message, ViewInputs>(
-  (_model, { renderCopyButton, renderHeadingLink, navDemoSection }, h): Html =>
+  (model, { renderCopyButton, renderHeadingLink }, h): Html =>
     renderPage({
       demos: {
-        basic: demoContainer(...Nav.basicDemo(navDemoSection, h)),
+        basic: demoContainer(...Nav.basicDemo(model.navDemoSection, h)),
       },
       renderCopyButton,
       renderHeadingLink,

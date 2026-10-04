@@ -20,6 +20,7 @@ import {
   VirtualList,
 } from '@foldkit/ui'
 
+import { defaultNavDemoSection } from './demo/nav'
 import { Toast } from './demo/toastModule'
 import type { Message } from './message'
 import type { Model } from './model'
@@ -143,6 +144,7 @@ export const init = (today: Calendar.CalendarDate): InitReturn => ({
       id: 'vertical-tabs-demo',
     }),
     verticalTabsDemoTab: 'Foldkit',
+    navDemoSection: defaultNavDemoSection,
     dragAndDropDemo: DragAndDrop.init({
       id: 'drag-and-drop-demo',
     }),

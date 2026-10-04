@@ -377,7 +377,7 @@ describe('application', () => {
         }),
       ),
       model(model => {
-        expect(model.navDemoSection).toBe('Library')
+        expect(model.uiPages.navDemoSection).toBe('Library')
       }),
       Command.expectNone(),
     )
@@ -395,7 +395,7 @@ describe('application', () => {
       update,
       given(profileInit.model),
       model(model => {
-        expect(model.navDemoSection).toBe('Home')
+        expect(model.uiPages.navDemoSection).toBe('Home')
       }),
       message(
         Message.CompletedLoadBrowserEnvironment({
@@ -409,7 +409,7 @@ describe('application', () => {
         }),
       ),
       model(model => {
-        expect(model.navDemoSection).toBe('Profile')
+        expect(model.uiPages.navDemoSection).toBe('Profile')
       }),
       Command.resolve(ApplyTheme, Message.CompletedApplyTheme()),
     )
@@ -538,5 +538,18 @@ describe('commands', () => {
       `${window.location.origin}/newsletter?ref=feed#subscribe`,
     )
     expect(result).toStrictEqual(Message.SucceededCopyLink())
+  })
+
+  test('CopyLink reports a failure when the clipboard rejects the link', async () => {
+    window.history.replaceState(null, '', '/newsletter')
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
+      new Error('Clipboard access denied'),
+    )
+
+    const result = await Effect.runPromise(
+      CopyLink({ hash: 'subscribe' }).effect,
+    )
+
+    expect(result).toStrictEqual(Message.FailedCopyLink())
   })
 })

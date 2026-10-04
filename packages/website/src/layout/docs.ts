@@ -837,11 +837,7 @@ export const view = (
             slotId: 'ui-Nav',
             model: model.uiPages,
             view: Ui.NavPage.view,
-            viewInputs: {
-              renderCopyButton,
-              renderHeadingLink,
-              navDemoSection: model.navDemoSection,
-            },
+            viewInputs: { renderCopyButton, renderHeadingLink },
             toParentMessage: toUiPageMessage,
           }),
           Ui.NavPage.tableOfContents,
