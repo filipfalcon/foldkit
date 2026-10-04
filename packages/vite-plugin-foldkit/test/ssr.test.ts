@@ -3,7 +3,7 @@ import {
   createServer as createHttpServer,
   request as nodeRequest,
 } from 'node:http'
-import { createServer as createNetServer } from 'node:net'
+import type { AddressInfo } from 'node:net'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -106,23 +106,18 @@ const FOLDKIT_BUILD_TOKEN_URL = `/@fs${resolve(
   'buildToken.js',
 )}`
 const AGGREGATE_DEV_SERVER_TEST_TIMEOUT_MS = 20_000
-const findFreePort = () =>
-  new Promise<number>((resolvePort, reject) => {
-    const probe = createNetServer()
-    probe.on('error', error => {
-      probe.close()
-      reject(error)
-    })
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      if (address === null || typeof address === 'string') {
-        probe.close()
-        reject(new Error('Could not determine a free port'))
-        return
-      }
-      probe.close(() => resolvePort(address.port))
-    })
-  })
+const boundPort = (
+  address: AddressInfo | string | null | undefined,
+): number => {
+  if (
+    address === null ||
+    address === undefined ||
+    typeof address === 'string'
+  ) {
+    throw new Error('The server has no bound port')
+  }
+  return address.port
+}
 
 const closeHttpServer = (server: HttpServer): Promise<void> =>
   new Promise((resolveClose, reject) => {
@@ -136,7 +131,6 @@ const closeHttpServer = (server: HttpServer): Promise<void> =>
   })
 
 const startProxyTarget = async (): Promise<string> => {
-  const port = await findFreePort()
   const server = createHttpServer((request, response) => {
     let body = ''
     request.setEncoding('utf8')
@@ -153,9 +147,9 @@ const startProxyTarget = async (): Promise<string> => {
   onTestFinished(() => closeHttpServer(server).catch(() => undefined))
   await new Promise<void>((resolveListen, reject) => {
     server.once('error', reject)
-    server.listen(port, '127.0.0.1', resolveListen)
+    server.listen(0, '127.0.0.1', resolveListen)
   })
-  return `http://127.0.0.1:${port}`
+  return `http://127.0.0.1:${boundPort(server.address())}`
 }
 
 // A field already on the node response when the plugin's middleware runs.
@@ -245,7 +239,6 @@ const startServer = async (
     warnings?: Array<string>
   }> = {},
 ) => {
-  const port = await findFreePort()
   const createServer =
     options.hostVite === true ? createHostServer : createViteServer
   const server = await createServer({
@@ -276,8 +269,7 @@ const startServer = async (
     ],
     server: {
       host: '127.0.0.1',
-      port,
-      strictPort: true,
+      port: 0,
       ...(options.cors === undefined ? {} : { cors: options.cors }),
       ...allowedHostsConfiguration(options.allowedHosts),
       ...(options.proxyTarget === undefined
@@ -287,13 +279,12 @@ const startServer = async (
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  return `http://127.0.0.1:${port}`
+  return `http://127.0.0.1:${boundPort(server.httpServer?.address())}`
 }
 
 const startAutomaticIdentityServer = async (): Promise<
   Readonly<{ origin: string; server: ViteDevServer }>
 > => {
-  const port = await findFreePort()
   const server = await createViteServer({
     root: AUTOMATIC_IDENTITY_FIXTURE_ROOT,
     configFile: false,
@@ -308,13 +299,15 @@ const startAutomaticIdentityServer = async (): Promise<
     ],
     server: {
       host: '127.0.0.1',
-      port,
-      strictPort: true,
+      port: 0,
     },
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  return { origin: `http://127.0.0.1:${port}`, server }
+  return {
+    origin: `http://127.0.0.1:${boundPort(server.httpServer?.address())}`,
+    server,
+  }
 }
 
 describe('code-rendered documents in development', () => {

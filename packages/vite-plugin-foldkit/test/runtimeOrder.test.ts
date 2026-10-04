@@ -4,10 +4,9 @@ import type { WebSocket } from 'ws'
 
 import { foldkit } from '../src/index.ts'
 import {
-  findFreePort,
-  isPortAccepting,
   openWebSocket,
   serverPort,
+  startOnConfiguredRelayPort,
   useRelayRegistry,
 } from './relayFixtures.ts'
 
@@ -16,18 +15,22 @@ const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
 
-const startServer = async () => {
-  const relayPort = await findFreePort()
+const startListeningServer = async (devToolsMcpPort: number) => {
   const server = await createServer({
     root: directories.root,
     configFile: false,
     logLevel: 'silent',
     server: { port: 0, host: '127.0.0.1' },
-    plugins: [foldkit({ devToolsMcpPort: relayPort })],
+    plugins: [foldkit({ devToolsMcpPort })],
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  await expect.poll(() => isPortAccepting(relayPort)).toBe(true)
+  return server
+}
+
+const startServer = async () => {
+  const { server, relayPort } =
+    await startOnConfiguredRelayPort(startListeningServer)
   const browser = await openWebSocket(
     `ws://127.0.0.1:${serverPort(server)}`,
     'vite-hmr',
