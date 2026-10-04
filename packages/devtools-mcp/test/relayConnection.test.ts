@@ -25,9 +25,11 @@ const CONNECT_TIMEOUT = 2_000
 
 const workspace = useWorkspace()
 
-const fixedTarget = (url: string) => [
-  { key: url, url, maybeProjectRoot: Option.none<string>() },
-]
+const fixedTarget = (url: string): RelayTarget => ({
+  key: url,
+  url,
+  maybeProjectRoot: Option.none(),
+})
 
 const startRelay = async (onConnection: (socket: WebSocket) => void) => {
   const relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
@@ -142,7 +144,7 @@ it(
   'opens at most one connection per call to a relay that drops each one',
   async () => {
     const relay = await startDroppingRelay()
-    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
 
     await new Promise(done => setTimeout(done, IDLE_WINDOW))
     expect(relay.connections.count).toBe(0)
@@ -166,7 +168,7 @@ it(
   'reports a relay that does not answer a listing and lists nothing from it',
   async () => {
     const url = await startRelay(() => {})
-    const client = await openClient(Effect.succeed(fixedTarget(url)))
+    const client = await openClient(Effect.succeed([fixedTarget(url)]))
 
     expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
     expect(loggedErrors()).toContainEqual(
@@ -185,7 +187,7 @@ it(
       _tag: 'ResponseError',
       reason: 'listing refused',
     })
-    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
 
     expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
     expect(loggedErrors()).toContainEqual(
@@ -199,7 +201,7 @@ it(
   'reports a relay that answers a listing with another response and lists nothing from it',
   async () => {
     const relay = await startAnsweringRelay({ _tag: 'ResponseResumed' })
-    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
 
     expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
     expect(loggedErrors()).toContainEqual(
@@ -213,7 +215,7 @@ it(
   'reconnects to a published relay that closed its connection',
   async () => {
     const relay = await startAnsweringRelay(runtimesResponse('runtime-relay'))
-    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
     expect(await listedIds(client)).toStrictEqual(['runtime-relay'])
 
     const closedConnection = firstConnection(relay.connections)
@@ -236,7 +238,7 @@ it(
       runtimesResponse('runtime-retired'),
     )
     const registry = {
-      targets: [...fixedTarget(retired.url), ...fixedTarget(kept.url)],
+      targets: [fixedTarget(retired.url), fixedTarget(kept.url)],
     }
     const client = await openClient(Effect.sync(() => registry.targets))
     expect(await listedIds(client)).toStrictEqual([
@@ -244,7 +246,7 @@ it(
       'runtime-retired',
     ])
 
-    registry.targets = fixedTarget(kept.url)
+    registry.targets = [fixedTarget(kept.url)]
 
     expect(await listedIds(client)).toStrictEqual(['runtime-kept'])
     await expect
@@ -268,7 +270,7 @@ it(
       process.off('uncaughtException', onUncaught)
     })
     const client = await Effect.runPromise(
-      makeRelayClient(Effect.succeed(fixedTarget(url))),
+      makeRelayClient(Effect.succeed([fixedTarget(url)])),
     )
     const settledOperations: Array<string> = []
 

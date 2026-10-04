@@ -5,16 +5,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
-
 import {
   type Settings,
   loadSettings,
   resolveRelayTargets,
 } from '../src/relayLocation.ts'
-import { makeUncheckedRegistryReader } from './relayFixtures.ts'
+import {
+  RELAY_DIRECTORY_VARIABLE,
+  makeUncheckedRegistryReader,
+  runWithNode,
+} from './relayRegistryFixtures.ts'
 
-const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 const PROJECT_ROOT = '/workspace/app'
 const PRIVATE_DIRECTORY_MODE = 0o700
 
@@ -39,15 +40,9 @@ describe('resolveRelayTargets', () => {
   let previousRegistryDirectory: string | undefined
 
   const resolve = (value: Settings) =>
-    Effect.runPromise(
+    runWithNode(
       Effect.flatMap(makeUncheckedRegistryReader, registryReader =>
         resolveRelayTargets(value, registryReader),
-      ).pipe(
-        Effect.provideService(
-          ConfigProvider.ConfigProvider,
-          ConfigProvider.fromEnv(),
-        ),
-        Effect.provide(NodeServices.layer),
       ),
     )
 

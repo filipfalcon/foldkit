@@ -14,16 +14,18 @@ import {
 } from '../src/relayRegistry.ts'
 import {
   POLL_TIMEOUT,
-  RELAY_DIRECTORY_VARIABLE,
-  RUNTIME_DIRECTORY_VARIABLE,
   listedIds,
   loggedErrors,
   openBrowserRuntime,
   openSession,
-  runWithNode,
   startApplication,
   useWorkspace,
 } from './relayFixtures.ts'
+import {
+  RELAY_DIRECTORY_VARIABLE,
+  RUNTIME_DIRECTORY_VARIABLE,
+  runWithNode,
+} from './relayRegistryFixtures.ts'
 
 const USERS_GROUP_SID = 'S-1-5-32-545'
 const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
