@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { expect, it } from 'vitest'
 
 import {
+  POLL_TIMEOUT,
   listedIds,
   openBrowserRuntime,
   openSession,
@@ -30,7 +31,7 @@ it(
     const linked = await openSession(link)
 
     await expect
-      .poll(() => listedIds(nested))
+      .poll(() => listedIds(nested), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-application'])
     expect(await listedIds(linked)).toStrictEqual(['runtime-application'])
   },
@@ -49,7 +50,7 @@ it(
     const nested = await openSession(join(application, 'src'))
 
     await expect
-      .poll(() => listedIds(workspaceSession))
+      .poll(() => listedIds(workspaceSession), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-workspace', 'runtime-application'])
     expect(await listedIds(nested)).toStrictEqual(['runtime-application'])
   },

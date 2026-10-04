@@ -5,6 +5,7 @@ import { expect, it } from 'vitest'
 import type { RelayClient } from '../src/relayClient.ts'
 import { buildTools } from '../src/tools.ts'
 import {
+  POLL_TIMEOUT,
   RELAY_PATH,
   catchAllUpgrades,
   connectionCount,
@@ -34,18 +35,24 @@ const findTool = (client: RelayClient, name: string) => {
   return tool
 }
 
+const toolText = async (
+  client: RelayClient,
+  name: string,
+  input: unknown,
+): Promise<string> => {
+  const result = await Effect.runPromise(findTool(client, name).handle(input))
+  return pipe(
+    Array.head(result.content),
+    Option.map(({ text }) => text),
+    Option.getOrThrowWith(() => new Error(`tool ${name} returned no content`)),
+  )
+}
+
 const toolOutput = async (
   client: RelayClient,
   name: string,
   input: unknown,
-): Promise<unknown> => {
-  const result = await Effect.runPromise(findTool(client, name).handle(input))
-  return pipe(
-    Array.head(result.content),
-    Option.map(({ text }) => JSON.parse(text)),
-    Option.getOrThrowWith(() => new Error(`tool ${name} returned no content`)),
-  )
-}
+): Promise<unknown> => JSON.parse(await toolText(client, name, input))
 
 it(
   'keeps every session connected to its own application when several run at once',
@@ -73,7 +80,10 @@ it(
     )
 
     await expect
-      .poll(() => Promise.all(sessions.map(({ client }) => listedIds(client))))
+      .poll(
+        () => Promise.all(sessions.map(({ client }) => listedIds(client))),
+        { timeout: POLL_TIMEOUT },
+      )
       .toStrictEqual(sessions.map(({ name }) => [`runtime-${name}`]))
 
     await new Promise(done => setTimeout(done, OBSERVATION_WINDOW))
@@ -117,18 +127,18 @@ it(
     const session = await openSession(workspace.root)
 
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-first', 'runtime-second'])
 
     const third = await startApplication(applicationRoot('third'))
     await openBrowserRuntime(third, 'runtime-third')
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-first', 'runtime-second', 'runtime-third'])
 
     await first.close()
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-second', 'runtime-third'])
 
     const startedAt = Date.now()
@@ -150,7 +160,9 @@ it(
     const session = await openSession(workspace.root)
 
     await expect
-      .poll(() => toolOutput(session, 'foldkit_list_runtimes', {}))
+      .poll(() => toolOutput(session, 'foldkit_list_runtimes', {}), {
+        timeout: POLL_TIMEOUT,
+      })
       .toStrictEqual({
         _tag: 'ResponseRuntimes',
         runtimes: [
@@ -182,7 +194,7 @@ it(
     await openBrowserRuntime(older, 'runtime-older-server')
     const session = await openSession(workspace.root)
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual([
         'runtime-older-server',
         'runtime-newer-server-older',
@@ -211,16 +223,85 @@ it(
     const session = await openSession(applicationRoot('first'))
 
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-first', 'runtime-duplicate'])
 
     await duplicate.close()
 
-    await expect.poll(() => listedIds(session)).toStrictEqual(['runtime-first'])
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
     expect(await replay(session, 'runtime-first', 1)).toStrictEqual({
       connectionId: 'runtime-first',
       keyframeIndex: 1,
     })
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'fails at once for a listed Runtime whose dev server stopped',
+  async () => {
+    const first = await startApplication(applicationRoot('first'))
+    const second = await startApplication(applicationRoot('second'))
+    await openBrowserRuntime(first, 'runtime-first')
+    await openBrowserRuntime(second, 'runtime-second')
+    const session = await openSession(workspace.root)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first', 'runtime-second'])
+
+    await first.close()
+
+    const startedAt = Date.now()
+    expect(await replay(session, 'runtime-first', 2)).toContain(
+      'No connected Foldkit Runtime has the id runtime-first',
+    )
+    expect(Date.now() - startedAt).toBeLessThan(UNKNOWN_RUNTIME_FAILURE_BUDGET)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reaches a listed Runtime through the replacement relay after its dev server restarts',
+  async () => {
+    const application = applicationRoot('first')
+    const server = await startApplication(application)
+    await openBrowserRuntime(server, 'runtime-first')
+    const session = await openSession(application)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
+
+    await server.restart()
+    await openBrowserRuntime(server, 'runtime-first')
+    const observer = await openSession(application)
+    await expect
+      .poll(() => listedIds(observer), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
+
+    expect(await replay(session, 'runtime-first', 3)).toStrictEqual({
+      connectionId: 'runtime-first',
+      keyframeIndex: 3,
+    })
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'asks for a dev page when a tool call finds no Runtime',
+  async () => {
+    const application = applicationRoot('first')
+    await startApplication(application)
+    const session = await openSession(application)
+
+    expect(
+      await toolText(session, 'foldkit_replay_to_keyframe', {
+        keyframe_index: 1,
+      }),
+    ).toBe(
+      'Error: No connected Foldkit runtimes. Open a Foldkit dev page and try again.',
+    )
   },
   TEST_TIMEOUT,
 )

@@ -20,7 +20,6 @@ import {
   RelayRecord,
 } from 'foldkit/devtools-protocol'
 import { tmpdir } from 'node:os'
-import platformPath from 'node:path'
 
 import {
   type RelayRegistryTrust,
@@ -133,7 +132,7 @@ const newestFirst: Order.Order<RelayRecord> = Order.mapInput(
 export const isWithinRoot = (
   root: string,
   candidate: string,
-  pathApi: RootPathApi = platformPath,
+  pathApi: RootPathApi,
 ): boolean => {
   const relativePath = pathApi.relative(root, candidate)
   return (

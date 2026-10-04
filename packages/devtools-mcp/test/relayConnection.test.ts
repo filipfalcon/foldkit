@@ -2,10 +2,12 @@ import { Array, Effect, Exit, Option } from 'effect'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
 import { expect, it, onTestFinished } from 'vitest'
-import { type WebSocket, WebSocketServer } from 'ws'
+import { WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
+import type { RelayTarget } from '../src/relayLocation.ts'
 import {
+  POLL_TIMEOUT,
   connectionCount,
   listedIds,
   loggedErrors,
@@ -39,6 +41,37 @@ const startRelay = async (onConnection: (socket: WebSocket) => void) => {
   }
   relay.on('connection', onConnection)
   return `ws://127.0.0.1:${address.port}`
+}
+
+const runtimesResponse = (connectionId: string) => ({
+  _tag: 'ResponseRuntimes',
+  runtimes: [{ connectionId, url: 'http://app/', title: connectionId }],
+})
+
+const startAnsweringRelay = async (response: unknown) => {
+  const connections: Array<WebSocket> = []
+  const url = await startRelay(socket => {
+    connections.push(socket)
+    socket.on('message', raw => {
+      const { id } = JSON.parse(raw.toString())
+      socket.send(JSON.stringify({ id, response }))
+    })
+  })
+  return { url, connections }
+}
+
+const firstConnection = (connections: ReadonlyArray<WebSocket>): WebSocket =>
+  Option.getOrThrowWith(
+    Array.head(connections),
+    () => new Error('the relay has no connection'),
+  )
+
+const openClient = async (
+  resolveTargets: Effect.Effect<ReadonlyArray<RelayTarget>>,
+) => {
+  const client = await Effect.runPromise(makeRelayClient(resolveTargets))
+  onTestFinished(() => Effect.runPromise(client.close))
+  return client
 }
 
 const startDroppingRelay = async () => {
@@ -79,7 +112,7 @@ it(
     await openBrowserRuntime(server, 'runtime-application')
 
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-application'])
     expect(await listedIds(session)).toStrictEqual(['runtime-application'])
     expect(connectionCount()).toBe(1)
@@ -97,7 +130,9 @@ it(
 
     await server.restart()
 
-    await expect.poll(() => listedIds(session)).toStrictEqual([])
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual([])
     expect(connectionCount()).toBe(2)
   },
   TEST_TIMEOUT,
@@ -107,10 +142,7 @@ it(
   'opens at most one connection per call to a relay that drops each one',
   async () => {
     const relay = await startDroppingRelay()
-    const client = await Effect.runPromise(
-      makeRelayClient(Effect.succeed(fixedTarget(relay.url))),
-    )
-    onTestFinished(() => Effect.runPromise(client.close))
+    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
 
     await new Promise(done => setTimeout(done, IDLE_WINDOW))
     expect(relay.connections.count).toBe(0)
@@ -134,10 +166,7 @@ it(
   'reports a relay that does not answer a listing and lists nothing from it',
   async () => {
     const url = await startRelay(() => {})
-    const client = await Effect.runPromise(
-      makeRelayClient(Effect.succeed(fixedTarget(url))),
-    )
-    onTestFinished(() => Effect.runPromise(client.close))
+    const client = await openClient(Effect.succeed(fixedTarget(url)))
 
     expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
     expect(loggedErrors()).toContainEqual(
@@ -145,6 +174,85 @@ it(
         `[foldkit-devtools-mcp] listing runtimes at ${url}/ failed: `,
       ),
     )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reports the reason a relay gives for refusing a listing and lists nothing from it',
+  async () => {
+    const relay = await startAnsweringRelay({
+      _tag: 'ResponseError',
+      reason: 'listing refused',
+    })
+    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+
+    expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
+    expect(loggedErrors()).toContainEqual(
+      `[foldkit-devtools-mcp] listing runtimes at ${relay.url}/ failed: listing refused`,
+    )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reports a relay that answers a listing with another response and lists nothing from it',
+  async () => {
+    const relay = await startAnsweringRelay({ _tag: 'ResponseResumed' })
+    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+
+    expect(await Effect.runPromise(client.listRuntimes)).toStrictEqual([])
+    expect(loggedErrors()).toContainEqual(
+      `[foldkit-devtools-mcp] listing runtimes at ${relay.url}/ failed: the relay answered ResponseResumed`,
+    )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reconnects to a published relay that closed its connection',
+  async () => {
+    const relay = await startAnsweringRelay(runtimesResponse('runtime-relay'))
+    const client = await openClient(Effect.succeed(fixedTarget(relay.url)))
+    expect(await listedIds(client)).toStrictEqual(['runtime-relay'])
+
+    const closedConnection = firstConnection(relay.connections)
+    await new Promise(done => {
+      closedConnection.once('close', done)
+      closedConnection.close()
+    })
+
+    expect(await listedIds(client)).toStrictEqual(['runtime-relay'])
+    expect(relay.connections).toHaveLength(2)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'closes its connection to a relay that is no longer published',
+  async () => {
+    const kept = await startAnsweringRelay(runtimesResponse('runtime-kept'))
+    const retired = await startAnsweringRelay(
+      runtimesResponse('runtime-retired'),
+    )
+    const registry = {
+      targets: [...fixedTarget(retired.url), ...fixedTarget(kept.url)],
+    }
+    const client = await openClient(Effect.sync(() => registry.targets))
+    expect(await listedIds(client)).toStrictEqual([
+      'runtime-kept',
+      'runtime-retired',
+    ])
+
+    registry.targets = fixedTarget(kept.url)
+
+    expect(await listedIds(client)).toStrictEqual(['runtime-kept'])
+    await expect
+      .poll(() => firstConnection(retired.connections).readyState, {
+        timeout: POLL_TIMEOUT,
+      })
+      .toBe(WebSocket.CLOSED)
+    expect(firstConnection(kept.connections).readyState).toBe(WebSocket.OPEN)
   },
   TEST_TIMEOUT,
 )
