@@ -1,4 +1,4 @@
-import { ConfigProvider, Effect, FileSystem } from 'effect'
+import { Effect, FileSystem } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import {
   chmod,
@@ -14,18 +14,19 @@ import { tmpdir } from 'node:os'
 import { join, win32 } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
-
 import {
   type RelayRegistryReader,
   discoverRelays,
   isWithinRoot,
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
-import { makeUncheckedRegistryReader } from './relayFixtures.ts'
+import {
+  RELAY_DIRECTORY_VARIABLE,
+  RUNTIME_DIRECTORY_VARIABLE,
+  makeUncheckedRegistryReader,
+  runWithNode,
+} from './relayRegistryFixtures.ts'
 
-const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
-const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 const REGISTRY_DIRECTORY_NAME = 'foldkit-devtools-relays'
 const PRIVATE_DIRECTORY_MODE = 0o700
 const SHARED_DIRECTORY_MODE = 0o777
@@ -65,19 +66,6 @@ describe('discoverRelays', () => {
       'utf-8',
     )
   }
-
-  const runWithNode = <A, E>(
-    effect: Effect.Effect<A, E, NodeServices.NodeServices>,
-  ) =>
-    Effect.runPromise(
-      effect.pipe(
-        Effect.provideService(
-          ConfigProvider.ConfigProvider,
-          ConfigProvider.fromEnv(),
-        ),
-        Effect.provide(NodeServices.layer),
-      ),
-    )
 
   const discover = (projectRoot: string) =>
     runWithNode(

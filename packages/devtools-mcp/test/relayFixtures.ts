@@ -1,12 +1,4 @@
-import {
-  Array,
-  ConfigProvider,
-  Effect,
-  HashSet,
-  Match,
-  Option,
-  Ref,
-} from 'effect'
+import { Array, Effect, Match, Option } from 'effect'
 import { Request, type Response } from 'foldkit/devtools-protocol'
 import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -15,7 +7,6 @@ import { type Plugin, type ViteDevServer, createServer } from 'vite'
 import { beforeEach, expect, onTestFinished, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
 import { foldkit } from '@foldkit/vite-plugin'
 
 import { type RelayClient, makeRelayClient } from '../src/relayClient.ts'
@@ -24,26 +15,17 @@ import {
   type RelayRegistryReader,
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
+import {
+  RELAY_DIRECTORY_VARIABLE,
+  RUNTIME_DIRECTORY_VARIABLE,
+  makeUncheckedRegistryReader,
+  runWithNode,
+} from './relayRegistryFixtures.ts'
 
-export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
-export const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
 export const POLL_TIMEOUT = 10_000
 const DECLINE_DELAY = 50
 const RUNTIME_RESPONSE_DELAY = 2 * DECLINE_DELAY
-
-export const runWithNode = <A, E>(
-  effect: Effect.Effect<A, E, NodeServices.NodeServices>,
-) =>
-  Effect.runPromise(
-    effect.pipe(
-      Effect.provideService(
-        ConfigProvider.ConfigProvider,
-        ConfigProvider.fromEnv(),
-      ),
-      Effect.provide(NodeServices.layer),
-    ),
-  )
 
 // NOTE: Models a full-stack dev plugin, such as a Workers runtime, that treats
 // every non-Vite WebSocket upgrade as an application request and destroys the
@@ -111,19 +93,6 @@ export const useWorkspace = () => {
 
   return workspace
 }
-
-// NOTE: On Windows, each new reader checks the registry directory through a
-// PowerShell probe. Tests that are not about that check read through this
-// reader, which accepts every directory, so they start no probe.
-export const makeUncheckedRegistryReader: Effect.Effect<RelayRegistryReader> =
-  Effect.gen(function* () {
-    const reportedRefusals = yield* Ref.make(HashSet.empty<string>())
-    const registryReader: RelayRegistryReader = {
-      trust: { refusal: () => Effect.succeedNone },
-      reportedRefusals,
-    }
-    return registryReader
-  })
 
 // NOTE: With no relay published, the MCP server falls back to the fixed port
 // 9988, where a developer may run a dev server of their own. Sessions here
