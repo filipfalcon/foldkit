@@ -1,3 +1,4 @@
+import { Array } from 'effect'
 import {
   mkdirSync,
   mkdtempSync,
@@ -7,7 +8,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { createServer, resolveConfig } from 'vite'
+import { type DepOptimizationOptions, createServer, resolveConfig } from 'vite'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
 import {
@@ -150,6 +151,17 @@ const runConfigHook = (root: string, command: 'serve' | 'build') => {
   )
 }
 
+const isWithinExcludedPackage = (id: string, excluded: string): boolean =>
+  id === excluded || id.startsWith(`${excluded}/`)
+
+const findForceIncludedExcludedModules = ({
+  include = [],
+  exclude = [],
+}: DepOptimizationOptions): ReadonlyArray<string> =>
+  Array.filter(include, id =>
+    Array.some(exclude, excluded => isWithinExcludedPackage(id, excluded)),
+  )
+
 // NOTE: the counter's own config supplies the workspace aliases that resolve
 // `@foldkit/devtools/vite` to source, and those aliases are what a synthetic
 // config would miss while every example is broken. Its plugins are rebuilt
@@ -189,18 +201,18 @@ describe('DevTools overlay injection', () => {
     expect(transformedOverlay?.code).toContain('devtools/src/vite')
   })
 
-  it('declares the overlay imports to the dep optimizer during development', () => {
+  it('declares the DevTools import to the dep optimizer during development', () => {
     const root = makeRoot({ section: 'devDependencies' })
     installFoldkit(root)
 
     expect(runConfigHook(root, 'serve')).toEqual({
       optimizeDeps: {
-        include: ['@foldkit/devtools/vite', 'foldkit/devtools-host'],
+        include: ['@foldkit/devtools/vite'],
       },
     })
   })
 
-  it('declares only the DevTools import when foldkit is linked', () => {
+  it('declares the DevTools import when foldkit is linked', () => {
     const root = makeRoot({ section: 'devDependencies' })
     linkPackage(root, 'foldkit')
 
@@ -211,16 +223,12 @@ describe('DevTools overlay injection', () => {
     })
   })
 
-  it('declares only the host import when DevTools is linked', () => {
+  it('declares nothing to the dep optimizer when DevTools is linked', () => {
     const root = makeRoot()
     linkPackage(root, '@foldkit/devtools', DEV_TOOLS_VITE_EXPORTS)
     installFoldkit(root)
 
-    expect(runConfigHook(root, 'serve')).toEqual({
-      optimizeDeps: {
-        include: ['foldkit/devtools-host'],
-      },
-    })
+    expect(runConfigHook(root, 'serve')).toBeUndefined()
   })
 
   it('declares nothing to the dep optimizer when both packages are linked', () => {
@@ -245,6 +253,30 @@ describe('DevTools overlay injection', () => {
     expect(
       runConfigHook(makeRoot({ section: 'dependencies' }), 'build'),
     ).toBeUndefined()
+  })
+
+  it('never force-includes a module of a package the plugin excludes', async () => {
+    const root = makeRoot({ section: 'devDependencies' })
+    installFoldkit(root)
+
+    const config = await resolveConfig(
+      { root, configFile: false, logLevel: 'silent', plugins: [foldkit()] },
+      'serve',
+    )
+    const optimizeDepsOptions: ReadonlyArray<DepOptimizationOptions> = [
+      config.optimizeDeps,
+      ...Array.map(
+        Object.values(config.environments),
+        environment => environment.optimizeDeps,
+      ),
+    ]
+    const clientOptimizeDeps = config.environments['client']?.optimizeDeps
+
+    expect(clientOptimizeDeps?.exclude).toContain('foldkit')
+    expect(clientOptimizeDeps?.include).toContain('@foldkit/devtools/vite')
+    expect(
+      Array.flatMap(optimizeDepsOptions, findForceIncludedExcludedModules),
+    ).toEqual([])
   })
 
   it('serves a development dependency', () => {
