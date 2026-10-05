@@ -202,11 +202,9 @@ const FORCE_INCLUDED_EFFECT_ENTRIES: ReadonlyArray<string> = [
   'effect/Types',
 ]
 
-// NOTE: A client environment always gets the forced entries, even with
-// discovery off. Any other environment gets them only when its optimizer is
-// already enabled. Adding includes to an environment whose optimizer is
-// otherwise disabled turns on Vite's explicit optimizer, which would pre-bundle
-// Effect in Vite's default Node `ssr` environment.
+// NOTE: Adding includes to an environment whose optimizer is otherwise disabled
+// turns on Vite's explicit optimizer, which would pre-bundle Effect in Vite's
+// default Node `ssr` environment.
 const shouldForceEffectEntries = (
   name: string,
   config: EnvironmentOptions,

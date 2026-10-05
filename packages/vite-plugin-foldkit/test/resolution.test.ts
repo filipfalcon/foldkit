@@ -1,6 +1,5 @@
 import { Array, Option, Record, Schema, pipe } from 'effect'
 import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -21,17 +20,18 @@ import {
   type Plugin,
   type ResolvedConfig,
   type RunnableDevEnvironment,
+  type ViteDevServer,
   build,
   createRunnableDevEnvironment,
   createServer,
   isRunnableDevEnvironment,
-  parseSync,
   resolveConfig,
 } from 'vite'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { crawlFoldkitPackages } from '../src/foldkitPackages.ts'
 import { foldkit } from '../src/index.ts'
+import { readForcedEffectEntries } from './forcedEffectEntries.ts'
 
 type Files = Readonly<globalThis.Record<string, string>>
 type DependencyFields = Readonly<
@@ -303,44 +303,7 @@ const runnableServerEnvironment = (
   ...options,
 })
 
-const FORCED_EFFECT_ENTRIES_NAME = 'FORCE_INCLUDED_EFFECT_ENTRIES'
-
-const readForcedEffectEntries = (): ReadonlySet<string> => {
-  const { program } = parseSync(
-    PLUGIN_SOURCE,
-    readFileSync(PLUGIN_SOURCE, 'utf8'),
-  )
-  const elements = pipe(
-    program.body,
-    Array.flatMap(statement =>
-      statement.type === 'VariableDeclaration' ? statement.declarations : [],
-    ),
-    Array.findFirst(declaration =>
-      declaration.id.type === 'Identifier' &&
-      declaration.id.name === FORCED_EFFECT_ENTRIES_NAME &&
-      declaration.init?.type === 'ArrayExpression'
-        ? Option.some(declaration.init.elements)
-        : Option.none(),
-    ),
-    Option.getOrThrowWith(
-      () => new Error(`No ${FORCED_EFFECT_ENTRIES_NAME} array in the plugin`),
-    ),
-  )
-
-  return new Set(
-    Array.map(elements, element => {
-      if (element?.type === 'Literal' && typeof element.value === 'string') {
-        return element.value
-      }
-
-      throw new Error(
-        `${FORCED_EFFECT_ENTRIES_NAME} holds an entry that is not a string`,
-      )
-    }),
-  )
-}
-
-const FORCED_EFFECT_ENTRIES = readForcedEffectEntries()
+const FORCED_EFFECT_ENTRIES = new Set(readForcedEffectEntries())
 
 const resolvedEnvironment = (
   config: ResolvedConfig,
@@ -368,37 +331,68 @@ const effectEntries = (
     ),
   )
 
-const renderServerEntry = async (
-  environmentName: string,
-  environments: NonNullable<InlineConfig['environments']>,
-): Promise<
-  Readonly<{
-    serverEntry: Readonly<{
-      injectedBuildId: unknown
-      foldkitEffectSchema: unknown
-      applicationEffectSchema: unknown
-    }>
-    clientBuildTokenCode: string | undefined
-    environment: RunnableDevEnvironment
-  }>
-> => {
-  const root = await realpath(await makeRoot(SERVER_RENDER_PACKAGES))
+const ServerEntry = Schema.Struct({
+  injectedBuildId: Schema.Unknown,
+  foldkitEffectSchema: Schema.Unknown,
+  applicationEffectSchema: Schema.Unknown,
+})
+
+const decodeServerEntry = Schema.decodeUnknownSync(ServerEntry)
+
+const ConsumerEntry = Schema.Struct({
+  viaConsumer: Schema.Struct({ copy: Schema.String }),
+})
+
+const decodeConsumerEntry = Schema.decodeUnknownSync(ConsumerEntry)
+
+const startDevServer = async (
+  files: Files,
+  config: InlineConfig,
+): Promise<Readonly<{ root: string; server: ViteDevServer }>> => {
+  const root = await realpath(await makeRoot(files))
   const server = await createServer({
     root,
     configFile: false,
     logLevel: 'silent',
     server: { middlewareMode: true, hmr: false, ws: false },
     plugins: foldkit({ devToolsMcpPort: false }),
-    environments,
+    ...config,
   })
   onTestFinished(() => server.close())
 
+  return { root, server }
+}
+
+const runnableEnvironment = (
+  server: ViteDevServer,
+  environmentName: string,
+): RunnableDevEnvironment => {
   const environment = server.environments[environmentName]
   if (environment === undefined || !isRunnableDevEnvironment(environment)) {
     throw new Error(`No runnable ${environmentName} environment`)
   }
 
-  const serverEntry = await environment.runner.import(`/${SERVER_ENTRY}`)
+  return environment
+}
+
+const renderServerEntry = async (
+  environmentName: string,
+  environments: NonNullable<InlineConfig['environments']>,
+): Promise<
+  Readonly<{
+    serverEntry: typeof ServerEntry.Type
+    clientBuildTokenCode: string | undefined
+    environment: RunnableDevEnvironment
+  }>
+> => {
+  const { root, server } = await startDevServer(SERVER_RENDER_PACKAGES, {
+    environments,
+  })
+  const environment = runnableEnvironment(server, environmentName)
+
+  const serverEntry = decodeServerEntry(
+    await environment.runner.import(`/${SERVER_ENTRY}`),
+  )
   const clientBuildTokenTransform =
     await server.environments.client.transformRequest(
       join(root, 'node_modules/foldkit/dist/buildToken.js'),
@@ -1041,6 +1035,20 @@ describe('Foldkit packages in every environment', () => {
         new Set([resolvedEnvironment(config, 'ssr').resolve.noExternal].flat()),
       )
     }
+  })
+
+  it('keeps a crawled package in top-level resolve.external external in a named server environment', async () => {
+    const { server } = await startDevServer(NESTED_UI_CONSUMER, {
+      resolve: { external: ['ui-consumer'] },
+      environments: { server_renderer: runnableServerEnvironment({}) },
+    })
+    const environment = runnableEnvironment(server, 'server_renderer')
+
+    const output = decodeConsumerEntry(
+      await environment.runner.import('/entry.js'),
+    )
+
+    expect(output.viaConsumer.copy).toBe('NESTED_COPY')
   })
 
   it('renders with the client build id in an SSR environment with discovery', async () => {
