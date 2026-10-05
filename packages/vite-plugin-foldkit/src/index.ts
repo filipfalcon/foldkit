@@ -1086,8 +1086,9 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
   const reloadPlugin: Plugin = {
     name: 'foldkit',
     apply: 'serve',
-    // NOTE: Runs after other plugins' `configEnvironment` hooks, so the
-    // predicate sees discovery or includes that a later plugin turns on.
+    // NOTE: The `post` order runs this hook after every default-order
+    // `configEnvironment` hook, so the predicate sees discovery or includes
+    // that another plugin turns on there.
     configEnvironment: {
       order: 'post',
       handler: (name, config) =>

@@ -6,4 +6,6 @@ Apply Foldkit's dependency optimizer and bundling rules in every Vite environmen
 
 The plugin now excludes `foldkit` from pre-bundling in every environment, pre-bundles the Effect entries Foldkit imports in every environment whose optimizer is enabled, and bundles the crawled Foldkit packages in every environment through `resolve.noExternal`. Every server environment of the dev server now renders with the same build id as the client and with one Effect instance.
 
-The client environment and client and `ssr` builds behave as before. Vite's default Node `ssr` environment also behaves as before: its optimizer stays disabled, so Effect still loads from the installed package. Applications can remove `optimizeDeps.exclude: ['foldkit']` from their Vite config.
+The client environment and client and `ssr` builds behave as before. Vite's default Node `ssr` environment also behaves as before: its optimizer stays disabled, so Effect still loads from the installed package. A build of a server environment under another name now bundles the Foldkit packages. Before, it externalized them, and the build failed because a Foldkit singleton package was externalized.
+
+Applications can remove `optimizeDeps.exclude: ['foldkit']` from their Vite config. An application that added a package the crawl misses to `ssr.noExternal` should move it to `resolve.noExternal`. `ssr.noExternal` reaches only the `ssr` environment, so in a server environment under another name that package still loads a second Foldkit copy.
