@@ -171,9 +171,9 @@ export const devToolsOverlayPlugin = (): Plugin => {
       // imports, so a registry-installed `@foldkit/devtools/vite` is declared
       // before the first request to avoid a mid-session reoptimization and page
       // reload. `foldkit/devtools-host` is deliberately not declared. The plugin
-      // excludes `foldkit` and serves it from source, and Vite resolves a
-      // force-included id to its pre-bundle before consulting `exclude`, which
-      // would give the overlay its own copy of the DevTools config.
+      // excludes `foldkit` and serves it from source. Vite resolves a
+      // force-included specifier to its pre-bundle before consulting `exclude`.
+      // That would give the overlay its own copy of the DevTools config.
       if (isPackageResolvedIntoNodeModules(root, DEV_TOOLS_PACKAGE_NAME)) {
         return { optimizeDeps: { include: [DEV_TOOLS_VITE_IMPORT_SPECIFIER] } }
       } else {
