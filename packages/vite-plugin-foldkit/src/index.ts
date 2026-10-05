@@ -202,10 +202,12 @@ const FORCE_INCLUDED_EFFECT_ENTRIES: ReadonlyArray<string> = [
   'effect/Types',
 ]
 
-// NOTE: Adding includes to an environment whose optimizer is otherwise
-// disabled turns on Vite's explicit optimizer, which would pre-bundle Effect in
-// Vite's default Node `ssr` environment.
-const isDependencyOptimizerEnabled = (
+// NOTE: A client environment always gets the forced entries, even with
+// discovery off. Any other environment gets them only when its optimizer is
+// already enabled. Adding includes to an environment whose optimizer is
+// otherwise disabled turns on Vite's explicit optimizer, which would pre-bundle
+// Effect in Vite's default Node `ssr` environment.
+const shouldForceEffectEntries = (
   name: string,
   config: EnvironmentOptions,
 ): boolean =>
@@ -1092,7 +1094,7 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
     configEnvironment: {
       order: 'post',
       handler: (name, config) =>
-        isDependencyOptimizerEnabled(name, config)
+        shouldForceEffectEntries(name, config)
           ? { optimizeDeps: { include: [...FORCE_INCLUDED_EFFECT_ENTRIES] } }
           : undefined,
     },
@@ -1147,15 +1149,15 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
       return {
         resolve: {
           dedupe: foldkitPackages.dedupe,
-          noExternal: foldkitPackages.ssrNoExternal,
+          noExternal: foldkitPackages.noExternal,
         },
         ssr: {
-          noExternal: foldkitPackages.ssrNoExternal,
+          noExternal: foldkitPackages.noExternal,
         },
         environments: {
           ssr: {
             resolve: {
-              noExternal: foldkitPackages.ssrNoExternal,
+              noExternal: foldkitPackages.noExternal,
             },
           },
         },

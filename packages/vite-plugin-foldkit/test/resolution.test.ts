@@ -1,5 +1,6 @@
 import { Array, Option, Record, Schema, pipe } from 'effect'
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -304,10 +305,10 @@ const runnableServerEnvironment = (
 
 const FORCED_EFFECT_ENTRIES_NAME = 'FORCE_INCLUDED_EFFECT_ENTRIES'
 
-const readForcedEffectEntries = async (): Promise<ReadonlySet<string>> => {
+const readForcedEffectEntries = (): ReadonlySet<string> => {
   const { program } = parseSync(
     PLUGIN_SOURCE,
-    await readFile(PLUGIN_SOURCE, 'utf8'),
+    readFileSync(PLUGIN_SOURCE, 'utf8'),
   )
   const elements = pipe(
     program.body,
@@ -338,6 +339,8 @@ const readForcedEffectEntries = async (): Promise<ReadonlySet<string>> => {
     }),
   )
 }
+
+const FORCED_EFFECT_ENTRIES = readForcedEffectEntries()
 
 const resolvedEnvironment = (
   config: ResolvedConfig,
@@ -712,7 +715,7 @@ describe('Foldkit packages in builds', () => {
     })
     const output = await loadBuild(root, 'Ssr')
 
-    expect(preservedFoldkitPackages.ssrNoExternal).toContain('ui-consumer')
+    expect(preservedFoldkitPackages.noExternal).toContain('ui-consumer')
     expect(output.viaConsumer).toBe(output.instance)
   })
 
@@ -851,7 +854,7 @@ describe('Foldkit packages in builds', () => {
 
     const foldkitPackages = await crawlFoldkitPackages(root, true, {})
 
-    expect(foldkitPackages.ssrNoExternal).toEqual([
+    expect(foldkitPackages.noExternal).toEqual([
       'foldkit',
       '@foldkit/ui',
       '@foldkit/devtools',
@@ -881,7 +884,6 @@ describe('Foldkit packages in the dev server', () => {
 describe('Foldkit packages in every environment', () => {
   it('keeps the client excluding foldkit and pre-bundling the forced Effect entries', async () => {
     const root = await makeRoot(UI_PEER)
-    const forcedEntries = await readForcedEffectEntries()
 
     const defaultClient = await resolveConfig(pluginConfig(root), 'serve')
     const clientWithoutDiscovery = await resolveConfig(
@@ -892,13 +894,32 @@ describe('Foldkit packages in every environment', () => {
       'serve',
     )
 
-    expect(forcedEntries).toContain('effect')
+    expect(FORCED_EFFECT_ENTRIES).toContain('effect')
     for (const config of [defaultClient, clientWithoutDiscovery]) {
       expect(
         resolvedEnvironment(config, 'client').optimizeDeps.exclude,
       ).toContain('foldkit')
-      expect(effectEntries(config, 'client')).toEqual(forcedEntries)
+      expect(effectEntries(config, 'client')).toEqual(FORCED_EFFECT_ENTRIES)
     }
+  })
+
+  it('excludes foldkit and forces the Effect entries into a client environment under another name', async () => {
+    const root = await makeRoot(UI_PEER)
+
+    const config = await resolveConfig(
+      {
+        ...pluginConfig(root),
+        environments: { browser_preview: { consumer: 'client' } },
+      },
+      'serve',
+    )
+
+    expect(
+      resolvedEnvironment(config, 'browser_preview').optimizeDeps.exclude,
+    ).toContain('foldkit')
+    expect(effectEntries(config, 'browser_preview')).toEqual(
+      FORCED_EFFECT_ENTRIES,
+    )
   })
 
   it('leaves the optimizer of the default SSR environment disabled', async () => {
@@ -925,9 +946,7 @@ describe('Foldkit packages in every environment', () => {
     expect(resolvedEnvironment(config, 'ssr').optimizeDeps.exclude).toContain(
       'foldkit',
     )
-    expect(effectEntries(config, 'ssr')).toEqual(
-      await readForcedEffectEntries(),
-    )
+    expect(effectEntries(config, 'ssr')).toEqual(FORCED_EFFECT_ENTRIES)
   })
 
   it('adds the forced Effect entries to an SSR environment that includes its own', async () => {
@@ -948,9 +967,7 @@ describe('Foldkit packages in every environment', () => {
     expect(resolvedEnvironment(config, 'ssr').optimizeDeps.include).toContain(
       'effect/Schema',
     )
-    expect(effectEntries(config, 'ssr')).toEqual(
-      await readForcedEffectEntries(),
-    )
+    expect(effectEntries(config, 'ssr')).toEqual(FORCED_EFFECT_ENTRIES)
   })
 
   it('excludes foldkit and forces the Effect entries into a named server environment with discovery', async () => {
@@ -972,9 +989,7 @@ describe('Foldkit packages in every environment', () => {
     expect(
       resolvedEnvironment(config, 'my_worker').optimizeDeps.exclude,
     ).toContain('foldkit')
-    expect(effectEntries(config, 'my_worker')).toEqual(
-      await readForcedEffectEntries(),
-    )
+    expect(effectEntries(config, 'my_worker')).toEqual(FORCED_EFFECT_ENTRIES)
   })
 
   it('forces the Effect entries into a server environment whose discovery a later plugin turns on', async () => {
@@ -996,9 +1011,7 @@ describe('Foldkit packages in every environment', () => {
       'serve',
     )
 
-    expect(effectEntries(config, 'my_worker')).toEqual(
-      await readForcedEffectEntries(),
-    )
+    expect(effectEntries(config, 'my_worker')).toEqual(FORCED_EFFECT_ENTRIES)
   })
 
   it('bundles the crawled packages into a named server environment', async () => {
