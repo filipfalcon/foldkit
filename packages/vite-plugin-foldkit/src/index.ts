@@ -1086,10 +1086,15 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
   const reloadPlugin: Plugin = {
     name: 'foldkit',
     apply: 'serve',
-    configEnvironment: (name, config) =>
-      isDependencyOptimizerEnabled(name, config)
-        ? { optimizeDeps: { include: [...FORCE_INCLUDED_EFFECT_ENTRIES] } }
-        : undefined,
+    // NOTE: Runs after other plugins' `configEnvironment` hooks, so the
+    // predicate sees discovery or includes that a later plugin turns on.
+    configEnvironment: {
+      order: 'post',
+      handler: (name, config) =>
+        isDependencyOptimizerEnabled(name, config)
+          ? { optimizeDeps: { include: [...FORCE_INCLUDED_EFFECT_ENTRIES] } }
+          : undefined,
+    },
     configureServer: server => {
       const events = Effect.runSync(Queue.unbounded<Event>())
       // NOTE: The default ConfigProvider snapshots the environment. Create a

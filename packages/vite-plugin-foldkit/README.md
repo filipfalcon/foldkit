@@ -98,20 +98,20 @@ The standalone build plugin takes `foldkitBuild(serverEntry, { clientEntry, ...o
 Each module graph must load one Foldkit copy. The plugin configures Vite for that:
 
 - `resolve.dedupe` lists `foldkit`, `@foldkit/ui`, and `@foldkit/devtools`, each only when it resolves from the application root.
-- Server builds and the server render in every server environment of the dev server bundle those three packages, plus every installed package whose `dependencies` or `peerDependencies` include `foldkit` or an `@foldkit/*` package, such as `@foldkit/markdown`. The plugin lists them in `resolve.noExternal`, which Vite applies to every environment, and in `ssr.noExternal`. In the dev server, these packages run through Vite's module runner instead of Node's own import. An explicit `ssr.external` entry still keeps a package external.
-- The plugin excludes `foldkit` from dependency pre-bundling in every environment, so the build id transform runs on it. It also pre-bundles the Effect entries Foldkit imports in every environment whose optimizer is enabled, for example a Cloudflare Worker environment, so Foldkit and the application share one Effect instance. Applications need no `optimizeDeps` settings for Foldkit.
+- Server builds and the server render in every server environment of the dev server bundle those three packages, plus every installed package whose `dependencies` or `peerDependencies` include `foldkit` or an `@foldkit/*` package, such as `@foldkit/markdown`. The plugin lists them in `resolve.noExternal`, which Vite applies to every environment, and in `ssr.noExternal`. In a Node server environment of the dev server, these packages run through Vite's module runner instead of Node's own import. An explicit `ssr.external` entry still keeps a package external.
 - The plugin finds these packages by crawling from the application's `package.json`. It follows the application's `dependencies` and `devDependencies`, then the `dependencies` of each package it bundles, plus the `devDependencies` of a bundled package that is a private workspace package.
+- The plugin excludes `foldkit` from dependency pre-bundling in every environment, so the build id transform runs on it. It also pre-bundles the Effect entries Foldkit imports in every environment whose optimizer is enabled, for example a Cloudflare Worker environment, so Foldkit and the application share one Effect instance. Applications need no `optimizeDeps` settings for Foldkit.
 
-A package the crawl does not reach stays external. For example: a peer the application does not declare, or a package reached only through a package that does not depend on Foldkit. Such a package loads a second Foldkit copy from `node_modules` at runtime. Declare it in the application's `package.json`, or add it to `ssr.noExternal`:
+A package the crawl does not reach stays external. For example: a peer the application does not declare, or a package reached only through a package that does not depend on Foldkit. Such a package loads a second Foldkit copy from `node_modules` at runtime. Declare it in the application's `package.json`, or add it to `resolve.noExternal`, which Vite applies to every environment:
 
 ```typescript
 export default defineConfig({
   plugins: [foldkit()],
-  ssr: { noExternal: ['foldkit-component-library'] },
+  resolve: { noExternal: ['foldkit-component-library'] },
 })
 ```
 
-Vitest copies SSR `noExternal` into `server.deps.inline`. A Vitest config that includes `foldkit()` therefore also inlines the crawled packages in tests.
+Vitest copies each environment's `resolve.noExternal` into `server.deps.inline`. A Vitest config that includes `foldkit()` therefore also inlines the crawled packages in tests.
 
 ## Completed build metadata
 

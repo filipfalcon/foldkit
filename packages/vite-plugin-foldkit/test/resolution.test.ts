@@ -17,7 +17,9 @@ import { promisify } from 'node:util'
 import {
   type EnvironmentOptions,
   type InlineConfig,
+  type Plugin,
   type ResolvedConfig,
+  type RunnableDevEnvironment,
   build,
   createRunnableDevEnvironment,
   createServer,
@@ -201,7 +203,14 @@ const UI_PEER: Files = {
 const BUILD_TOKEN_SERVER_ENTRY = 'entry.server.js'
 
 const BUILD_TOKEN_FOLDKIT: Files = {
-  ...appPackage({ foldkit: '*' }),
+  ...appPackage({ foldkit: '*', effect: '*' }),
+  'node_modules/effect/package.json': JSON.stringify({
+    name: 'effect',
+    version: '1.0.0',
+    type: 'module',
+    main: './index.js',
+  }),
+  'node_modules/effect/index.js': 'export const effect = {}\n',
   'node_modules/foldkit/package.json': JSON.stringify({
     name: 'foldkit',
     version: '1.0.0',
@@ -291,13 +300,42 @@ const runnableServerEnvironment = (
   ...options,
 })
 
-const isEffectEntry = (entry: string): boolean =>
-  entry === 'effect' || String.startsWith('effect/')(entry)
+const FORCED_EFFECT_ENTRIES_LIST =
+  /FORCE_INCLUDED_EFFECT_ENTRIES[^=]*=\s*\[([^\]]*)\]/
+const QUOTED_ENTRY = /'([^']+)'/g
 
-const forcedEffectEntries = (config: ResolvedConfig): ReadonlyArray<string> =>
-  Array.filter(
-    config.environments['client']?.optimizeDeps.include ?? [],
-    isEffectEntry,
+const readForcedEffectEntries = async (): Promise<ReadonlySet<string>> => {
+  const source = await readFile(PLUGIN_SOURCE, 'utf8')
+  const list = pipe(
+    source,
+    String.match(FORCED_EFFECT_ENTRIES_LIST),
+    Option.flatMap(Array.get(1)),
+    Option.getOrThrow,
+  )
+
+  return new Set(
+    pipe(
+      list,
+      String.matchAll(QUOTED_ENTRY),
+      Array.fromIterable,
+      Array.map(Array.get(1)),
+      Array.getSomes,
+    ),
+  )
+}
+
+const isEffectEntry = (entry: string): boolean =>
+  entry === 'effect' || entry.startsWith('effect/')
+
+const effectEntries = (
+  config: ResolvedConfig,
+  environmentName: string,
+): ReadonlySet<string> =>
+  new Set(
+    Array.filter(
+      config.environments[environmentName]?.optimizeDeps.include ?? [],
+      isEffectEntry,
+    ),
   )
 
 const renderBuildIds = async (
@@ -306,8 +344,8 @@ const renderBuildIds = async (
 ): Promise<
   Readonly<{
     serverBuildId: unknown
-    clientBuildToken: string | undefined
-    optimizedDependencies: ReadonlyArray<string>
+    clientBuildTokenCode: string | undefined
+    environment: RunnableDevEnvironment
   }>
 > => {
   const root = await realpath(await makeRoot(BUILD_TOKEN_FOLDKIT))
@@ -329,26 +367,39 @@ const renderBuildIds = async (
   const entryModule = await environment.runner.import(
     `/${BUILD_TOKEN_SERVER_ENTRY}`,
   )
-  const clientBuildToken = await server.environments.client.transformRequest(
-    join(root, 'node_modules/foldkit/dist/buildToken.js'),
-  )
-  const metadata = environment.depsOptimizer?.metadata
+  const clientBuildTokenTransform =
+    await server.environments.client.transformRequest(
+      join(root, 'node_modules/foldkit/dist/buildToken.js'),
+    )
 
   return {
     serverBuildId: entryModule.injectedBuildId,
-    clientBuildToken: clientBuildToken?.code,
-    optimizedDependencies: [
-      ...Object.keys(metadata?.optimized ?? {}),
-      ...Object.keys(metadata?.discovered ?? {}),
-    ],
+    clientBuildTokenCode: clientBuildTokenTransform?.code,
+    environment,
   }
+}
+
+const readOptimizedDependencies = async (
+  environment: RunnableDevEnvironment,
+): Promise<ReadonlyArray<string>> => {
+  const { depsOptimizer } = environment
+  if (depsOptimizer === undefined) {
+    throw new Error(`No dependency optimizer in ${environment.name}`)
+  }
+
+  await depsOptimizer.scanProcessing
+
+  return [
+    ...Record.keys(depsOptimizer.metadata.optimized),
+    ...Record.keys(depsOptimizer.metadata.discovered),
+  ]
 }
 
 const expectClientBuildId = (
   rendered: Awaited<ReturnType<typeof renderBuildIds>>,
 ): void => {
   expect(typeof rendered.serverBuildId).toBe('string')
-  expect(rendered.clientBuildToken).toContain(
+  expect(rendered.clientBuildTokenCode).toContain(
     `injectedBuildId = ${JSON.stringify(rendered.serverBuildId)}`,
   )
 }
@@ -565,6 +616,16 @@ describe('Foldkit packages in builds', () => {
 
     const output = await loadBuild(root, 'Ssr', {
       ssr: { noExternal: ['@foldkit/markdown'] },
+    })
+
+    expect(output.viaConsumer).toBe(output.instance)
+  })
+
+  it('shares one copy in an SSR build when the undeclared peer is in resolve.noExternal', async () => {
+    const root = await makeRoot(UNDECLARED_MARKDOWN_PEER)
+
+    const output = await loadBuild(root, 'Ssr', {
+      resolve: { noExternal: ['@foldkit/markdown'] },
     })
 
     expect(output.viaConsumer).toBe(output.instance)
@@ -789,6 +850,7 @@ describe('Foldkit packages in the dev server', () => {
 describe('Foldkit packages in every environment', () => {
   it('keeps the client excluding foldkit and pre-bundling the forced Effect entries', async () => {
     const root = await makeRoot(UI_PEER)
+    const forcedEntries = await readForcedEffectEntries()
 
     const defaultClient = await resolveConfig(pluginConfig(root), 'serve')
     const clientWithoutDiscovery = await resolveConfig(
@@ -799,13 +861,12 @@ describe('Foldkit packages in every environment', () => {
       'serve',
     )
 
+    expect(forcedEntries).toContain('effect')
     for (const config of [defaultClient, clientWithoutDiscovery]) {
       expect(config.environments['client']?.optimizeDeps.exclude).toContain(
         'foldkit',
       )
-      expect(forcedEffectEntries(config)).toEqual(
-        expect.arrayContaining(['effect', 'effect/Effect', 'effect/Schema']),
-      )
+      expect(effectEntries(config, 'client')).toEqual(forcedEntries)
     }
   })
 
@@ -827,11 +888,12 @@ describe('Foldkit packages in every environment', () => {
       },
       'serve',
     )
-    const optimizeDeps = config.environments['ssr']?.optimizeDeps
 
-    expect(optimizeDeps?.exclude).toContain('foldkit')
-    expect(optimizeDeps?.include).toEqual(
-      expect.arrayContaining([...forcedEffectEntries(config)]),
+    expect(config.environments['ssr']?.optimizeDeps.exclude).toContain(
+      'foldkit',
+    )
+    expect(effectEntries(config, 'ssr')).toEqual(
+      await readForcedEffectEntries(),
     )
   })
 
@@ -850,8 +912,11 @@ describe('Foldkit packages in every environment', () => {
       'serve',
     )
 
-    expect(config.environments['ssr']?.optimizeDeps.include).toEqual(
-      expect.arrayContaining(['effect/Schema', ...forcedEffectEntries(config)]),
+    expect(config.environments['ssr']?.optimizeDeps.include).toContain(
+      'effect/Schema',
+    )
+    expect(effectEntries(config, 'ssr')).toEqual(
+      await readForcedEffectEntries(),
     )
   })
 
@@ -870,11 +935,36 @@ describe('Foldkit packages in every environment', () => {
       },
       'serve',
     )
-    const optimizeDeps = config.environments['my_worker']?.optimizeDeps
 
-    expect(optimizeDeps?.exclude).toContain('foldkit')
-    expect(optimizeDeps?.include).toEqual(
-      expect.arrayContaining([...forcedEffectEntries(config)]),
+    expect(config.environments['my_worker']?.optimizeDeps.exclude).toContain(
+      'foldkit',
+    )
+    expect(effectEntries(config, 'my_worker')).toEqual(
+      await readForcedEffectEntries(),
+    )
+  })
+
+  it('forces the Effect entries into a server environment whose discovery a later plugin turns on', async () => {
+    const root = await makeRoot(UI_PEER)
+    const enableDiscoveryPlugin: Plugin = {
+      name: 'enable-discovery',
+      configEnvironment: name =>
+        name === 'my_worker'
+          ? { optimizeDeps: { noDiscovery: false } }
+          : undefined,
+    }
+
+    const config = await resolveConfig(
+      {
+        ...pluginConfig(root),
+        plugins: [foldkit(), enableDiscoveryPlugin],
+        environments: { my_worker: { consumer: 'server' } },
+      },
+      'serve',
+    )
+
+    expect(effectEntries(config, 'my_worker')).toEqual(
+      await readForcedEffectEntries(),
     )
   })
 
@@ -911,10 +1001,14 @@ describe('Foldkit packages in every environment', () => {
     const rendered = await renderBuildIds('ssr', {
       ssr: { optimizeDeps: WORKER_OPTIMIZE_DEPS },
     })
+    const optimizedDependencies = await readOptimizedDependencies(
+      rendered.environment,
+    )
 
     expectClientBuildId(rendered)
-    expect(rendered.optimizedDependencies).not.toContain('foldkit')
-    expect(rendered.optimizedDependencies).not.toContain('foldkit/build-token')
+    expect(optimizedDependencies).toContain('effect')
+    expect(optimizedDependencies).not.toContain('foldkit')
+    expect(optimizedDependencies).not.toContain('foldkit/build-token')
   })
 
   it('renders with the client build id in a named server environment with discovery', async () => {
@@ -924,13 +1018,17 @@ describe('Foldkit packages in every environment', () => {
         optimizeDeps: WORKER_OPTIMIZE_DEPS,
       }),
     })
+    const optimizedDependencies = await readOptimizedDependencies(
+      rendered.environment,
+    )
 
     expectClientBuildId(rendered)
-    expect(rendered.optimizedDependencies).not.toContain('foldkit')
-    expect(rendered.optimizedDependencies).not.toContain('foldkit/build-token')
+    expect(optimizedDependencies).toContain('effect')
+    expect(optimizedDependencies).not.toContain('foldkit')
+    expect(optimizedDependencies).not.toContain('foldkit/build-token')
   })
 
-  it('renders with the client build id in a named server environment that bundles nothing', async () => {
+  it('renders with the client build id in a named server environment that sets no noExternal', async () => {
     const rendered = await renderBuildIds('server_renderer', {
       server_renderer: runnableServerEnvironment({}),
     })
