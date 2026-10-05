@@ -44,6 +44,7 @@ import {
 import type { AddressInfo } from 'node:net'
 import type { Duplex } from 'node:stream'
 import type {
+  EnvironmentOptions,
   HttpServer,
   Plugin,
   ResolvedConfig,
@@ -149,12 +150,12 @@ export type FoldkitPluginOptions = Readonly<{
 }>
 
 // NOTE: Vite does not scan imports through `foldkit` because the plugin
-// excludes the package from optimization. A consumer can import only Effect
-// subpaths while Foldkit's compiled distribution imports the bare barrel, so
-// include both the barrel and every top-level namespace Foldkit imports. This
-// keeps them in one optimized dependency graph. Over-inclusion is harmless;
-// under-inclusion is the bug. `scripts/check-effect-prebundle.ts` keeps the
-// entries in sync with Foldkit's source and runs in `pnpm check`.
+// excludes the package from optimization in every environment. A consumer can
+// import only Effect subpaths while Foldkit's compiled distribution imports the
+// bare barrel, so include both the barrel and every top-level namespace Foldkit
+// imports. This keeps them in one optimized dependency graph. Over-inclusion is
+// harmless; under-inclusion is the bug. `scripts/check-effect-prebundle.ts`
+// keeps the entries in sync with Foldkit's source and runs in `pnpm check`.
 const FORCE_INCLUDED_EFFECT_ENTRIES: ReadonlyArray<string> = [
   'effect',
   'effect/Array',
@@ -200,6 +201,17 @@ const FORCE_INCLUDED_EFFECT_ENTRIES: ReadonlyArray<string> = [
   'effect/SubscriptionRef',
   'effect/Types',
 ]
+
+// NOTE: Adding includes to an environment whose optimizer is otherwise
+// disabled turns on Vite's explicit optimizer, which would pre-bundle Effect in
+// Vite's default Node `ssr` environment.
+const isDependencyOptimizerEnabled = (
+  name: string,
+  config: EnvironmentOptions,
+): boolean =>
+  (config.consumer ?? (name === 'client' ? 'client' : 'server')) === 'client' ||
+  config.optimizeDeps?.noDiscovery === false ||
+  Array.isArrayNonEmpty(config.optimizeDeps?.include ?? [])
 
 // EVENTS
 
@@ -1074,11 +1086,10 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
   const reloadPlugin: Plugin = {
     name: 'foldkit',
     apply: 'serve',
-    config: () => ({
-      optimizeDeps: {
-        include: [...FORCE_INCLUDED_EFFECT_ENTRIES],
-      },
-    }),
+    configEnvironment: (name, config) =>
+      isDependencyOptimizerEnabled(name, config)
+        ? { optimizeDeps: { include: [...FORCE_INCLUDED_EFFECT_ENTRIES] } }
+        : undefined,
     configureServer: server => {
       const events = Effect.runSync(Queue.unbounded<Event>())
       // NOTE: The default ConfigProvider snapshots the environment. Create a
@@ -1128,11 +1139,9 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
       )
 
       return {
-        optimizeDeps: {
-          exclude: ['foldkit'],
-        },
         resolve: {
           dedupe: foldkitPackages.dedupe,
+          noExternal: foldkitPackages.ssrNoExternal,
         },
         ssr: {
           noExternal: foldkitPackages.ssrNoExternal,
@@ -1146,6 +1155,11 @@ export const foldkit = (options: FoldkitPluginOptions = {}): Array<Plugin> => {
         },
       }
     },
+    configEnvironment: () => ({
+      optimizeDeps: {
+        exclude: ['foldkit'],
+      },
+    }),
   }
 
   const shared = [
