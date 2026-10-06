@@ -17,13 +17,13 @@ The Runtime API makes two independent choices:
 
 Without a `routing` config, the program doesn't manage the URL bar.
 
-::Snippet{name="runMakeApplication" label="makeApplication without routing example"}
+::Snippet{name="runMakeApplication" label="Using makeApplication without routing"}
 
 ### With routing
 
 With a `routing` config, the program manages the URL bar. The init function receives the current URL and can use it to set the initial route. After the URL, it receives a `LoadType` that says whether the page was a new visit, a reload, or a return through Back or Forward.
 
-::Snippet{name="runMakeApplicationRouting" label="makeApplication with routing example"}
+::Snippet{name="runMakeApplicationRouting" label="Using makeApplication with routing"}
 
 The `routing` config has two handlers. `onUrlRequest` turns a clicked link into a Message, giving update the choice between internal and external navigation. `onUrlChange` turns the new URL into a Message so update can store the corresponding route in the Model. It also receives a `UrlChangeType` that says how the URL changed, so update can scroll to the top of a new page or restore the position on Back and Forward. See [Routing & Navigation](/core/routing-and-navigation) for the full walkthrough.
 
@@ -37,7 +37,7 @@ Use `makeElement` to scope a Foldkit app to its container. Its view returns `Htm
 
 Flags still resolve before init, but their wiring follows the ownership boundary. A page-owning application receives its Flags Effect when `Runtime.run` starts it. A self-contained element receives its Flags Effect in the `makeElement` config.
 
-::Snippet{name="runMakeElement" label="makeElement example"}
+::Snippet{name="runMakeElement" label="Using makeElement"}
 
 ## embed
 

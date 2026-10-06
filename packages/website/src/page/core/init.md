@@ -6,7 +6,7 @@
 
 The counter starts at zero and has no startup work:
 
-::Snippet{name="initSimple" label="init example"}
+::Snippet{name="initSimple" label="Using init"}
 
 A non-routing application or element calls `init` with no arguments. A routing application passes the current URL, so its first Model can reflect the route. After the URL comes a `LoadType` that says how the reader arrived: a new visit, a reload, or Back or Forward. [Scroll Position](/core/routing-and-navigation#scroll-position) covers the `LoadType`. When the application declares Flags, they become the first argument in either form.
 
@@ -20,7 +20,7 @@ Define the boundary with a Flags Schema. For a fresh client boot, also define an
 
 `init` receives the decoded Flags value and folds it into the first Model:
 
-::Snippet{name="initWithFlags" label="init with Flags"}
+::Snippet{name="initWithFlags" label="Using init with Flags"}
 
 ### Fresh Client Boot
 

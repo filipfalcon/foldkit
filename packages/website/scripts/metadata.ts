@@ -33,7 +33,7 @@ const docs = (
 })
 
 const core = (title: string, description: string): PageMetadata =>
-  docs(title, description, 'Core Concepts')
+  docs(title, description, 'Core')
 
 const ui = (title: string, description: string): PageMetadata =>
   docs(title, description, 'Foldkit UI')
@@ -223,6 +223,10 @@ const METADATA_BY_TAG: Record<StaticRouteTag, PageMetadata> = {
   CoreHttp: core(
     'Http',
     'Provide a Fetch-backed HttpClient to Commands while keeping browser requests CORS-simple by disabling trace header propagation unless it is required.',
+  ),
+  CoreQuery: core(
+    'Query',
+    'Fetch, cache, and refresh remote data with reusable Submodels and less boilerplate.',
   ),
   CoreCanvas: core(
     'Canvas',

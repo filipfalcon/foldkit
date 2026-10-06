@@ -205,7 +205,7 @@ const featureTag = (text: string): Html =>
   ih.div(
     [
       ih.Class(
-        'text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+        'text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
       ),
     ],
     [text],
@@ -243,7 +243,7 @@ const headerView = (meta: ExampleMeta): Html =>
         [
           ih.Href(examplesRouter()),
           ih.Class(
-            'inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-4',
+            'inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-4',
           ),
         ],
         [Icon.chevronLeft('w-4 h-4'), 'All Examples'],
@@ -288,7 +288,7 @@ const disclosureChevron = (isOpen: boolean): Html =>
   ih.span(
     [
       ih.Class(
-        `transition-transform text-gray-400 dark:text-gray-500 ${isOpen ? 'rotate-180' : ''}`,
+        `transition-transform text-gray-500 dark:text-gray-500 ${isOpen ? 'rotate-180' : ''}`,
       ),
     ],
     [Icon.chevronDown('w-4 h-4')],
@@ -358,7 +358,7 @@ const livePreviewDisclosureView = (
                         h.div(
                           [
                             h.Class(
-                              'flex-1 text-xs font-mono text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 rounded px-3 py-1 text-center truncate',
+                              'flex-1 text-xs font-mono text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-900 rounded px-3 py-1 text-center truncate',
                             ),
                           ],
                           [urlBarContent(meta, maybeExampleUrl)],
@@ -413,7 +413,7 @@ const TAB_BUTTON_ACTIVE =
 
 const TAB_BUTTON_INACTIVE =
   TAB_BUTTON_BASE +
-  ' text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50'
+  ' text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50'
 
 const sourceCodeView = (
   exampleSlug: string,
@@ -421,10 +421,10 @@ const sourceCodeView = (
   tabsModel: Tabs.Model,
   activeSourceFilePath: string,
   isNarrowViewport: boolean,
-  renderCopyButton: CodeBlock.RenderCopyButton,
+  renderSnippet: CodeBlock.RenderSnippet,
   h: HtmlBuilder<Message>,
 ): Html => {
-  const highlightedView = CodeBlock.highlightedViewFor(renderCopyButton)
+  const highlightedView = CodeBlock.highlightedViewFor(renderSnippet)
 
   const filePaths = Array.map(files, file => file.path)
 
@@ -568,7 +568,7 @@ const sourcesFailureView = (error: string): Html =>
         ],
         ['Failed to load example sources'],
       ),
-      ih.div([ih.Class('text-sm text-gray-600 dark:text-gray-400')], [error]),
+      ih.div([ih.Class('text-sm text-gray-700 dark:text-gray-400')], [error]),
     ],
   )
 
@@ -577,7 +577,7 @@ const availableExampleContentView = (
   meta: ExampleMeta,
   slug: string,
   isNarrowViewport: boolean,
-  renderCopyButton: CodeBlock.RenderCopyButton,
+  renderSnippet: CodeBlock.RenderSnippet,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => [
   meta.livePreview === 'PlaygroundOnly'
@@ -610,7 +610,7 @@ const availableExampleContentView = (
                     () => Array.headNonEmpty(files).path,
                   ),
                   isNarrowViewport,
-                  renderCopyButton,
+                  renderSnippet,
                   h,
                 ),
               ],
@@ -624,21 +624,20 @@ const availableExampleContentView = (
 type ViewInputs = Readonly<{
   slug: string
   isNarrowViewport: boolean
-  renderCopyButton: CodeBlock.RenderCopyButton
+  renderSnippet: CodeBlock.RenderSnippet
 }>
 
 /**
  * Renders one example app: its header, the live preview, and the source files
  * behind a Tabs Submodel.
  *
- * The page is dispatched through `h.submodel`, so it takes `renderCopyButton`
- * from its parent rather than building the SnippetCopy boundary itself. The
- * renderer runs in the parent's boundary, so the nested Submodel's Message is
- * wrapped for the parent instead of being rejected by this page's
- * `toParentMessage`.
+ * The page is dispatched through `h.submodel`, so it takes the snippet renderer
+ * from its parent rather than building the interactive boundaries itself. The
+ * renderer runs in the parent's boundary, so its Messages are wrapped for the
+ * parent instead of being rejected by this page's `toParentMessage`.
  */
 export const view = Submodel.defineView<Model, Message, ViewInputs>(
-  (model, { slug, isNarrowViewport, renderCopyButton }, h): Html =>
+  (model, { slug, isNarrowViewport, renderSnippet }, h): Html =>
     Option.match(findBySlug(slug), {
       onNone: () => h.div([], ['Example not found']),
       onSome: meta =>
@@ -654,7 +653,7 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>(
                   meta,
                   slug,
                   isNarrowViewport,
-                  renderCopyButton,
+                  renderSnippet,
                   h,
                 )),
           ],

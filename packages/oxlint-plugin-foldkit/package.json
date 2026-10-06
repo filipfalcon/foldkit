@@ -1,6 +1,6 @@
 {
   "name": "@foldkit/oxlint-plugin",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "description": "Oxlint rules for Foldkit applications",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "effect-oxlint": "^0.3.4"
+    "effect-oxlint": "^0.3.4 || ^0.4.0"
   },
   "devDependencies": {
     "@types/node": "26.4.0",
