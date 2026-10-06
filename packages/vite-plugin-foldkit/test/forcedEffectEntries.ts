@@ -1,4 +1,4 @@
-import { Array, Option, pipe } from 'effect'
+import { Array, Option, Predicate, pipe } from 'effect'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseSync } from 'vite'
@@ -29,7 +29,7 @@ export const readForcedEffectEntries = (): ReadonlyArray<string> => {
   )
 
   return Array.map(elements, element => {
-    if (element?.type === 'Literal' && typeof element.value === 'string') {
+    if (element?.type === 'Literal' && Predicate.isString(element.value)) {
       return element.value
     }
 
