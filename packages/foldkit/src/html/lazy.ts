@@ -9,6 +9,7 @@ import {
   registerBoundaryWrapTransactionRollback,
   restoreBoundaryWrapsForLazyHit,
 } from './boundary.js'
+import { type Html, fromHtml, toHtml } from './htmlNode.js'
 import {
   type DispatchSync,
   requireBoundary,
@@ -47,7 +48,7 @@ type CacheEntry = Readonly<{
 
 const resolveOrCache = <Args extends ReadonlyArray<unknown>>(
   previousEntry: CacheEntry | undefined,
-  fn: (...args: Args) => VNode | null,
+  fn: (...args: Args) => Html,
   args: Args,
   onCache: (entry: CacheEntry | undefined) => void,
 ): VNode | null => {
@@ -78,7 +79,7 @@ const resolveOrCache = <Args extends ReadonlyArray<unknown>>(
   const trackedBoundaries = beginLazyTracking(registry)
   let vnode: VNode | null
   try {
-    vnode = fn(...args)
+    vnode = fromHtml(fn(...args))
   } finally {
     endLazyTracking(registry)
   }
@@ -124,18 +125,20 @@ const resolveOrCache = <Args extends ReadonlyArray<unknown>>(
  *  DOM nodes. If the same content needs to appear in multiple positions,
  *  create one slot per position. */
 export const createLazy = (): (<Args extends ReadonlyArray<unknown>>(
-  fn: (...args: Args) => VNode | null,
+  fn: (...args: Args) => Html,
   args: Args,
-) => VNode | null) => {
+) => Html) => {
   let cached: CacheEntry | undefined
 
   return <Args extends ReadonlyArray<unknown>>(
-    fn: (...args: Args) => VNode | null,
+    fn: (...args: Args) => Html,
     args: Args,
-  ): VNode | null =>
-    resolveOrCache(cached, fn, args, entry => {
-      cached = entry
-    })
+  ): Html =>
+    toHtml(
+      resolveOrCache(cached, fn, args, entry => {
+        cached = entry
+      }),
+    )
 }
 
 /** Creates a keyed memoization map for one view function rendered under many
@@ -163,21 +166,23 @@ export const createLazy = (): (<Args extends ReadonlyArray<unknown>>(
  *  positions, give each position its own key. */
 export const createKeyedLazy = (): (<Args extends ReadonlyArray<unknown>>(
   key: PropertyKey,
-  fn: (...args: Args) => VNode | null,
+  fn: (...args: Args) => Html,
   args: Args,
-) => VNode | null) => {
+) => Html) => {
   const cache = new Map<PropertyKey, CacheEntry>()
 
   return <Args extends ReadonlyArray<unknown>>(
     key: PropertyKey,
-    fn: (...args: Args) => VNode | null,
+    fn: (...args: Args) => Html,
     args: Args,
-  ): VNode | null =>
-    resolveOrCache(cache.get(key), fn, args, entry => {
-      if (entry === undefined) {
-        cache.delete(key)
-      } else {
-        cache.set(key, entry)
-      }
-    })
+  ): Html =>
+    toHtml(
+      resolveOrCache(cache.get(key), fn, args, entry => {
+        if (entry === undefined) {
+          cache.delete(key)
+        } else {
+          cache.set(key, entry)
+        }
+      }),
+    )
 }

@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DevToolsStore } from '../devTools/store.js'
 import { INIT_INDEX, latestEntryIndex } from '../devTools/store.js'
 import {
+  type Attribute,
   type Html,
   Prop,
   __htmlBuilder,
@@ -30,6 +31,12 @@ import type * as Update from '../update/index.js'
 import { __setDevToolsOverlay } from './devToolsConfig.js'
 import { makeApplication } from './makeApplication.js'
 import { makeElement } from './makeElement.js'
+
+const prop = (
+  attribute: Readonly<{ key: string; value: unknown }>,
+): Attribute<never> =>
+  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+  Prop(attribute) as unknown as Attribute<never>
 
 const Message = defineMessageUnion({
   CompletedMountEditor: {},
@@ -1608,7 +1615,7 @@ describe('Mount view-state awareness', () => {
                     h.div(
                       [
                         h.Id('failing-property'),
-                        Prop({
+                        prop({
                           key: 'foldkitPatchFailure',
                           value: 'fail',
                         }),
@@ -1831,7 +1838,7 @@ describe('Mount view-state awareness', () => {
                 [
                   lifecycleHtml.OnMount(mountPanel),
                   lifecycleHtml.OnUnmount(LifecycleMessage.UnmountedPanel()),
-                  Prop({
+                  prop({
                     key: 'foldkitLifecycleFailure',
                     value: model.isFailurePropertyEnabled ? 'fail' : 'safe',
                   }),
@@ -1990,7 +1997,7 @@ describe('Mount view-state awareness', () => {
             h.span([], ['Inserted']),
             h.div(
               [
-                Prop({
+                prop({
                   key: 'foldkitPatchFailure',
                   value: 'fail',
                 }),

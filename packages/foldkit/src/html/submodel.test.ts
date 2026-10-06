@@ -14,8 +14,12 @@ import {
   registerBoundaryWrap,
   resolveMountBoundaryDispatch,
 } from './boundary.js'
-import { __htmlBuilder } from './index.js'
-import { createKeyedLazy, createLazy } from './lazy.js'
+import { type Html, fromHtml } from './htmlNode.js'
+import { type HtmlBuilder, __htmlBuilder } from './index.js'
+import {
+  createKeyedLazy as createHtmlKeyedLazy,
+  createLazy as createHtmlLazy,
+} from './lazy.js'
 import {
   type DispatchSync,
   clearRuntime,
@@ -27,13 +31,55 @@ import {
 import {
   type AnySubmodelView,
   type SubmodelConfig,
-  defineView,
+  type SubmodelView,
+  defineView as defineHtmlView,
   submodel as submodelImpl,
 } from './submodel.js'
 
+type VNodeView<Model, Message, ViewInputs> = [ViewInputs] extends [void]
+  ? (model: Model, h: HtmlBuilder<Message>) => VNode | null
+  : (
+      model: Model,
+      viewInputs: ViewInputs,
+      h: HtmlBuilder<Message>,
+    ) => VNode | null
+
+type VNodeLazy = <Args extends ReadonlyArray<unknown>>(
+  fn: (...args: Args) => VNode | null,
+  args: Args,
+) => VNode | null
+
+type VNodeKeyedLazy = <Args extends ReadonlyArray<unknown>>(
+  key: PropertyKey,
+  fn: (...args: Args) => VNode | null,
+  args: Args,
+) => VNode | null
+
+// NOTE: these tests build renderer nodes directly, which is what Html is at
+// runtime. Retyping the entry points, rather than wrapping each view, keeps
+// every view function reference intact, and those references are the lazy
+// cache key.
+const defineView = <Model, Message = never, ViewInputs = void>(
+  fn: VNodeView<Model, Message, ViewInputs>,
+): SubmodelView<Model, Message, ViewInputs> =>
+  defineHtmlView<Model, Message, ViewInputs>(
+    /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+    fn as unknown as Parameters<
+      typeof defineHtmlView<Model, Message, ViewInputs>
+    >[0],
+  )
+
+const createLazy = (): VNodeLazy =>
+  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+  createHtmlLazy() as unknown as VNodeLazy
+
+const createKeyedLazy = (): VNodeKeyedLazy =>
+  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+  createHtmlKeyedLazy() as unknown as VNodeKeyedLazy
+
 const submodel = <View extends AnySubmodelView>(
   config: SubmodelConfig<View, unknown>,
-): VNode | null => submodelImpl(config, __htmlBuilder())
+): VNode | null => fromHtml(submodelImpl(config, __htmlBuilder()))
 
 const asVNode = (child: VNode | string | undefined): VNode => {
   if (child === undefined || typeof child === 'string') {
@@ -328,7 +374,7 @@ describe('h.submodel', () => {
   )
 
   it('rolls back wraps restored by a lazy hit when its outer Submodel fails', () => {
-    const lazy = createLazy()
+    const lazy = createHtmlLazy()
     const nestedHtml = __htmlBuilder<ChildMessage>()
     let isOuterViewFailing = false
     let nestedRenderCount = 0
@@ -344,7 +390,7 @@ describe('h.submodel', () => {
         }),
       })
     }
-    const outerView = defineView<object, ChildMessage>(() => {
+    const outerView = defineHtmlView<object, ChildMessage>(() => {
       const nested = lazy(renderNested, [])
       if (isOuterViewFailing) {
         throw new Error('Outer view failed after the lazy hit')
@@ -645,16 +691,17 @@ describe('h.submodel', () => {
     'restores surviving nested live Mount wraps when a replay view %s',
     outcome => {
       const childMessage: ChildMessage = { _tag: 'ChildClicked', value: 1 }
-      const liveView = defineView<{ value: number }, ChildMessage>((model, h) =>
-        h.submodel({
-          slotId: 'nested',
-          model,
-          view: childView,
-          toParentMessage: message => ({
-            ...message,
-            value: message.value + 10,
+      const liveView = defineHtmlView<{ value: number }, ChildMessage>(
+        (model, h) =>
+          h.submodel({
+            slotId: 'nested',
+            model,
+            view: childView,
+            toParentMessage: message => ({
+              ...message,
+              value: message.value + 10,
+            }),
           }),
-        }),
       )
       submodel({
         slotId: 'rollback',
@@ -737,15 +784,15 @@ describe('h.submodel', () => {
     {
       kind: 'createLazy',
       makeLazy: () => {
-        const lazy = createLazy()
-        return (view: () => VNode | null) => lazy(view, [])
+        const lazy = createHtmlLazy()
+        return (view: () => Html) => lazy(view, [])
       },
     },
     {
       kind: 'createKeyedLazy',
       makeLazy: () => {
-        const lazy = createKeyedLazy()
-        return (view: () => VNode | null) => lazy('nested', view, [])
+        const lazy = createHtmlKeyedLazy()
+        return (view: () => Html) => lazy('nested', view, [])
       },
     },
   ])(
@@ -784,7 +831,7 @@ describe('h.submodel', () => {
       expect(registry.wraps.has('lazy-rollback|nested')).toBe(false)
 
       beginRender(registry)
-      const successfulView = defineView<object, ChildMessage>(() =>
+      const successfulView = defineHtmlView<object, ChildMessage>(() =>
         lazy(renderNested),
       )
       const result = submodel({
