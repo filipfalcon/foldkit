@@ -4192,12 +4192,6 @@ type InternalHtmlAttributes<Message> = {
   ) => Extract<InternalAttribute<Message>, Readonly<{ _tag: Name }>>
 }
 
-// NOTE: `buildHtmlFactory` casts the internal constructors to their public
-// types, which erases the link between each payload and its public return
-// type. A constructor returns `ElementAttribute<Message>` when its payload
-// carries a Message and `ElementAttribute<never>` otherwise, and `InnerHTML`
-// returns `InnerHtmlAttribute`. `MisclassifiedHtmlAttributeName` names every
-// constructor that breaks the rule, and a type test requires it to be `never`.
 type MessageProbe = 'MessageProbe'
 type OtherMessageProbe = 'OtherMessageProbe'
 
@@ -4221,6 +4215,13 @@ type ElementAttributeFor<Name extends HtmlAttributeName> = [
 type PublicAttributeFor<Name extends HtmlAttributeName> =
   Name extends 'InnerHTML' ? InnerHtmlAttribute : ElementAttributeFor<Name>
 
+/** Names each attribute constructor whose public return type disagrees with
+ *  its payload. A constructor returns `ElementAttribute<Message>` when its
+ *  payload carries a Message and `ElementAttribute<never>` otherwise, and
+ *  `InnerHTML` returns `InnerHtmlAttribute`. A type test requires this to be
+ *  `never`.
+ *
+ * @internal */
 export type MisclassifiedHtmlAttributeName = {
   readonly [Name in HtmlAttributeName]: Types.EqualsWith<
     ReturnType<HtmlAttributes<MessageProbe>[Name]>,

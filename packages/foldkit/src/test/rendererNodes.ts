@@ -1,12 +1,6 @@
 import { type Attribute, type HtmlBuilder, Prop } from '../html/index.js'
-import {
-  createKeyedLazy as createHtmlKeyedLazy,
-  createLazy as createHtmlLazy,
-} from '../html/lazy.js'
-import {
-  type SubmodelView,
-  defineView as defineHtmlView,
-} from '../html/submodel.js'
+import { createKeyedLazy, createLazy } from '../html/lazy.js'
+import { type SubmodelView, defineView } from '../html/submodel.js'
 import type { VNode } from '../vdom.js'
 
 // NOTE: tests that build renderer nodes directly, which is what Html is at
@@ -36,28 +30,28 @@ type VNodeView<Model, Message, ViewInputs> = [ViewInputs] extends [void]
 /** `createLazy` typed with renderer nodes, for tests that build them directly.
  *
  * @internal */
-export const createLazy = (): VNodeLazy =>
+export const createVNodeLazy = (): VNodeLazy =>
   /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlLazy() as unknown as VNodeLazy
+  createLazy() as unknown as VNodeLazy
 
 /** `createKeyedLazy` typed with renderer nodes, for tests that build them
  *  directly.
  *
  * @internal */
-export const createKeyedLazy = (): VNodeKeyedLazy =>
+export const createVNodeKeyedLazy = (): VNodeKeyedLazy =>
   /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlKeyedLazy() as unknown as VNodeKeyedLazy
+  createKeyedLazy() as unknown as VNodeKeyedLazy
 
 /** `defineView` typed with renderer nodes, for tests that build them directly.
  *
  * @internal */
-export const defineView = <Model, Message = never, ViewInputs = void>(
+export const defineVNodeView = <Model, Message = never, ViewInputs = void>(
   fn: VNodeView<Model, Message, ViewInputs>,
 ): SubmodelView<Model, Message, ViewInputs> =>
-  defineHtmlView<Model, Message, ViewInputs>(
+  defineView<Model, Message, ViewInputs>(
     /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
     fn as unknown as Parameters<
-      typeof defineHtmlView<Model, Message, ViewInputs>
+      typeof defineView<Model, Message, ViewInputs>
     >[0],
   )
 
