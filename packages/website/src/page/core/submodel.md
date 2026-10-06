@@ -160,7 +160,7 @@ Start with an array. If profiling shows that finding and replacing a child is ex
 
 By default, a parent render runs each child view again. If profiling finds repeated work in a long list or expensive child view, place the embed site behind `createKeyedLazy` from `foldkit/html`.
 
-Foldkit keeps the boundary registration alive across cache hits and removes it when the VNode leaves the tree. Key the lazy view with the same stable identifier used by `slotId`.
+Foldkit keeps the boundary registration alive across cache hits and removes it when the child view's element leaves the tree. Key the lazy view with the same stable identifier used by `slotId`.
 
 The [View Memoization](/core/view-memoization) page covers cache identity, limits, and measurement.
 
