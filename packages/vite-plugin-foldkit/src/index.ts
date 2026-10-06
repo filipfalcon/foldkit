@@ -208,10 +208,18 @@ const FORCE_INCLUDED_EFFECT_ENTRIES: ReadonlyArray<string> = [
 const shouldForceEffectEntries = (
   name: string,
   config: EnvironmentOptions,
-): boolean =>
-  (config.consumer ?? (name === 'client' ? 'client' : 'server')) === 'client' ||
-  config.optimizeDeps?.noDiscovery === false ||
-  Array.isArrayNonEmpty(config.optimizeDeps?.include ?? [])
+): boolean => {
+  const consumer = config.consumer ?? (name === 'client' ? 'client' : 'server')
+  const isClientEnvironment = consumer === 'client'
+  const isDiscoveryEnabled = config.optimizeDeps?.noDiscovery === false
+  const isExplicitOptimizationEnabled = Array.isArrayNonEmpty(
+    config.optimizeDeps?.include ?? [],
+  )
+
+  return (
+    isClientEnvironment || isDiscoveryEnabled || isExplicitOptimizationEnabled
+  )
+}
 
 // EVENTS
 
