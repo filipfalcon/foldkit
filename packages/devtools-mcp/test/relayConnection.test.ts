@@ -6,6 +6,7 @@ import { WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
 import type { RelayTarget } from '../src/relayLocation.ts'
+import { boundPort } from './boundPort.ts'
 import {
   POLL_TIMEOUT,
   connectionCount,
@@ -37,12 +38,12 @@ const startRelay = async (onConnection: (socket: WebSocket) => void) => {
   await new Promise<void>(resolveListening =>
     relay.once('listening', () => resolveListening()),
   )
-  const address = relay.address()
-  if (address === null || typeof address === 'string') {
-    throw new Error('relay has no port')
-  }
+  const port = Option.getOrThrowWith(
+    boundPort(relay.address()),
+    () => new Error('relay has no port'),
+  )
   relay.on('connection', onConnection)
-  return `ws://127.0.0.1:${address.port}`
+  return `ws://127.0.0.1:${port}`
 }
 
 const runtimesResponse = (connectionId: string) => ({
@@ -93,11 +94,11 @@ const startStalledServer = async () => {
   await new Promise<void>(resolveListening =>
     stalled.listen(0, '127.0.0.1', () => resolveListening()),
   )
-  const address = stalled.address()
-  if (address === null || typeof address === 'string') {
-    throw new Error('server has no port')
-  }
-  return `ws://127.0.0.1:${address.port}`
+  const port = Option.getOrThrowWith(
+    boundPort(stalled.address()),
+    () => new Error('server has no port'),
+  )
+  return `ws://127.0.0.1:${port}`
 }
 
 it(

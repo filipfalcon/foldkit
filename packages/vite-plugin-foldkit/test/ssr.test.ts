@@ -286,6 +286,7 @@ const startAutomaticIdentityServer = async (): Promise<
     logLevel: 'silent',
     plugins: [
       foldkit({
+        devToolsMcpPort: false,
         ssr: {
           serverEntry: '/entry.server.ts',
           clientEntry: '/entry.client.ts',
