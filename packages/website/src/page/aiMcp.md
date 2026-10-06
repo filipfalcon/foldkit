@@ -88,7 +88,7 @@ The token keeps an unapproved relay client from connecting. It does not hide run
 
 On Windows, the plugin and the MCP server read the registry directory's owner and access list with PowerShell's `Get-Acl`. They use the directory only when it is private to your user: owned by you, SYSTEM, or Administrators, with no access granted to another account. If the check refuses the directory or cannot run, set `devToolsMcpPort` in the Vite config and pass the same port in `FOLDKIT_DEVTOOLS_MCP_PORT`. This opens a separate socket on every interface without a token. Do not use a fixed port on a shared or untrusted network.
 
-When several dev servers run under the project, the MCP server reaches all of them, and `foldkit_list_runtimes` names the `projectRoot` of each Runtime's dev server. When none runs under it, the MCP server reaches the nearest dev server whose root encloses the project, so an agent started in `src/` still finds the application. Setting `FOLDKIT_DEVTOOLS_MCP_PORT` or `FOLDKIT_DEVTOOLS_MCP_HOST` skips discovery and connects to that fixed address.
+When several dev servers run under the project, the MCP server reaches all of them, and `foldkit_list_runtimes` names the `projectRoot` of each Runtime's dev server. When none runs under it, the MCP server reaches every dev server at the nearest root that encloses the project, so an agent started in `src/` still finds the application. Setting `FOLDKIT_DEVTOOLS_MCP_PORT` or `FOLDKIT_DEVTOOLS_MCP_HOST` skips discovery and connects to that fixed address.
 
 The MCP server connects when a tool is called, not in the background. Each call looks up the registry again, so the agent can start before the dev server, and a restarted dev server is reached on the next call.
 
