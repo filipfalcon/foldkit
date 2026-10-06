@@ -91,7 +91,7 @@ const foldDialog = Update.foldChild({
   foldOutMessage: foldDialogOutMessage,
 })
 
-const makeRemovableDialogProgram = (
+const makeRecordingParentProgram = (
   container: HTMLElement,
   dialogInit: Update.ReturnWithOutMessage<Model, Message, OutMessage>,
   receivedMessages: Array<ParentMessage>,
@@ -168,7 +168,7 @@ const receivedMessagesThroughRemoval = async (
   document.body.append(container)
   const receivedMessages: Array<ParentMessage> = []
   const runtime = Effect.runFork(
-    makeRemovableDialogProgram(container, dialogInit, receivedMessages).start(),
+    makeRecordingParentProgram(container, dialogInit, receivedMessages).start(),
   )
 
   try {
@@ -369,7 +369,7 @@ describe('Dialog runtime lifecycle', () => {
     document.body.append(container)
     const receivedMessages: Array<ParentMessage> = []
     const runtime = Effect.runFork(
-      makeRemovableDialogProgram(
+      makeRecordingParentProgram(
         container,
         boot({ id: dialogId }),
         receivedMessages,

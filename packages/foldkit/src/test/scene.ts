@@ -148,8 +148,7 @@ export {
   nth,
   filter,
 } from './query.js'
-export type { Locator, LocatorAll } from './query.js'
-export type { SceneElement as Element } from './query.js'
+export type { Locator, LocatorAll, SceneElement as Element } from './query.js'
 
 /** Multi-match Locator factories. Each returns a `LocatorAll` that resolves
  *  to every matching element. Convert to a single `Locator` via `first`,
