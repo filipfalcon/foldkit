@@ -4,7 +4,7 @@
 
 `Scene` runs update and view together. It clicks buttons, types into inputs, presses keys, and checks the rendered view tree. The view runs after every step, so the test sees both state transitions and their rendered result.
 
-Scene operates on the rendered view tree directly. It needs no DOM, jsdom, or browser.
+Scene operates on the view directly. It needs no DOM, jsdom, or browser.
 
 Import the steps you need from `foldkit/scene`. Use named imports when the file contains only Scene tests. If a file contains both Story and Scene tests, import the namespaces from `foldkit` so `Story.given` and `Scene.given` stay distinct.
 
@@ -110,7 +110,7 @@ An interaction invokes the matched element's event handler. If the handler produ
 
 Pass `Option.some(text)` to `beforeInput` for an edit that carries text and `Option.none()` for one that does not, such as a backward deletion.
 
-`tap(fn)` runs a function for side effects (like ad-hoc assertions on the rendered tree, through `find`, `attr` and `textContent`, or on accumulated Commands) without breaking the step chain.
+`tap(fn)` runs a function for side effects (like ad-hoc assertions on the rendered tree, through `find`, `attr`, and `textContent`, or on accumulated Commands) without breaking the step chain.
 
 `click` keeps default action and propagation separate, like the browser. A target `OnClick` with `propagation: 'Stop'` skips ancestor click handlers but still submits a surrounding form when the clicked element is a submit button. Add `defaultAction: 'Prevent'` to suppress that submission. When neither control is present, Scene dispatches every click Message from the target through its ancestor chain, then dispatches the form's submit Message when applicable.
 

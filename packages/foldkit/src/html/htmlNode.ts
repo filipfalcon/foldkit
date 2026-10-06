@@ -10,7 +10,7 @@ export interface HtmlNode {
 }
 
 /** What a view returns. Constructed synchronously by the element factories on
- *  `HtmlBuilder`. `null` renders nothing. */
+ *  {@link HtmlBuilder}. `null` renders nothing. */
 export type Html = HtmlNode | null
 
 /** Views a renderer node as Html.
