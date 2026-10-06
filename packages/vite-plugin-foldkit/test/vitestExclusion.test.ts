@@ -8,7 +8,12 @@ import {
 import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'
-import { findFreePort, loggedLines, useRelayRegistry } from './relayFixtures.ts'
+import {
+  findFreePort,
+  isListenAttemptedOn,
+  loggedLines,
+  useRelayRegistry,
+} from './relayFixtures.ts'
 
 const SETTLE = 500
 
@@ -69,12 +74,18 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
       const relayLines = () =>
         loggedLines(console.log).filter(line => line.includes('MCP relay'))
 
+      const relayErrorLines = () =>
+        loggedLines(console.error).filter(line =>
+          line.includes('[foldkit:devTools]'),
+        )
+
       it('starts no relay by default', async () => {
         const server = await startServer({})
         await settle()
 
         expect(await readdir(directories.registry)).toStrictEqual([])
         expect(relayLines()).toStrictEqual([])
+        expect(relayErrorLines()).toStrictEqual([])
         if (isListening) {
           expect(server.httpServer?.listenerCount('upgrade')).toBe(1)
         }
@@ -82,11 +93,16 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
 
       it('starts no relay on a configured port', async () => {
         const port = await findFreePort()
-        await startServer({ devToolsMcpPort: port })
+        const server = await startServer({ devToolsMcpPort: port })
         await settle()
 
+        expect(isListenAttemptedOn(port)).toBe(false)
         expect(await readdir(directories.registry)).toStrictEqual([])
         expect(relayLines()).toStrictEqual([])
+        expect(relayErrorLines()).toStrictEqual([])
+        if (isListening) {
+          expect(server.httpServer?.listenerCount('upgrade')).toBe(1)
+        }
       })
     },
   )

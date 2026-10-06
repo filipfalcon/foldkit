@@ -36,15 +36,18 @@ import {
   makeRelayRegistryTrust,
   relayRegistryDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
+import { boundPort } from './boundPort.ts'
 import {
   POLL_TIMEOUT,
   RELAY_DIRECTORY_VARIABLE,
   RELAY_PATH,
-  isPortAccepting,
+  findListener,
+  listenerOn,
   loggedLines,
   openWebSocket,
   publishedRecords,
   serverPort,
+  silenceRelayErrors,
   startOnConfiguredRelayPort,
   useRelayRegistry,
   waitUntilPublished,
@@ -80,7 +83,9 @@ const startStandaloneServer = async (devToolsMcpPort: number) => {
 }
 
 const waitUntilRelayListening = (port: number) =>
-  expect.poll(() => isPortAccepting(port), { timeout: POLL_TIMEOUT }).toBe(true)
+  expect
+    .poll(() => Option.isSome(findListener(port)), { timeout: POLL_TIMEOUT })
+    .toBe(true)
 
 const connectClient = async (port: number) => {
   const client = new WebSocket(`ws://127.0.0.1:${port}`)
@@ -101,11 +106,10 @@ const holdFreePort = async (): Promise<number> => {
     squatter.on('error', reject)
     squatter.listen(0, () => resolveListening())
   })
-  const address = squatter.address()
-  if (address === null || typeof address === 'string') {
-    throw new Error('The squatter has no bound port')
-  }
-  return address.port
+  return Option.getOrThrowWith(
+    boundPort(squatter.address()),
+    () => new Error('The squatter has no bound port'),
+  )
 }
 
 const requestPreservedModel = async (port: number) => {
@@ -298,10 +302,11 @@ describe('DevTools MCP relay', () => {
       const { server, relayPort } = await startOnConfiguredRelayPort(
         startMiddlewareModeServer,
       )
+      const relayListener = listenerOn(relayPort)
 
       await server.close()
 
-      expect(await isPortAccepting(relayPort)).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -357,11 +362,12 @@ describe('DevTools MCP relay', () => {
         startMiddlewareModeServer,
       )
       const client = await connectClient(relayPort)
+      const relayListener = listenerOn(relayPort)
 
       await server.close()
 
       await expect.poll(() => client.readyState === client.CLOSED).toBe(true)
-      expect(await isPortAccepting(relayPort)).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -372,10 +378,11 @@ describe('DevTools MCP relay', () => {
       const { server, relayPort } = await startOnConfiguredRelayPort(
         startStandaloneServer,
       )
+      const relayListener = listenerOn(relayPort)
 
       await server.close()
 
-      expect(await isPortAccepting(relayPort)).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -392,10 +399,11 @@ describe('DevTools MCP relay', () => {
       await waitUntilRelayListening(relayPort)
       const client = await connectClient(relayPort)
       expect(client.readyState).toBe(client.OPEN)
+      const relayListener = listenerOn(relayPort)
 
       await server.close()
 
-      expect(await isPortAccepting(relayPort)).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -457,11 +465,12 @@ describe('DevTools MCP relay discovery', () => {
         record,
         Option.some(serverPort(server)),
       )
+      const relayListener = listenerOn(Number(url.port))
 
       await server.close()
 
       expect(await publishedRecords(root)).toStrictEqual([])
-      expect(await isPortAccepting(Number(url.port))).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -533,11 +542,12 @@ describe('DevTools MCP relay discovery', () => {
       const record = await waitUntilPublished(root)
 
       const url = await expectOwnLoopbackRelay(record, Option.none())
+      const relayListener = listenerOn(Number(url.port))
 
       await server.close()
 
       expect(await publishedRecords(root)).toStrictEqual([])
-      expect(await isPortAccepting(Number(url.port))).toBe(false)
+      expect(relayListener.listening).toBe(false)
     },
     TEST_TIMEOUT,
   )
@@ -588,6 +598,8 @@ describe('DevTools MCP relay discovery', () => {
       const server = await startListeningServer({})
       const root = server.config.root
       const before = await waitUntilPublished(root)
+      const beforeUrl = new URL(before.url)
+      const replacedListener = listenerOn(Number(beforeUrl.port))
 
       await server.restart()
 
@@ -600,14 +612,15 @@ describe('DevTools MCP relay discovery', () => {
         )
         .toBe(true)
       const after = await waitUntilPublished(root)
-      const beforeUrl = new URL(before.url)
       const afterUrl = new URL(after.url)
       expect(after.id).not.toBe(before.id)
-      expect(afterUrl.port).not.toBe(beforeUrl.port)
       expect(afterUrl.searchParams.get('token')).not.toBe(
         beforeUrl.searchParams.get('token'),
       )
-      expect(await connectionRefused(before.url)).toBe(true)
+      expect(replacedListener.listening).toBe(false)
+      const withReplacedToken = new URL(after.url)
+      withReplacedToken.search = beforeUrl.search
+      expect(await connectionRefused(withReplacedToken.toString())).toBe(true)
       const client = await openWebSocket(after.url)
       expect(client.readyState).toBe(client.OPEN)
 
@@ -624,6 +637,7 @@ describe('DevTools MCP relay discovery', () => {
       const server = await startMiddlewareServer({})
       const root = server.config.root
       const before = await waitUntilPublished(root)
+      const replacedListener = listenerOn(Number(new URL(before.url).port))
 
       await server.restart()
 
@@ -638,9 +652,7 @@ describe('DevTools MCP relay discovery', () => {
       const after = await waitUntilPublished(root)
       const client = await openWebSocket(after.url)
       expect(client.readyState).toBe(client.OPEN)
-      expect(await isPortAccepting(Number(new URL(before.url).port))).toBe(
-        false,
-      )
+      expect(replacedListener.listening).toBe(false)
 
       await server.close()
 
@@ -671,6 +683,7 @@ describe('DevTools MCP relay discovery', () => {
   it.skipIf(process.getuid === undefined)(
     'refuses a registry directory that other users can read',
     async () => {
+      silenceRelayErrors()
       await chmod(directories.registry, 0o755)
       await startMiddlewareServer({})
 
@@ -692,6 +705,7 @@ describe('DevTools MCP relay discovery', () => {
   it(
     'keeps listening and names the remedy when the registry cannot be written',
     async () => {
+      silenceRelayErrors()
       const notADirectory = join(directories.registry, 'registry-file')
       await writeFile(notADirectory, '', 'utf-8')
       process.env[RELAY_DIRECTORY_VARIABLE] = notADirectory
