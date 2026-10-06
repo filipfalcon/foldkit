@@ -4194,11 +4194,10 @@ type InternalHtmlAttributes<Message> = {
 
 // NOTE: `buildHtmlFactory` casts the internal constructors to their public
 // types, which erases the link between each payload and its public return
-// type. `ClassifiedHtmlAttributes` restores that link as a build check. A
-// constructor returns `ElementAttribute<Message>` when its payload carries a
-// Message and `ElementAttribute<never>` otherwise, and `InnerHTML` returns
-// `InnerHtmlAttribute`. A constructor that breaks the rule fails to compile,
-// and the error names it.
+// type. A constructor returns `ElementAttribute<Message>` when its payload
+// carries a Message and `ElementAttribute<never>` otherwise, and `InnerHTML`
+// returns `InnerHtmlAttribute`. `MisclassifiedHtmlAttributeName` names every
+// constructor that breaks the rule, and a type test requires it to be `never`.
 type MessageProbe = 'MessageProbe'
 type OtherMessageProbe = 'OtherMessageProbe'
 
@@ -4222,7 +4221,7 @@ type ElementAttributeFor<Name extends HtmlAttributeName> = [
 type PublicAttributeFor<Name extends HtmlAttributeName> =
   Name extends 'InnerHTML' ? InnerHtmlAttribute : ElementAttributeFor<Name>
 
-type MisclassifiedHtmlAttributeName = {
+export type MisclassifiedHtmlAttributeName = {
   readonly [Name in HtmlAttributeName]: Types.EqualsWith<
     ReturnType<HtmlAttributes<MessageProbe>[Name]>,
     PublicAttributeFor<Name>,
@@ -4230,11 +4229,6 @@ type MisclassifiedHtmlAttributeName = {
     Name
   >
 }[HtmlAttributeName]
-
-type ClassifiedHtmlAttributes<
-  Message,
-  _Misclassified extends never,
-> = HtmlAttributes<Message>
 
 const htmlAttributes = <Message>(): InternalHtmlAttributes<Message> => ({
   Key: (value: string) => Key({ value }),
@@ -4853,10 +4847,7 @@ const buildHtmlFactory = <Message>(): Omit<
 > => ({
   ...htmlElements<Message>(),
   /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  ...(htmlAttributes<Message>() as unknown as ClassifiedHtmlAttributes<
-    Message,
-    MisclassifiedHtmlAttributeName
-  >),
+  ...(htmlAttributes<Message>() as unknown as HtmlAttributes<Message>),
   empty: null,
   keyed: keyed<Message>(),
   submodel: <View extends AnySubmodelView>(

@@ -12,9 +12,9 @@ export default defineConfig({
         'src/**/*.test.ts',
         'src/**/*.d.ts',
         'src/test/apps/**',
+        'src/test/rendererNodes.ts',
         'src/test/vitest-setup.ts',
         'src/test/vitest.ts',
-        'src/test/rendererNodes.ts',
       ],
       thresholds: {
         statements: 72,

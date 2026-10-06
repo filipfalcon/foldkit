@@ -2812,6 +2812,9 @@ const assertHasHandler = (name: string): SceneAssertion =>
     `have handler "${name}"`,
   )
 
+const describeKey = (key: PropertyKey): string =>
+  Predicate.isString(key) ? `"${key}"` : globalThis.String(key)
+
 const assertHasKey = (expected: PropertyKey): SceneAssertion =>
   assertOnElement(
     vnode =>
@@ -2819,10 +2822,10 @@ const assertHasKey = (expected: PropertyKey): SceneAssertion =>
         onNone: () => ({ pass: false, actual: 'the element has no key' }),
         onSome: actual => ({
           pass: actual === expected,
-          actual: `received key "${globalThis.String(actual)}"`,
+          actual: `received key ${describeKey(actual)}`,
         }),
       }),
-    `have key "${globalThis.String(expected)}"`,
+    `have key ${describeKey(expected)}`,
   )
 
 const assertHasValue = (expected: string): SceneAssertion =>

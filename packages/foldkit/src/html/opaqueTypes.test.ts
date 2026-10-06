@@ -1,9 +1,10 @@
 import { Array, Option, Predicate, Schema } from 'effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { defineMessageUnion } from '../message/index.js'
 import * as Scene from '../scene/public.js'
 import { type View, defineView } from '../submodel/public.js'
+import type { MisclassifiedHtmlAttributeName } from './index.js'
 import {
   type Attribute,
   type ChildAttribute,
@@ -197,11 +198,14 @@ const checkAttributeIsOpaque = (
 describe('opaque view types', () => {
   it('declares the type checks for Html, Scene elements, and attributes', () => {
     expect(
-      [
-        checkHtmlIsOpaque,
-        checkSceneElementIsOpaque,
-        checkAttributeIsOpaque,
-      ].every(Predicate.isFunction),
+      Array.every(
+        [checkHtmlIsOpaque, checkSceneElementIsOpaque, checkAttributeIsOpaque],
+        Predicate.isFunction,
+      ),
     ).toBe(true)
+  })
+
+  it('types each attribute constructor by whether its payload carries a Message', () => {
+    expectTypeOf<MisclassifiedHtmlAttributeName>().toBeNever()
   })
 })

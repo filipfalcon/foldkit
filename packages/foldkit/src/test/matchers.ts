@@ -1,4 +1,4 @@
-import { Option, String } from 'effect'
+import { Option, Predicate, String } from 'effect'
 
 import { serializedStylePropertyName } from '../domReflection.js'
 import {
@@ -13,6 +13,9 @@ type MatcherContext = Readonly<{ isNot: boolean }>
 
 const describeExpected = (expected: string | RegExp): string =>
   expected instanceof RegExp ? `${expected}` : `"${expected}"`
+
+const describeKey = (key: PropertyKey): string =>
+  Predicate.isString(key) ? `"${key}"` : globalThis.String(key)
 
 const textMatches = (value: string, expected: string | RegExp): boolean =>
   expected instanceof RegExp ? expected.test(value) : value === expected
@@ -249,22 +252,22 @@ export const sceneMatchers = {
       onNone: () => ({
         pass: false,
         message: () =>
-          `Expected element to have key "${globalThis.String(expected)}" but the element does not exist.`,
+          `Expected element to have key ${describeKey(expected)} but the element does not exist.`,
       }),
       onSome: vnode =>
         Option.match(Option.fromNullishOr(vnode.key), {
           onNone: () => ({
             pass: false,
             message: () =>
-              `Expected element to have key "${globalThis.String(expected)}" but the element has no key.`,
+              `Expected element to have key ${describeKey(expected)} but the element has no key.`,
           }),
           onSome: actual => ({
             pass: actual === expected,
             message: () =>
               // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               (this as unknown as MatcherContext).isNot
-                ? `Expected element not to have key "${globalThis.String(expected)}" but it does.`
-                : `Expected element to have key "${globalThis.String(expected)}" but received key "${globalThis.String(actual)}".`,
+                ? `Expected element not to have key ${describeKey(expected)} but it does.`
+                : `Expected element to have key ${describeKey(expected)} but received key ${describeKey(actual)}.`,
           }),
         }),
     })

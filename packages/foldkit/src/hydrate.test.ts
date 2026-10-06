@@ -389,12 +389,10 @@ describe('__hydrateVNode', () => {
     // and only a constant it imports changed, so every view identity matches
     // and no per-element comparison can see the difference. The build token is
     // what separates the two deployments.
-    const serverRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text'), h.Name('email')])])),
+    const serverView = buildView(() =>
+      h.form([], [h.input([h.Type('text'), h.Name('email')])]),
     )
-    if (serverRoot === null) {
-      throw new Error('expected a server root')
-    }
+    const serverRoot = requireVNode(serverView)
     const identity = 'src/page/account.ts#field@1111aaaa2222'
     const [serverField] = (serverRoot.children ?? []).filter(
       (candidate): candidate is VNode => typeof candidate !== 'string',
@@ -404,7 +402,7 @@ describe('__hydrateVNode', () => {
     }
     serverField.identity = identity
 
-    const root = mountServerHtml(serializeHydratable(toHtml(serverRoot)))
+    const root = mountServerHtml(serializeHydratable(serverView))
     // The served page came from a build that stamped its own token.
     root.setAttribute('data-foldkit-build', 'build-one')
     const servedInput = root.querySelector('input')
@@ -413,12 +411,10 @@ describe('__hydrateVNode', () => {
     }
     servedInput.value = 'alice@example.com'
 
-    const clientRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text'), h.Name('ssn')])])),
+    const clientView = buildView(() =>
+      h.form([], [h.input([h.Type('text'), h.Name('ssn')])]),
     )
-    if (clientRoot === null) {
-      throw new Error('expected a client root')
-    }
+    const clientRoot = requireVNode(clientView)
     const [clientField] = (clientRoot.children ?? []).filter(
       (candidate): candidate is VNode => typeof candidate !== 'string',
     )
@@ -429,7 +425,7 @@ describe('__hydrateVNode', () => {
     clientField.identity = identity
 
     const patchedVNode = buildView(() =>
-      hydrateVNode(root, toHtml(clientRoot), undefined, 'build-two'),
+      hydrateVNode(root, clientView, undefined, 'build-two'),
     )
 
     expect(patchedVNode.elm).not.toBe(root)
@@ -516,17 +512,15 @@ describe('__hydrateVNode', () => {
     const root = document.createElement('div')
     root.setAttribute('data-foldkit-build', 'build-one')
 
-    const clientRoot = fromHtml(buildView(() => h.div([], ['fresh'])))
-    if (clientRoot === null) {
-      throw new Error('expected a client root')
-    }
+    const clientView = buildView(() => h.div([], ['fresh']))
+    const clientRoot = requireVNode(clientView)
     clientRoot.data = {
       ...clientRoot.data,
       hook: { insert: () => inserted.push('root') },
     }
 
     const patchedVNode = buildView(() =>
-      hydrateVNode(root, toHtml(clientRoot), undefined, 'build-two'),
+      hydrateVNode(root, clientView, undefined, 'build-two'),
     )
 
     expect(patchedVNode.elm).not.toBe(root)
@@ -563,12 +557,10 @@ describe('__hydrateVNode', () => {
     // into its identity, so the two identities differ and the served input is
     // rebuilt. Adopting it would move what the visitor typed into a field that
     // means something else and submits under a different name.
-    const serverRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text'), h.Name('email')])])),
+    const serverView = buildView(() =>
+      h.form([], [h.input([h.Type('text'), h.Name('email')])]),
     )
-    if (serverRoot === null) {
-      throw new Error('expected a server root')
-    }
+    const serverRoot = requireVNode(serverView)
     const [serverField] = (serverRoot.children ?? []).filter(
       (candidate): candidate is VNode => typeof candidate !== 'string',
     )
@@ -577,19 +569,17 @@ describe('__hydrateVNode', () => {
     }
     serverField.identity = 'src/page/account.ts#field@1111aaaa2222'
 
-    const root = mountServerHtml(serializeHydratable(toHtml(serverRoot)))
+    const root = mountServerHtml(serializeHydratable(serverView))
     const servedInput = root.querySelector('input')
     if (!(servedInput instanceof HTMLInputElement)) {
       throw new Error('expected a served input')
     }
     servedInput.value = 'alice@example.com'
 
-    const clientRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text'), h.Name('ssn')])])),
+    const clientView = buildView(() =>
+      h.form([], [h.input([h.Type('text'), h.Name('ssn')])]),
     )
-    if (clientRoot === null) {
-      throw new Error('expected a client root')
-    }
+    const clientRoot = requireVNode(clientView)
     const [clientField] = (clientRoot.children ?? []).filter(
       (candidate): candidate is VNode => typeof candidate !== 'string',
     )
@@ -598,7 +588,7 @@ describe('__hydrateVNode', () => {
     }
     clientField.identity = 'src/page/account.ts#field@3333bbbb4444'
 
-    buildView(() => hydrateVNode(root, toHtml(clientRoot)))
+    buildView(() => hydrateVNode(root, clientView))
 
     const hydratedInput = root.querySelector('input')
     expect(hydratedInput?.getAttribute('name')).toBe('ssn')
@@ -638,28 +628,20 @@ describe('__hydrateVNode', () => {
     // Two branches of a route can render the same tag from different view
     // functions. The compiler identity is what tells them apart, so a served
     // root from one branch is never adopted by the other.
-    const serverRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text')])])),
-    )
-    if (serverRoot === null) {
-      throw new Error('expected a server root')
-    }
+    const serverView = buildView(() => h.form([], [h.input([h.Type('text')])]))
+    const serverRoot = requireVNode(serverView)
     serverRoot.identity = 'src/page/sign-in.ts:SignInView'
-    const root = mountServerHtml(serializeHydratable(toHtml(serverRoot)))
+    const root = mountServerHtml(serializeHydratable(serverView))
     const serverInput = root.querySelector('input')
     if (!(serverInput instanceof HTMLInputElement)) {
       throw new Error('expected a server input')
     }
     serverInput.value = 'typed-into-sign-in'
 
-    const clientRoot = fromHtml(
-      buildView(() => h.form([], [h.input([h.Type('text')])])),
-    )
-    if (clientRoot === null) {
-      throw new Error('expected a client root')
-    }
+    const clientView = buildView(() => h.form([], [h.input([h.Type('text')])]))
+    const clientRoot = requireVNode(clientView)
     clientRoot.identity = 'src/page/sign-up.ts:SignUpView'
-    const patchedVNode = buildView(() => hydrateVNode(root, toHtml(clientRoot)))
+    const patchedVNode = buildView(() => hydrateVNode(root, clientView))
 
     const hydratedRoot = patchedVNode.elm
     expect(hydratedRoot).not.toBe(root)
@@ -676,28 +658,20 @@ describe('__hydrateVNode', () => {
   it('adopts a root whose key and view identity agree with the served one', () => {
     // The counterpart: an agreeing root is adopted in place, so the identity
     // check costs a matching render nothing.
-    const serverRoot = fromHtml(
-      buildView(() =>
-        h.keyed('form')('sign-in', [], [h.input([h.Type('text')])]),
-      ),
+    const serverView = buildView(() =>
+      h.keyed('form')('sign-in', [], [h.input([h.Type('text')])]),
     )
-    if (serverRoot === null) {
-      throw new Error('expected a server root')
-    }
+    const serverRoot = requireVNode(serverView)
     serverRoot.identity = 'src/page/sign-in.ts:SignInView'
-    const root = mountServerHtml(serializeHydratable(toHtml(serverRoot)))
+    const root = mountServerHtml(serializeHydratable(serverView))
     const serverInput = root.querySelector('input')
 
-    const clientRoot = fromHtml(
-      buildView(() =>
-        h.keyed('form')('sign-in', [], [h.input([h.Type('text')])]),
-      ),
+    const clientView = buildView(() =>
+      h.keyed('form')('sign-in', [], [h.input([h.Type('text')])]),
     )
-    if (clientRoot === null) {
-      throw new Error('expected a client root')
-    }
+    const clientRoot = requireVNode(clientView)
     clientRoot.identity = 'src/page/sign-in.ts:SignInView'
-    const patchedVNode = buildView(() => hydrateVNode(root, toHtml(clientRoot)))
+    const patchedVNode = buildView(() => hydrateVNode(root, clientView))
 
     expect(patchedVNode.elm).toBe(root)
     expect(root.querySelector('input')).toBe(serverInput)
@@ -731,9 +705,10 @@ describe('__hydrateVNode', () => {
     const root = mountServerHtml(serializeHydratable(view))
 
     const inserted: globalThis.Array<string> = []
-    const nextVNode = fromHtml(
-      buildView(() => h.div([], [h.span([h.Id('inner')], ['x'])])),
+    const nextView = buildView(() =>
+      h.div([], [h.span([h.Id('inner')], ['x'])]),
     )
+    const nextVNode = requireVNode(nextView)
     const attachInsertHook = (vnode: VNode, name: string): void => {
       vnode.data ??= {}
       vnode.data.hook = {
@@ -741,9 +716,6 @@ describe('__hydrateVNode', () => {
           inserted.push(name)
         },
       }
-    }
-    if (nextVNode === null) {
-      throw new Error('expected the hydration view to produce a vnode')
     }
     attachInsertHook(nextVNode, 'parent')
     const maybeChild = Array.findFirst(
@@ -754,7 +726,7 @@ describe('__hydrateVNode', () => {
       attachInsertHook(maybeChild.value, 'child')
     }
 
-    buildView(() => hydrateVNode(root, toHtml(nextVNode)))
+    buildView(() => hydrateVNode(root, nextView))
 
     expect(inserted).toEqual(['child', 'parent'])
   })
@@ -782,18 +754,14 @@ describe('__hydrateVNode', () => {
       }
     }
 
-    const buildTree = (): VNode => {
-      const tree = fromHtml(
-        buildView(() =>
-          h.main(
-            [],
-            [h.span([h.Id('first')], ['a']), h.div([h.Id('second')], ['b'])],
-          ),
+    const buildTree = (): Html => {
+      const treeView = buildView(() =>
+        h.main(
+          [],
+          [h.span([h.Id('first')], ['a']), h.div([h.Id('second')], ['b'])],
         ),
       )
-      if (tree === null) {
-        throw new Error('expected the view to produce a vnode')
-      }
+      const tree = requireVNode(treeView)
       const [first, second] = (tree.children ?? []).filter(
         (candidate): candidate is VNode => typeof candidate !== 'string',
       )
@@ -804,10 +772,10 @@ describe('__hydrateVNode', () => {
       if (second !== undefined) {
         attachInsertHook(second, 'second')
       }
-      return tree
+      return treeView
     }
 
-    buildView(() => hydrateVNode(root, toHtml(buildTree())))
+    buildView(() => hydrateVNode(root, buildTree()))
 
     expect(inserted).toEqual(['first', 'second', 'root'])
   })
@@ -824,21 +792,17 @@ describe('__hydrateVNode', () => {
         },
       }
     }
-    const buildTree = (): VNode => {
-      const tree = fromHtml(
-        buildView(() =>
-          h.main(
-            [],
-            [
-              h.span([h.Id('first')], ['a']),
-              h.div([h.Id('second')], [h.em([h.Id('nested')], ['c'])]),
-            ],
-          ),
+    const buildTree = (): Html => {
+      const treeView = buildView(() =>
+        h.main(
+          [],
+          [
+            h.span([h.Id('first')], ['a']),
+            h.div([h.Id('second')], [h.em([h.Id('nested')], ['c'])]),
+          ],
         ),
       )
-      if (tree === null) {
-        throw new Error('expected the view to produce a vnode')
-      }
+      const tree = requireVNode(treeView)
       attachInsertHook(tree, 'root')
       const [first, second] = (tree.children ?? []).filter(
         (candidate): candidate is VNode => typeof candidate !== 'string',
@@ -855,12 +819,12 @@ describe('__hydrateVNode', () => {
           attachInsertHook(nested, 'nested')
         }
       }
-      return tree
+      return treeView
     }
 
     const freshHost = document.createElement('div')
     document.body.appendChild(freshHost)
-    buildView(() => patch(toVNode(freshHost), buildTree()))
+    buildView(() => patch(toVNode(freshHost), requireVNode(buildTree())))
     const freshOrder = [...inserted]
     freshHost.remove()
 
@@ -870,7 +834,7 @@ describe('__hydrateVNode', () => {
         buildView(() => h.main([], [h.span([h.Id('first')], ['a'])])),
       ),
     )
-    buildView(() => hydrateVNode(root, toHtml(buildTree())))
+    buildView(() => hydrateVNode(root, buildTree()))
 
     expect(inserted).toEqual(freshOrder)
   })

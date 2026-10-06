@@ -4592,6 +4592,9 @@ describe('toHaveKey', () => {
   const keyAttributeFrameView = (_model: null, h: HtmlBuilder<never>) =>
     h.div([], [h.iframe([h.Key('a'), h.Title('Preview')])])
 
+  const numericKeyFrameView = (_model: null, h: HtmlBuilder<never>) =>
+    h.div([], [h.keyed('iframe')(1, [h.Title('Preview')])])
+
   test('Scene.expect toHaveKey passes for the key the view gave the element', () => {
     Scene.scene(
       { update: keyedFrameUpdate, view: keyedFrameView },
@@ -4618,6 +4621,24 @@ describe('toHaveKey', () => {
       ),
     ).toThrow(
       'Expected element matching "iframe" to have key "b" but received key "a".',
+    )
+  })
+
+  test('Scene.expect toHaveKey tells a numeric key from a string key', () => {
+    Scene.scene(
+      { update: keyedFrameUpdate, view: numericKeyFrameView },
+      Scene.given(null),
+      Scene.expect(Scene.selector('iframe')).toHaveKey(1),
+    )
+
+    expect(() =>
+      Scene.scene(
+        { update: keyedFrameUpdate, view: numericKeyFrameView },
+        Scene.given(null),
+        Scene.expect(Scene.selector('iframe')).toHaveKey('1'),
+      ),
+    ).toThrow(
+      'Expected element matching "iframe" to have key "1" but received key 1.',
     )
   })
 
@@ -4672,6 +4693,19 @@ describe('toHaveKey', () => {
         expect(() =>
           expect(Scene.find(simulation.html, 'iframe')).toHaveKey('b'),
         ).toThrow('Expected element to have key "b" but received key "a".')
+      }),
+    )
+  })
+
+  test('toHaveKey matcher tells a numeric key from a string key', () => {
+    Scene.scene(
+      { update: keyedFrameUpdate, view: numericKeyFrameView },
+      Scene.given(null),
+      Scene.tap(simulation => {
+        expect(Scene.find(simulation.html, 'iframe')).toHaveKey(1)
+        expect(() =>
+          expect(Scene.find(simulation.html, 'iframe')).toHaveKey('1'),
+        ).toThrow('Expected element to have key "1" but received key 1.')
       }),
     )
   })
