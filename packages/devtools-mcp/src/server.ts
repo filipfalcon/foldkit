@@ -26,11 +26,11 @@ const main = Effect.gen(function* () {
   yield* Option.match(configuredRelayUrl(settings), {
     onNone: () =>
       Console.error(
-        `[foldkit-devtools-mcp] looking for Foldkit dev servers under ${settings.projectRoot}`,
+        `[foldkit-devtools-mcp] looking up Foldkit dev servers for ${settings.projectRoot} on each tool call`,
       ),
     onSome: url =>
       Console.error(
-        `[foldkit-devtools-mcp] connecting to the DevTools MCP relay at ${url}`,
+        `[foldkit-devtools-mcp] using the DevTools MCP relay at ${url}`,
       ),
   })
   const registryReader = yield* makeRelayRegistryReader

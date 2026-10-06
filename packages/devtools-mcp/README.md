@@ -122,7 +122,7 @@ The server opens no connection until a tool is called. Each call looks up the re
 
 A relay discovered through the registry requires the token in its published address. The plugin will not publish that token into a directory owned by another user or readable by other users, and the MCP server ignores a registry directory that fails the same check. This token keeps unapproved clients from connecting; it does not hide runtime data from the agent that was given the MCP server. A configured `devToolsMcpPort` opens a separate socket on every interface without a token. Do not use a fixed port on a shared or untrusted network.
 
-On Windows, both packages read the registry directory's owner and access list with PowerShell's `Get-Acl` and use the directory only when it is private to the current user: owned by that user, SYSTEM, or Administrators, with no access granted to another account. If the check refuses the directory or cannot run, use `devToolsMcpPort` in the Vite config and set `FOLDKIT_DEVTOOLS_MCP_PORT` to the same port.
+On Windows, the Vite plugin and the MCP server read the registry directory's owner and access list with PowerShell's `Get-Acl` and use the directory only when it is private to the current user: owned by that user, SYSTEM, or Administrators, with no access granted to another account. If the check refuses the directory or cannot run, use `devToolsMcpPort` in the Vite config and set `FOLDKIT_DEVTOOLS_MCP_PORT` to the same port.
 
 ## Notes
 
