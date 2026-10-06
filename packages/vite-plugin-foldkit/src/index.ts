@@ -41,7 +41,6 @@ import {
 import { timingSafeEqual } from 'node:crypto'
 import {
   type IncomingMessage,
-  STATUS_CODES,
   type Server,
   type ServerResponse,
   createServer as createHttpServer,
@@ -663,6 +662,13 @@ type RefusedUpgradeStatus =
   | typeof UNAUTHORIZED
   | typeof NOT_FOUND
 
+const REFUSED_UPGRADE_REASONS: Readonly<Record<RefusedUpgradeStatus, string>> =
+  {
+    [BAD_REQUEST]: 'Bad Request',
+    [UNAUTHORIZED]: 'Unauthorized',
+    [NOT_FOUND]: 'Not Found',
+  }
+
 class RelayBindFailed extends Data.TaggedError('RelayBindFailed')<{
   readonly maybePort: Option.Option<number>
   readonly cause: Error
@@ -748,7 +754,7 @@ const refuseUpgrade = (socket: Duplex, status: RefusedUpgradeStatus): void => {
   socket.on('error', () => socket.destroy())
   socket.once('finish', () => socket.destroy())
   socket.end(
-    `HTTP/1.1 ${status} ${STATUS_CODES[status] ?? ''}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
+    `HTTP/1.1 ${status} ${REFUSED_UPGRADE_REASONS[status]}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
   )
 }
 
