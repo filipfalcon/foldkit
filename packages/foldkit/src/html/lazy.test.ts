@@ -6,16 +6,13 @@ import { describe, it } from '@effect/vitest'
 import { MountTracker } from '../mount/index.js'
 import { Dispatch } from '../runtime/index.js'
 import { h } from '../snabbdom/index.js'
+import { createKeyedLazy, createLazy } from '../test/vnodeLazy.js'
 import { type VNode, dedupeSharedVNodes, memoizedVNodes } from '../vdom.js'
 import {
   type BoundaryRegistry,
   beginRender,
   createBoundaryRegistry,
 } from './boundary.js'
-import {
-  createKeyedLazy as createHtmlKeyedLazy,
-  createLazy as createHtmlLazy,
-} from './lazy.js'
 import {
   type DispatchSync,
   clearRuntime,
@@ -43,28 +40,6 @@ const noOpContext = Context.make(Dispatch, noOpDispatchService).pipe(
 const pushNoOpRuntime = (): void => {
   setRuntime(noOpDispatchSync, noOpContext)
 }
-
-type VNodeLazy = <Args extends ReadonlyArray<unknown>>(
-  fn: (...args: Args) => VNode | null,
-  args: Args,
-) => VNode | null
-
-type VNodeKeyedLazy = <Args extends ReadonlyArray<unknown>>(
-  key: PropertyKey,
-  fn: (...args: Args) => VNode | null,
-  args: Args,
-) => VNode | null
-
-// NOTE: these tests build renderer nodes directly, which is what Html is at
-// runtime. Retyping the slots, rather than wrapping each view, keeps every view
-// function reference intact, and those references are the cache key.
-const createLazy = (): VNodeLazy =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlLazy() as unknown as VNodeLazy
-
-const createKeyedLazy = (): VNodeKeyedLazy =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlKeyedLazy() as unknown as VNodeKeyedLazy
 
 const asVNode = (child: VNode | string | undefined): VNode => {
   if (child === undefined || typeof child === 'string') {

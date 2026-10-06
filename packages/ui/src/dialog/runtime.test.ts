@@ -363,6 +363,47 @@ describe('Dialog runtime lifecycle', () => {
     }
   })
 
+  it('prevents a native cancel event without closing the dialog', async () => {
+    const container = document.createElement('div')
+    container.id = 'native-cancel-dialog-app'
+    document.body.append(container)
+    const receivedMessages: Array<ParentMessage> = []
+    const runtime = Effect.runFork(
+      makeRemovableDialogProgram(
+        container,
+        boot({ id: dialogId }),
+        receivedMessages,
+      ).start(),
+    )
+
+    try {
+      await vi.waitFor(() => {
+        expect(
+          document.getElementById(dialogId)?.getAttribute('aria-modal'),
+        ).toBe('true')
+      })
+
+      const nativeCancel = new Event('cancel', { cancelable: true })
+      document.getElementById(dialogId)?.dispatchEvent(nativeCancel)
+
+      expect(nativeCancel.defaultPrevented).toBe(true)
+
+      clickElementById('ping')
+      await vi.waitFor(() => {
+        expect(receivedMessages).toContainEqual(ParentMessage.ClickedPing())
+      })
+
+      expect(receivedMessages).not.toContainEqual(
+        ParentMessage.GotDialogMessage({ message: Message.RequestedClose() }),
+      )
+      expect(
+        document.getElementById(dialogId)?.getAttribute('aria-modal'),
+      ).toBe('true')
+    } finally {
+      await Effect.runPromise(Fiber.interrupt(runtime))
+    }
+  })
+
   it('dispatches Unmounted when an open dialog is removed', async () => {
     expect(
       await receivedMessagesThroughRemoval(boot({ id: dialogId })),

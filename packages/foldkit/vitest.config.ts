@@ -14,6 +14,7 @@ export default defineConfig({
         'src/test/apps/**',
         'src/test/vitest-setup.ts',
         'src/test/vitest.ts',
+        'src/test/vnodeLazy.ts',
       ],
       thresholds: {
         statements: 72,

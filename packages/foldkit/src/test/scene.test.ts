@@ -4589,11 +4589,23 @@ describe('toHaveKey', () => {
   const unkeyedFrameView = (_model: null, h: HtmlBuilder<never>) =>
     h.div([], [h.iframe([h.Title('Preview')])])
 
+  const keyAttributeFrameView = (_model: null, h: HtmlBuilder<never>) =>
+    h.div([], [h.iframe([h.Key('a'), h.Title('Preview')])])
+
   test('Scene.expect toHaveKey passes for the key the view gave the element', () => {
     Scene.scene(
       { update: keyedFrameUpdate, view: keyedFrameView },
       Scene.given(null),
       Scene.expect(Scene.selector('iframe')).toHaveKey('a'),
+    )
+  })
+
+  test('Scene.expect toHaveKey passes for a key given through h.Key', () => {
+    Scene.scene(
+      { update: keyedFrameUpdate, view: keyAttributeFrameView },
+      Scene.given(null),
+      Scene.expect(Scene.selector('iframe')).toHaveKey('a'),
+      Scene.expect(Scene.selector('iframe')).not.toHaveKey('b'),
     )
   })
 
@@ -4660,6 +4672,18 @@ describe('toHaveKey', () => {
         expect(() =>
           expect(Scene.find(simulation.html, 'iframe')).toHaveKey('b'),
         ).toThrow('Expected element to have key "b" but received key "a".')
+      }),
+    )
+  })
+
+  test('toHaveKey matcher fails a negated assertion for the same key', () => {
+    Scene.scene(
+      { update: keyedFrameUpdate, view: keyedFrameView },
+      Scene.given(null),
+      Scene.tap(simulation => {
+        expect(() =>
+          expect(Scene.find(simulation.html, 'iframe')).not.toHaveKey('a'),
+        ).toThrow('Expected element not to have key "a" but it does.')
       }),
     )
   })

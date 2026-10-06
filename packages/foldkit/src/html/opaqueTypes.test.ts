@@ -1,4 +1,4 @@
-import { Option, Predicate, Schema } from 'effect'
+import { Array, Option, Predicate, Schema } from 'effect'
 import { describe, expect, it } from 'vitest'
 
 import { defineMessageUnion } from '../message/index.js'
@@ -164,12 +164,12 @@ const checkAttributeIsOpaque = (
   const group: ReadonlyArray<ChildAttribute> = childAttributes([
     h.Class('child'),
   ])
-  const firstChild = group[0]
-  if (firstChild !== undefined) {
+  const maybeFirstChild = Array.head(group)
+  if (Option.isSome(maybeFirstChild)) {
     // @ts-expect-error a ChildAttribute exposes no wrapped attribute
-    void firstChild.attribute
+    void maybeFirstChild.value.attribute
     // @ts-expect-error a ChildAttribute exposes no dispatcher
-    void firstChild.dispatch
+    void maybeFirstChild.value.dispatch
   }
   const withGroup = h.div([...group])
 

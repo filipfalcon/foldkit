@@ -6,6 +6,7 @@ import { describe, it } from '@effect/vitest'
 import { MountTracker } from '../mount/index.js'
 import { Dispatch } from '../runtime/index.js'
 import { h } from '../snabbdom/index.js'
+import { createKeyedLazy, createLazy, defineView } from '../test/vnodeLazy.js'
 import { type VNode, dedupeSharedVNodes, memoizedVNodes } from '../vdom.js'
 import {
   type BoundaryRegistry,
@@ -15,7 +16,7 @@ import {
   resolveMountBoundaryDispatch,
 } from './boundary.js'
 import { type Html, fromHtml } from './htmlNode.js'
-import { type HtmlBuilder, __htmlBuilder } from './index.js'
+import { __htmlBuilder } from './index.js'
 import {
   createKeyedLazy as createHtmlKeyedLazy,
   createLazy as createHtmlLazy,
@@ -31,51 +32,9 @@ import {
 import {
   type AnySubmodelView,
   type SubmodelConfig,
-  type SubmodelView,
   defineView as defineHtmlView,
   submodel as submodelImpl,
 } from './submodel.js'
-
-type VNodeView<Model, Message, ViewInputs> = [ViewInputs] extends [void]
-  ? (model: Model, h: HtmlBuilder<Message>) => VNode | null
-  : (
-      model: Model,
-      viewInputs: ViewInputs,
-      h: HtmlBuilder<Message>,
-    ) => VNode | null
-
-type VNodeLazy = <Args extends ReadonlyArray<unknown>>(
-  fn: (...args: Args) => VNode | null,
-  args: Args,
-) => VNode | null
-
-type VNodeKeyedLazy = <Args extends ReadonlyArray<unknown>>(
-  key: PropertyKey,
-  fn: (...args: Args) => VNode | null,
-  args: Args,
-) => VNode | null
-
-// NOTE: these tests build renderer nodes directly, which is what Html is at
-// runtime. Retyping the entry points, rather than wrapping each view, keeps
-// every view function reference intact, and those references are the lazy
-// cache key.
-const defineView = <Model, Message = never, ViewInputs = void>(
-  fn: VNodeView<Model, Message, ViewInputs>,
-): SubmodelView<Model, Message, ViewInputs> =>
-  defineHtmlView<Model, Message, ViewInputs>(
-    /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-    fn as unknown as Parameters<
-      typeof defineHtmlView<Model, Message, ViewInputs>
-    >[0],
-  )
-
-const createLazy = (): VNodeLazy =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlLazy() as unknown as VNodeLazy
-
-const createKeyedLazy = (): VNodeKeyedLazy =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  createHtmlKeyedLazy() as unknown as VNodeKeyedLazy
 
 const submodel = <View extends AnySubmodelView>(
   config: SubmodelConfig<View, unknown>,

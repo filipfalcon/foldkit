@@ -34,7 +34,7 @@ A `RegExp` always tests the element's full text, including text from nested elem
 
 Scene starts every regular expression match at index zero and leaves the expression's `lastIndex` unchanged. Global and sticky expressions therefore produce the same results every time a query runs.
 
-When an ancestor and one of its descendants both match, `text` returns the descendant. `all.text` returns both in traversal order. Neither query returns text VNodes.
+When an ancestor and one of its descendants both match, `text` returns the descendant. `all.text` returns both in traversal order. Neither query returns text nodes.
 
 ### The role Locator
 

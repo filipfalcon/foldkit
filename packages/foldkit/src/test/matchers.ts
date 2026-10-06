@@ -3,10 +3,10 @@ import { Option, String } from 'effect'
 import { serializedStylePropertyName } from '../domReflection.js'
 import {
   type SceneElement,
-  attrImpl,
+  attrOfNode,
   fromSceneElement,
   isHidden,
-  textContentImpl,
+  textContentOfNode,
 } from './query.js'
 
 type MatcherContext = Readonly<{ isNot: boolean }>
@@ -30,7 +30,7 @@ export const sceneMatchers = {
           `Expected element to have text ${describeExpected(expected)} but the element does not exist.`,
       }),
       onSome: vnode => {
-        const actualText = textContentImpl(vnode)
+        const actualText = textContentOfNode(vnode)
         return {
           pass: textMatches(actualText, expected),
           message: () =>
@@ -54,7 +54,7 @@ export const sceneMatchers = {
           `Expected element to contain text ${describeExpected(expected)} but the element does not exist.`,
       }),
       onSome: vnode => {
-        const actualText = textContentImpl(vnode)
+        const actualText = textContentOfNode(vnode)
         return {
           pass: textIncludes(actualText, expected),
           message: () =>
@@ -99,7 +99,7 @@ export const sceneMatchers = {
             : `Expected element to have attribute ${name}="${expectedValue}" but the element does not exist.`,
       }),
       onSome: vnode => {
-        const actualValue = attrImpl(vnode, name)
+        const actualValue = attrOfNode(vnode, name)
 
         if (expectedValue === undefined) {
           return {
@@ -278,7 +278,7 @@ export const sceneMatchers = {
           `Expected element to have value "${expected}" but the element does not exist.`,
       }),
       onSome: vnode => {
-        const actualValue = attrImpl(vnode, 'value')
+        const actualValue = attrOfNode(vnode, 'value')
         return Option.match(actualValue, {
           onNone: () => ({
             pass: false,
@@ -306,8 +306,8 @@ export const sceneMatchers = {
           'Expected element to be disabled but the element does not exist.',
       }),
       onSome: vnode => {
-        const disabled = attrImpl(vnode, 'disabled')
-        const ariaDisabled = attrImpl(vnode, 'aria-disabled')
+        const disabled = attrOfNode(vnode, 'disabled')
+        const ariaDisabled = attrOfNode(vnode, 'aria-disabled')
         const pass =
           (Option.isSome(disabled) && disabled.value !== 'false') ||
           (Option.isSome(ariaDisabled) && ariaDisabled.value === 'true')
@@ -331,8 +331,8 @@ export const sceneMatchers = {
           'Expected element to be enabled but the element does not exist.',
       }),
       onSome: vnode => {
-        const disabled = attrImpl(vnode, 'disabled')
-        const ariaDisabled = attrImpl(vnode, 'aria-disabled')
+        const disabled = attrOfNode(vnode, 'disabled')
+        const ariaDisabled = attrOfNode(vnode, 'aria-disabled')
         const isDisabled =
           (Option.isSome(disabled) && disabled.value !== 'false') ||
           (Option.isSome(ariaDisabled) && ariaDisabled.value === 'true')
@@ -357,7 +357,7 @@ export const sceneMatchers = {
       }),
       onSome: vnode => {
         const childCount = (vnode.children ?? []).length
-        const text = textContentImpl(vnode)
+        const text = textContentOfNode(vnode)
         const pass = String.isEmpty(text) && childCount === 0
         const actual: string = String.isNonEmpty(text)
           ? `received text "${text}"`
@@ -402,7 +402,7 @@ export const sceneMatchers = {
           `Expected element to have id "${expected}" but the element does not exist.`,
       }),
       onSome: vnode => {
-        const actualId = attrImpl(vnode, 'id')
+        const actualId = attrOfNode(vnode, 'id')
         return Option.match(actualId, {
           onNone: () => ({
             pass: false,
@@ -430,8 +430,8 @@ export const sceneMatchers = {
           'Expected element to be checked but the element does not exist.',
       }),
       onSome: vnode => {
-        const checked = attrImpl(vnode, 'checked')
-        const ariaChecked = attrImpl(vnode, 'aria-checked')
+        const checked = attrOfNode(vnode, 'checked')
+        const ariaChecked = attrOfNode(vnode, 'aria-checked')
         const pass =
           (Option.isSome(checked) && checked.value !== 'false') ||
           (Option.isSome(ariaChecked) && ariaChecked.value === 'true')

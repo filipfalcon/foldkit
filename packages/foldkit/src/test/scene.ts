@@ -82,12 +82,12 @@ import {
   accessibleDescription,
   accessibleName,
   ancestorsOf,
-  attrImpl,
+  attrOfNode,
   fromSceneElement,
   isHidden,
   resolveTarget,
   selector,
-  textContentImpl,
+  textContentOfNode,
   toSceneElement,
   within,
 } from './query.js'
@@ -2712,8 +2712,8 @@ const textIncludes = (value: string, expected: string | RegExp): boolean =>
 const assertHasText = (expected: string | RegExp): SceneAssertion =>
   assertOnElement(
     vnode => ({
-      pass: textMatches(textContentImpl(vnode), expected),
-      actual: `received "${textContentImpl(vnode)}"`,
+      pass: textMatches(textContentOfNode(vnode), expected),
+      actual: `received "${textContentOfNode(vnode)}"`,
     }),
     `have text ${describeExpected(expected)}`,
   )
@@ -2721,8 +2721,8 @@ const assertHasText = (expected: string | RegExp): SceneAssertion =>
 const assertContainsText = (expected: string | RegExp): SceneAssertion =>
   assertOnElement(
     vnode => ({
-      pass: textIncludes(textContentImpl(vnode), expected),
-      actual: `received "${textContentImpl(vnode)}"`,
+      pass: textIncludes(textContentOfNode(vnode), expected),
+      actual: `received "${textContentOfNode(vnode)}"`,
     }),
     `contain text ${describeExpected(expected)}`,
   )
@@ -2733,7 +2733,7 @@ const assertHasAttr = (
 ): SceneAssertion =>
   assertOnElement(
     vnode => {
-      const actualValue = attrImpl(vnode, name)
+      const actualValue = attrOfNode(vnode, name)
       if (Predicate.isUndefined(value)) {
         return {
           pass: Option.isSome(actualValue),
@@ -2827,7 +2827,7 @@ const assertHasKey = (expected: PropertyKey): SceneAssertion =>
 
 const assertHasValue = (expected: string): SceneAssertion =>
   assertOnElement(vnode => {
-    const actualValue = attrImpl(vnode, 'value')
+    const actualValue = attrOfNode(vnode, 'value')
     return Option.match(actualValue, {
       onNone: () => ({
         pass: false,
@@ -2841,11 +2841,11 @@ const assertHasValue = (expected: string): SceneAssertion =>
   }, `have value "${expected}"`)
 
 const isDisabled = (vnode: VNode): boolean => {
-  const disabled = attrImpl(vnode, 'disabled')
+  const disabled = attrOfNode(vnode, 'disabled')
   if (Option.isSome(disabled) && disabled.value !== 'false') {
     return true
   }
-  const ariaDisabled = attrImpl(vnode, 'aria-disabled')
+  const ariaDisabled = attrOfNode(vnode, 'aria-disabled')
   return Option.isSome(ariaDisabled) && ariaDisabled.value === 'true'
 }
 
@@ -2866,8 +2866,8 @@ const assertIsEnabled: SceneAssertion = assertOnElement(
 )
 
 const assertIsChecked: SceneAssertion = assertOnElement(vnode => {
-  const checked = attrImpl(vnode, 'checked')
-  const ariaChecked = attrImpl(vnode, 'aria-checked')
+  const checked = attrOfNode(vnode, 'checked')
+  const ariaChecked = attrOfNode(vnode, 'aria-checked')
   const pass =
     (Option.isSome(checked) && checked.value !== 'false') ||
     (Option.isSome(ariaChecked) && ariaChecked.value === 'true')
@@ -2907,7 +2907,7 @@ const assertHasAccessibleDescription = (
 
 const assertIsEmpty: SceneAssertion = assertOnElement(vnode => {
   const childCount = (vnode.children ?? []).length
-  const text = textContentImpl(vnode)
+  const text = textContentOfNode(vnode)
   return {
     pass: String.isEmpty(text) && childCount === 0,
     actual: String.isNonEmpty(text)
@@ -2918,7 +2918,7 @@ const assertIsEmpty: SceneAssertion = assertOnElement(vnode => {
 
 const assertHasId = (expected: string): SceneAssertion =>
   assertOnElement(vnode => {
-    const actualId = attrImpl(vnode, 'id')
+    const actualId = attrOfNode(vnode, 'id')
     return Option.match(actualId, {
       onNone: () => ({ pass: false, actual: 'the element has no id' }),
       onSome: actual => ({
