@@ -10,13 +10,7 @@ import {
   createBoundaryRegistry,
 } from './html/boundary.js'
 import { fromHtml, toHtml } from './html/htmlNode.js'
-import {
-  type Attribute,
-  type Html,
-  Prop,
-  __htmlBuilder,
-  customElement,
-} from './html/index.js'
+import { type Html, __htmlBuilder, customElement } from './html/index.js'
 import {
   type DispatchSync,
   clearRuntime,
@@ -25,6 +19,7 @@ import {
 import { __elementSignature, __hydrateVNode } from './hydrate.js'
 import { defineMessageUnion } from './message/index.js'
 import { type VNode, h as snabbdomH, toVNode } from './snabbdom/index.js'
+import { prop } from './test/rendererNodes.js'
 import { patch } from './vdom.js'
 
 const Message = defineMessageUnion({
@@ -36,12 +31,6 @@ type Message = typeof Message.Type
 
 const h = __htmlBuilder<Message>()
 const unrestrictedTextarea = customElement<Message>()('textarea')
-
-const prop = (
-  attribute: Readonly<{ key: string; value: unknown }>,
-): Attribute<never> =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  Prop(attribute) as unknown as Attribute<never>
 
 describe('__hydrateVNode', () => {
   let registry: BoundaryRegistry

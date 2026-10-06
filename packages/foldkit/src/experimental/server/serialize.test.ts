@@ -10,13 +10,7 @@ import {
   createBoundaryRegistry,
 } from '../../html/boundary.js'
 import { fromHtml, toHtml } from '../../html/htmlNode.js'
-import {
-  type Attribute,
-  type Html,
-  Prop,
-  __htmlBuilder,
-  customElement,
-} from '../../html/index.js'
+import { type Html, __htmlBuilder, customElement } from '../../html/index.js'
 import { clearRuntime, setRuntime } from '../../html/runtimeSingleton.js'
 import {
   HYDRATION_IDENTITY_ATTRIBUTE,
@@ -28,6 +22,7 @@ import { defineMessageUnion } from '../../message/index.js'
 import { markTrustedInnerHtml } from '../../propertyProvenance.js'
 import { h as snabbdomH } from '../../snabbdom/index.js'
 import type { VNode } from '../../snabbdom/vnode.js'
+import { prop } from '../../test/rendererNodes.js'
 import { __patchVNode } from '../../vdom.js'
 import { type SerializeOptions, serializeHtml } from './serialize.js'
 
@@ -40,12 +35,6 @@ type Message = typeof Message.Type
 
 const h = __htmlBuilder<Message>()
 const unrestrictedTextarea = customElement<Message>()('textarea')
-
-const prop = (
-  attribute: Readonly<{ key: string; value: unknown }>,
-): Attribute<never> =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  Prop(attribute) as unknown as Attribute<never>
 
 const serializeView = (view: Html, options?: SerializeOptions): string =>
   serializeHtml(fromHtml(view), options)

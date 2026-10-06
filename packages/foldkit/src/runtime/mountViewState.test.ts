@@ -16,9 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DevToolsStore } from '../devTools/store.js'
 import { INIT_INDEX, latestEntryIndex } from '../devTools/store.js'
 import {
-  type Attribute,
   type Html,
-  Prop,
   __htmlBuilder,
   createLazy,
   defineView,
@@ -27,16 +25,11 @@ import { defineMessageUnion } from '../message/index.js'
 import * as Mount from '../mount/index.js'
 import { modifyFields } from '../struct/index.js'
 import * as Subscription from '../subscription/subscription.js'
+import { prop } from '../test/rendererNodes.js'
 import type * as Update from '../update/index.js'
 import { __setDevToolsOverlay } from './devToolsConfig.js'
 import { makeApplication } from './makeApplication.js'
 import { makeElement } from './makeElement.js'
-
-const prop = (
-  attribute: Readonly<{ key: string; value: unknown }>,
-): Attribute<never> =>
-  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
-  Prop(attribute) as unknown as Attribute<never>
 
 const Message = defineMessageUnion({
   CompletedMountEditor: {},

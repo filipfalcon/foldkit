@@ -1,4 +1,4 @@
-import type { HtmlBuilder } from '../html/index.js'
+import { type Attribute, type HtmlBuilder, Prop } from '../html/index.js'
 import {
   createKeyedLazy as createHtmlKeyedLazy,
   createLazy as createHtmlLazy,
@@ -60,3 +60,13 @@ export const defineView = <Model, Message = never, ViewInputs = void>(
       typeof defineHtmlView<Model, Message, ViewInputs>
     >[0],
   )
+
+/** A raw `Prop` attribute, for tests that write a DOM property directly
+ *  rather than through an attribute constructor.
+ *
+ * @internal */
+export const prop = (
+  attribute: Readonly<{ key: string; value: unknown }>,
+): Attribute<never> =>
+  /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+  Prop(attribute) as unknown as Attribute<never>

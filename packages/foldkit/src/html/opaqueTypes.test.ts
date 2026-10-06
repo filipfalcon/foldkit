@@ -2,17 +2,21 @@ import { Array, Option, Predicate, Schema } from 'effect'
 import { describe, expect, it } from 'vitest'
 
 import { defineMessageUnion } from '../message/index.js'
+import * as Scene from '../scene/public.js'
 import { type View, defineView } from '../submodel/public.js'
-import * as Scene from '../test/scene.js'
 import {
   type Attribute,
   type ChildAttribute,
+  type ElementAttribute,
   type Html,
   type HtmlBuilder,
+  type HtmlNode,
+  type InnerHtmlAttribute,
   childAttributes,
+  createKeyedLazy,
+  createLazy,
   inertHtml,
-} from './index.js'
-import { createKeyedLazy, createLazy } from './lazy.js'
+} from './public.js'
 
 // MESSAGE
 
@@ -35,18 +39,19 @@ const checkHtmlIsOpaque = () => {
   const isNothing: boolean = page === null
 
   if (page !== null) {
+    const node: HtmlNode = page
     // @ts-expect-error Html exposes no selector
-    void page.sel
+    void node.sel
     // @ts-expect-error Html exposes no renderer data
-    void page.data
+    void node.data
     // @ts-expect-error Html exposes no children array
-    void page.children
+    void node.children
     // @ts-expect-error Html exposes no live DOM element
-    void page.elm
+    void node.elm
     // @ts-expect-error Html exposes no key
-    void page.key
+    void node.key
     // @ts-expect-error Html exposes no text
-    void page.text
+    void node.text
   }
 
   const nodeShaped = {
@@ -95,24 +100,25 @@ const checkSceneElementIsOpaque = () =>
     },
     Scene.given(0),
     Scene.tap(simulation => {
+      const tree: Scene.Element = simulation.html
       // @ts-expect-error the rendered Scene tree exposes no children array
-      void simulation.html.children
+      void tree.children
       // @ts-expect-error the rendered Scene tree exposes no selector
-      void simulation.html.sel
+      void tree.sel
 
-      const maybeButton = Scene.find(simulation.html, 'button')
+      const maybeButton = Scene.find(tree, 'button')
       if (Option.isSome(maybeButton)) {
         // @ts-expect-error a found Scene element exposes no renderer data
         void maybeButton.value.data
       }
 
-      const maybeByRole = Scene.role('button')(simulation.html)
+      const maybeByRole = Scene.role('button')(tree)
       if (Option.isSome(maybeByRole)) {
         // @ts-expect-error a Locator result exposes no renderer data
         void maybeByRole.value.data
       }
 
-      const text: string = Scene.textContent(simulation.html)
+      const text: string = Scene.textContent(tree)
       const maybeType: Option.Option<string> = Option.flatMap(
         maybeButton,
         element => Scene.attr(element, 'type'),
@@ -131,11 +137,11 @@ const checkAttributeIsOpaque = (
     h.OnClick(Message.ClickedButton()),
     h.OnInput(value => Message.UpdatedName({ value })),
   ]
-  const markup: Attribute<Message> = h.InnerHTML('<b>trusted</b>')
+  const markup: InnerHtmlAttribute = h.InnerHTML('<b>trusted</b>')
   const button = h.button([...buttonAttributes, h.Type('button')], ['Go'])
   const article = h.article([markup])
 
-  const click = h.OnClick(Message.ClickedButton())
+  const click: ElementAttribute<Message> = h.OnClick(Message.ClickedButton())
   // @ts-expect-error an Attribute exposes no tag
   void click._tag
   // @ts-expect-error an Attribute exposes no Message payload
@@ -143,7 +149,7 @@ const checkAttributeIsOpaque = (
   const input = h.OnInput(value => Message.UpdatedName({ value }))
   // @ts-expect-error an Attribute exposes no handler function
   void input.f
-  const className = h.Class('button')
+  const className: ElementAttribute<never> = h.Class('button')
   // @ts-expect-error an Attribute exposes no value
   void className.value
 
