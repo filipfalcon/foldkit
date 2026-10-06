@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Effect, Option, pipe } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import { execFileSync } from 'node:child_process'
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
@@ -32,13 +32,12 @@ const USERS_GROUP_SID = 'S-1-5-32-545'
 const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
 const TEST_TIMEOUT = 30_000
 
-const icaclsPath = (): string => {
-  const systemRoot = process.env['SystemRoot']
-  if (systemRoot === undefined) {
-    throw new Error('SystemRoot is not set')
-  }
-  return win32.join(systemRoot, 'System32', 'icacls.exe')
-}
+const icaclsPath = (): string =>
+  pipe(
+    Option.fromNullishOr(process.env['SystemRoot']),
+    Option.map(systemRoot => win32.join(systemRoot, 'System32', 'icacls.exe')),
+    Option.getOrThrowWith(() => new Error('SystemRoot is not set')),
+  )
 
 const workspace = useWorkspace()
 

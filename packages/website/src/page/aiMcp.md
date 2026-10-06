@@ -110,7 +110,7 @@ On Windows, the plugin and the MCP server read the registry directory's owner an
 
 ### Dev Server Discovery and Runtime Selection
 
-When several dev servers run under the project, the MCP server reaches all of them, and `foldkit_list_runtimes` names the `projectRoot` of each Runtime's dev server. When none runs under it, the MCP server reaches the nearest dev server whose root encloses the project, so an agent started in `src/` still finds the application. Setting `FOLDKIT_DEVTOOLS_MCP_PORT` or `FOLDKIT_DEVTOOLS_MCP_HOST` skips discovery and connects to that fixed address.
+When several dev servers run under the project, the MCP server reaches all of them, and `foldkit_list_runtimes` names the `projectRoot` of each Runtime's dev server. When none runs under it, the MCP server reaches every dev server at the nearest root that encloses the project, so an agent started in `src/` still finds the application. Setting `FOLDKIT_DEVTOOLS_MCP_PORT` or `FOLDKIT_DEVTOOLS_MCP_HOST` skips discovery and connects to that fixed address.
 
 The MCP server connects when a tool is called, not in the background. Each call looks up the registry again, so the agent can start before the dev server, and a restarted dev server is reached on the next call.
 

@@ -494,7 +494,7 @@ export const buildTools = (
   {
     name: 'foldkit_list_runtimes',
     description:
-      'List Foldkit runtimes (browser tabs) connected to every Foldkit dev server under the project root, or else to the nearest dev server whose root encloses the project root, oldest dev server first. Each runtime carries `projectRoot`, the root of the dev server it belongs to, unless the MCP server uses a fixed relay address or falls back to port `9988`.',
+      'List Foldkit runtimes (browser tabs) connected to every Foldkit dev server under the project root, or else to every dev server at the nearest root that encloses the project root, oldest dev server first. Each runtime carries `projectRoot`, the root of the dev server it belongs to, unless the MCP server uses a fixed relay address or falls back to port `9988`.',
     inputSchema: NO_INPUT_SCHEMA,
     handle: () =>
       relayClient.listRuntimes.pipe(

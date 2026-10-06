@@ -102,14 +102,14 @@ High-frequency flows (drag-paint, scroll, keystroke) can fill the history buffer
 Three components cooperate:
 
 - **Browser bridge** (in `foldkit`): runs alongside DevTools, subscribes to the DevTools store, and exchanges typed frames over Vite's HMR WebSocket.
-- **Vite plugin relay** (in `@foldkit/vite-plugin`): listens on a loopback port of its own for each dev server, publishes its address for discovery, and forwards traffic between browsers and MCP clients.
+- **Vite plugin relay** (in `@foldkit/vite-plugin`): listens by default on a loopback port of its own for each dev server, publishes its address for discovery, and forwards traffic between browsers and MCP clients.
 - **MCP server** (this package): runs as a Node child process under your AI agent, connects to the plugin's relay over WebSocket, and exposes the typed tools over MCP's stdio transport.
 
 Multiple browser tabs can be connected at once and each is addressable by its connection id. Tabs that close (gracefully or not) are pruned from the live Runtime list automatically.
 
 ## Configuration
 
-The MCP server reaches every dev server whose root is its project directory or inside it, so one agent session at a workspace root sees every application in the workspace. When none matches, it reaches the nearest dev server whose root encloses the project directory, so a session started in `src/` or through a symlink finds its application. `foldkit_list_runtimes` lists the Runtimes of every dev server it reaches, oldest dev server first, each with the `projectRoot` of its dev server.
+The MCP server reaches every dev server whose root is its project directory or inside it, so one agent session at a workspace root sees every application in the workspace. When none matches, it reaches every dev server at the nearest root that encloses the project directory, so a session started in `src/` or through a symlink finds its application. `foldkit_list_runtimes` lists the Runtimes of every dev server it reaches, oldest dev server first, each with the `projectRoot` of its dev server.
 
 The server opens no connection until a tool is called. Each call looks up the registry again, so a dev server started or restarted after the agent is reached on the next call.
 

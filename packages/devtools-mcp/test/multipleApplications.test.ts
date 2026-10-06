@@ -27,13 +27,12 @@ const workspace = useWorkspace()
 const applicationRoot = (application: string) =>
   join(workspace.root, 'applications', application)
 
-const findTool = (client: RelayClient, name: string) => {
-  const tool = buildTools(client).find(candidate => candidate.name === name)
-  if (tool === undefined) {
-    throw new Error(`tool ${name} is missing`)
-  }
-  return tool
-}
+const findTool = (client: RelayClient, name: string) =>
+  pipe(
+    buildTools(client),
+    Array.findFirst(candidate => candidate.name === name),
+    Option.getOrThrowWith(() => new Error(`tool ${name} is missing`)),
+  )
 
 const toolText = async (
   client: RelayClient,

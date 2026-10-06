@@ -1,4 +1,4 @@
-import { Option } from 'effect'
+import { Option, pipe } from 'effect'
 import { createServer as createHttpServer } from 'node:http'
 import { type Plugin, createServer } from 'vite'
 import { expect, it, onTestFinished } from 'vitest'
@@ -25,8 +25,11 @@ const catchAllUpgrades = (seenPaths: Array<string>): Plugin => ({
   name: 'catch-all-upgrades',
   configureServer(server) {
     server.httpServer?.on('upgrade', (request, socket) => {
-      const protocol = request.headers['sec-websocket-protocol'] ?? ''
-      if (protocol.startsWith('vite')) {
+      const isViteUpgrade = pipe(
+        Option.fromNullishOr(request.headers['sec-websocket-protocol']),
+        Option.exists(protocol => protocol.startsWith('vite')),
+      )
+      if (isViteUpgrade) {
         return
       }
       seenPaths.push(new URL(request.url ?? '/', 'http://dev').pathname)

@@ -209,12 +209,20 @@ describe('discoverRelays', () => {
     ])
   })
 
-  it('finds the nearest relay enclosing the project root', async () => {
+  it('finds every relay at the nearest root enclosing the project root', async () => {
     await publish('workspace', record('/workspace', 4610, { id: 'outer' }))
-    await publish('app', record('/workspace/app', 4620, { id: 'inner' }))
+    await publish(
+      'app',
+      record('/workspace/app', 4620, { id: 'inner', startedAt: 10 }),
+    )
+    await publish(
+      'app-again',
+      record('/workspace/app', 4640, { id: 'inner-again', startedAt: 20 }),
+    )
     await publish('sibling', record('/workspace/other', 4630, { id: 'other' }))
 
     expect(urls(await discover('/workspace/app/src'))).toStrictEqual([
+      record('/workspace/app', 4640).url,
       record('/workspace/app', 4620).url,
     ])
   })
