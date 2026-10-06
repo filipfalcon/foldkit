@@ -15,6 +15,7 @@ import {
   type RelayRegistryReader,
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
+import { boundPort } from './boundPort.ts'
 import {
   RELAY_DIRECTORY_VARIABLE,
   RUNTIME_DIRECTORY_VARIABLE,
@@ -45,17 +46,11 @@ export const catchAllUpgrades = (seenPaths: Array<string>): Plugin => ({
   },
 })
 
-const serverPort = (server: ViteDevServer): number => {
-  const address = server.httpServer?.address()
-  if (
-    address === null ||
-    address === undefined ||
-    typeof address === 'string'
-  ) {
-    throw new Error('The dev server has no bound port')
-  }
-  return address.port
-}
+const serverPort = (server: ViteDevServer): number =>
+  Option.getOrThrowWith(
+    boundPort(server.httpServer?.address()),
+    () => new Error('The dev server has no bound port'),
+  )
 
 const restoreVariable = (name: string, previousValue: string | undefined) => {
   if (previousValue === undefined) {
