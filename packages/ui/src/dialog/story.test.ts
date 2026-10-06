@@ -770,7 +770,7 @@ describe('Dialog', () => {
       )
     })
 
-    it('suppresses native cancel events', () => {
+    it('attaches a cancel handler', () => {
       Scene.scene(
         { update, view: renderInfoView() },
         Scene.given(init({ id: 'my-dialog' })),
