@@ -28,7 +28,7 @@ const RECORD_FILE_MODE = 0o600
 const PENDING_RECORD_SUFFIX = '.pending'
 const RETIRING_RECORD_SUFFIX = '.retiring'
 
-export type RelayRegistryServices = FileSystem.FileSystem | Path.Path
+type RelayRegistryServices = FileSystem.FileSystem | Path.Path
 
 export type RelayPublisherServices =
   | RelayRegistryServices

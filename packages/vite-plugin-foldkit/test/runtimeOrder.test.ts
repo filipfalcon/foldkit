@@ -6,8 +6,8 @@ import { foldkit } from '../src/index.ts'
 import {
   openWebSocket,
   serverPort,
-  startOnConfiguredRelayPort,
   useRelayRegistry,
+  waitUntilPublished,
 } from './relayFixtures.ts'
 
 const RUNTIME_COUNT = 10
@@ -15,27 +15,22 @@ const TEST_TIMEOUT = 20_000
 
 const directories = useRelayRegistry()
 
-const startListeningServer = async (devToolsMcpPort: number) => {
+const startServer = async () => {
   const server = await createServer({
     root: directories.root,
     configFile: false,
     logLevel: 'silent',
     server: { port: 0, host: '127.0.0.1' },
-    plugins: [foldkit({ devToolsMcpPort })],
+    plugins: [foldkit()],
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  return server
-}
-
-const startServer = async () => {
-  const { server, relayPort } =
-    await startOnConfiguredRelayPort(startListeningServer)
+  const record = await waitUntilPublished(directories.root)
   const browser = await openWebSocket(
     `ws://127.0.0.1:${serverPort(server)}`,
     'vite-hmr',
   )
-  const session = await openWebSocket(`ws://127.0.0.1:${relayPort}`)
+  const session = await openWebSocket(record.url)
   return { browser, session }
 }
 
