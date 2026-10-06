@@ -1,7 +1,7 @@
-import { Array, ConfigProvider, Effect, Option } from 'effect'
+import { Array, ConfigProvider, Effect, Option, Predicate } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import { mkdtemp, realpath, rm } from 'node:fs/promises'
-import { connect, createServer as createNetServer } from 'node:net'
+import { Server, createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ViteDevServer } from 'vite'
@@ -11,6 +11,7 @@ import { WebSocket } from 'ws'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { readRelayRecords } from '../src/relayRegistry.ts'
+import { boundPort } from './boundPort.ts'
 
 export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
@@ -26,41 +27,47 @@ export const findFreePort = () =>
       reject(error)
     })
     probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      if (address === null || typeof address === 'string') {
+      const maybePort = boundPort(probe.address())
+      if (Option.isSome(maybePort)) {
+        probe.close(() => resolvePort(maybePort.value))
+      } else {
         probe.close()
         reject(new Error('Could not determine a free port'))
-        return
       }
-      const { port } = address
-      probe.close(() => resolvePort(port))
     })
   })
 
-export const isPortAccepting = (port: number) =>
-  new Promise<boolean>(resolveAccepting => {
-    const socket = connect({ port, host: '127.0.0.1' })
-    socket.once('connect', () => {
-      socket.destroy()
-      resolveAccepting(true)
-    })
-    socket.once('error', () => {
-      socket.destroy()
-      resolveAccepting(false)
-    })
-  })
+export const serverPort = (server: ViteDevServer): number =>
+  Option.getOrThrowWith(
+    boundPort(server.httpServer?.address()),
+    () => new Error('The dev server has no bound port'),
+  )
 
-export const serverPort = (server: ViteDevServer): number => {
-  const address = server.httpServer?.address()
-  if (
-    address === null ||
-    address === undefined ||
-    typeof address === 'string'
-  ) {
-    throw new Error('The dev server has no bound port')
-  }
-  return address.port
-}
+const listenCalls = () => vi.mocked(Server.prototype.listen).mock
+
+export const findListener = (port: number): Option.Option<Server> =>
+  Array.findFirst(
+    listenCalls().contexts,
+    (context): context is Server =>
+      context instanceof Server &&
+      context.listening &&
+      Option.contains(boundPort(context.address()), port),
+  )
+
+export const listenerOn = (port: number): Server =>
+  Option.getOrThrowWith(
+    findListener(port),
+    () => new Error(`No server in this process listens on port ${port}`),
+  )
+
+export const isListenAttemptedOn = (port: number): boolean =>
+  listenCalls().calls.some(
+    ([target]) =>
+      target === port ||
+      (Predicate.hasProperty(target, 'port') && target.port === port),
+  )
+
+const RELAY_ERROR_PREFIX = '[foldkit:devTools]'
 
 // NOTE: Vitest runs afterEach hooks before onTestFinished callbacks, so an
 // afterEach cleanup would remove the directories and restore the variable
@@ -77,7 +84,13 @@ export const useRelayRegistry = () => {
     )
     process.env[RELAY_DIRECTORY_VARIABLE] = directories.registry
     vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const printError = console.error
+    vi.spyOn(console, 'error').mockImplementation((...args) => {
+      if (args.map(String).join(' ').includes(RELAY_ERROR_PREFIX)) {
+        printError(...args)
+      }
+    })
+    vi.spyOn(Server.prototype, 'listen')
 
     onTestFinished(async () => {
       vi.restoreAllMocks()
@@ -92,6 +105,10 @@ export const useRelayRegistry = () => {
   })
 
   return directories
+}
+
+export const silenceRelayErrors = () => {
+  vi.mocked(console.error).mockImplementation(() => {})
 }
 
 export const publishedRecords = (

@@ -1,9 +1,11 @@
+import { Option } from 'effect'
 import { createServer as createHttpServer } from 'node:http'
 import { type Plugin, createServer } from 'vite'
 import { expect, it, onTestFinished } from 'vitest'
 import { WebSocket } from 'ws'
 
 import { foldkit } from '../src/index.ts'
+import { boundPort } from './boundPort.ts'
 import {
   RELAY_PATH,
   useRelayRegistry,
@@ -41,11 +43,10 @@ const startDecliningBackend = async (): Promise<number> => {
   await new Promise<void>(resolveListening =>
     backend.listen(0, '127.0.0.1', () => resolveListening()),
   )
-  const address = backend.address()
-  if (address === null || typeof address === 'string') {
-    throw new Error('backend has no port')
-  }
-  return address.port
+  return Option.getOrThrowWith(
+    boundPort(backend.address()),
+    () => new Error('backend has no port'),
+  )
 }
 
 const openRelayClient = async (): Promise<WebSocket> => {

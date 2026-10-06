@@ -18,6 +18,7 @@ import {
   loggedErrors,
   openBrowserRuntime,
   openSession,
+  silenceRelayErrors,
   startApplication,
   useWorkspace,
 } from './relayFixtures.ts'
@@ -61,6 +62,7 @@ it.runIf(process.platform === 'win32')(
 it.runIf(process.platform === 'win32')(
   'neither publishes to nor reads from a directory other users can read',
   async () => {
+    silenceRelayErrors()
     const registryDirectory = join(workspace.root, 'registry')
     const application = join(workspace.root, 'application')
     await mkdir(registryDirectory)

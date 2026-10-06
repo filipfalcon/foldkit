@@ -1,3 +1,4 @@
+import { Option } from 'effect'
 import {
   type Server as HttpServer,
   createServer as createHttpServer,
@@ -21,6 +22,7 @@ import { describe, expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import { foldkitSsr } from '../src/ssr.ts'
+import { boundPort } from './boundPort.ts'
 
 type RawResponse = Readonly<{
   status: number
@@ -106,18 +108,11 @@ const FOLDKIT_BUILD_TOKEN_URL = `/@fs${resolve(
   'buildToken.js',
 )}`
 const AGGREGATE_DEV_SERVER_TEST_TIMEOUT_MS = 20_000
-const boundPort = (
-  address: AddressInfo | string | null | undefined,
-): number => {
-  if (
-    address === null ||
-    address === undefined ||
-    typeof address === 'string'
-  ) {
-    throw new Error('The server has no bound port')
-  }
-  return address.port
-}
+const originOf = (address: AddressInfo | string | null | undefined): string =>
+  `http://127.0.0.1:${Option.getOrThrowWith(
+    boundPort(address),
+    () => new Error('The server has no bound port'),
+  )}`
 
 const closeHttpServer = (server: HttpServer): Promise<void> =>
   new Promise((resolveClose, reject) => {
@@ -149,7 +144,7 @@ const startProxyTarget = async (): Promise<string> => {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', resolveListen)
   })
-  return `http://127.0.0.1:${boundPort(server.address())}`
+  return originOf(server.address())
 }
 
 // A field already on the node response when the plugin's middleware runs.
@@ -279,7 +274,7 @@ const startServer = async (
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  return `http://127.0.0.1:${boundPort(server.httpServer?.address())}`
+  return originOf(server.httpServer?.address())
 }
 
 const startAutomaticIdentityServer = async (): Promise<
@@ -305,7 +300,7 @@ const startAutomaticIdentityServer = async (): Promise<
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
   return {
-    origin: `http://127.0.0.1:${boundPort(server.httpServer?.address())}`,
+    origin: originOf(server.httpServer?.address()),
     server,
   }
 }

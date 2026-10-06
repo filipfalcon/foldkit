@@ -26,6 +26,7 @@ export const RELAY_PATH = '/__foldkit/devtools-mcp'
 export const POLL_TIMEOUT = 10_000
 const DECLINE_DELAY = 50
 const RUNTIME_RESPONSE_DELAY = 2 * DECLINE_DELAY
+const RELAY_ERROR_PREFIX = '[foldkit:devTools]'
 
 // NOTE: Models a full-stack dev plugin, such as a Workers runtime, that treats
 // every non-Vite WebSocket upgrade as an application request and destroys the
@@ -79,7 +80,12 @@ export const useWorkspace = () => {
     )
     workspace.registry = await mkdtemp(join(tmpdir(), 'foldkit-mcp-relay-'))
     process.env[RELAY_DIRECTORY_VARIABLE] = workspace.registry
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const printError = console.error
+    vi.spyOn(console, 'error').mockImplementation((...args) => {
+      if (args.map(String).join(' ').includes(RELAY_ERROR_PREFIX)) {
+        printError(...args)
+      }
+    })
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     onTestFinished(async () => {
@@ -92,6 +98,10 @@ export const useWorkspace = () => {
   })
 
   return workspace
+}
+
+export const silenceRelayErrors = () => {
+  vi.mocked(console.error).mockImplementation(() => {})
 }
 
 // NOTE: With no relay published, the MCP server falls back to the fixed port
