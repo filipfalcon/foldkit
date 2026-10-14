@@ -11,8 +11,10 @@ import {
   Match,
   Option,
   Ref,
+  Result,
   Schema,
   Semaphore,
+  String,
   pipe,
 } from 'effect'
 import {
@@ -100,11 +102,16 @@ export type RelayClient = Readonly<{
 const generateRequestId = (): string =>
   `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 
-const relayUrlForLog = (url: string): string => {
-  const parsed = new URL(url)
-  parsed.search = ''
-  return parsed.toString()
-}
+const parseUrl = Option.liftThrowable((url: string) => new URL(url))
+
+const relayUrlForLog = (url: string): string =>
+  Option.match(parseUrl(url), {
+    onNone: () => Array.headNonEmpty(String.split(url, '?')),
+    onSome: parsed => {
+      parsed.search = ''
+      return parsed.toString()
+    },
+  })
 
 /**
  * Read a display string from a caught error. Effect's `TimeoutError` carries no
@@ -112,11 +119,24 @@ const relayUrlForLog = (url: string): string => {
  * the error's string form (its tag) rather than surfacing `Error: undefined`.
  */
 export const errorReason = (error: Error): string =>
-  error.message ? error.message : String(error)
+  error.message ? error.message : globalThis.String(error)
+
+const toError = (cause: unknown): Error =>
+  cause instanceof Error ? cause : new Error(globalThis.String(cause))
 
 const attemptOpen = (url: string): Effect.Effect<WebSocket, Error> =>
   Effect.callback<WebSocket, Error>(resume => {
-    const socket = new WebSocket(url)
+    const constructed = Result.try({
+      try: () => new WebSocket(url),
+      catch: toError,
+    })
+
+    if (Result.isFailure(constructed)) {
+      resume(Effect.fail(constructed.failure))
+      return
+    }
+
+    const socket = constructed.success
     let isSettled = false
     socket.once('open', () => {
       isSettled = true
@@ -212,6 +232,7 @@ export const makeRelayClient = <Services>(
           sockets,
           (relaySocket, key) => !isKept(relaySocket, key),
         )
+
         yield* Effect.sync(() => {
           for (const { socket } of HashMap.values(droppedSockets)) {
             socket.terminate()
@@ -236,6 +257,7 @@ export const makeRelayClient = <Services>(
             ]),
           ),
         )
+
         yield* Ref.set(socketsRef, nextSockets)
 
         return pipe(
@@ -273,8 +295,7 @@ export const makeRelayClient = <Services>(
             yield* refreshLock.withPermits(1)(
               Effect.gen(function* () {
                 yield* Ref.set(pendingRefreshRef, Option.none())
-                const relaySockets = yield* reconcile
-                yield* Deferred.succeed(refresh, relaySockets)
+                yield* Deferred.into(reconcile, refresh)
               }),
             )
           }
@@ -305,7 +326,9 @@ export const makeRelayClient = <Services>(
           catch: error =>
             error instanceof Error
               ? error
-              : new Error(`Failed to send request: ${String(error)}`),
+              : new Error(
+                  `Failed to send request: ${globalThis.String(error)}`,
+                ),
         }).pipe(
           Effect.tapError(() =>
             Ref.update(pendingResponsesRef, HashMap.remove(id)),

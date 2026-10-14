@@ -1,14 +1,15 @@
-import { Array, Deferred, Effect, Exit, Option, pipe } from 'effect'
+import { Array, Deferred, Duration, Effect, Exit, Option, pipe } from 'effect'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
 import { expect, it, onTestFinished } from 'vitest'
 import { WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
-import type { RelayTarget } from '../src/relayLocation.ts'
+import { type RelayTarget, configuredRelayUrl } from '../src/relayLocation.ts'
 import { buildTools } from '../src/tools.ts'
 import { boundPort } from './boundPort.ts'
 import {
+  NOT_CONNECTED,
   POLL_TIMEOUT,
   connectionCount,
   listedIds,
@@ -26,6 +27,7 @@ const CLOSE_DELAY = 100
 const CONNECT_TIMEOUT = 2_000
 const CONCURRENT_CALL_COUNT = 10
 const JOIN_DELAY = 100
+const FAILURE_BUDGET = Duration.seconds(2)
 
 const workspace = useWorkspace()
 
@@ -130,9 +132,7 @@ it(
     const application = join(workspace.root, 'application')
     const session = await openSession(application)
 
-    await expect(listedIds(session)).rejects.toThrow(
-      'Not connected to a Foldkit dev server',
-    )
+    await expect(listedIds(session)).rejects.toThrow(NOT_CONNECTED)
 
     const server = await startApplication(application)
     await openBrowserRuntime(server, 'runtime-application')
@@ -383,6 +383,89 @@ it(
     ).toContain('ResponseResumed')
     expect(registry.lookups).toBe(2)
     expect(relay.listings.count).toBe(2)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'fails every concurrent call promptly when the relay address cannot be parsed',
+  async () => {
+    const url = Option.getOrThrow(
+      configuredRelayUrl({
+        maybeConfiguredPort: Option.none(),
+        maybeConfiguredHost: Option.some('::1'),
+        projectRoot: workspace.root,
+      }),
+    )
+    const client = await openClient(
+      Effect.as(Effect.sleep(Duration.millis(JOIN_DELAY)), [fixedTarget(url)]),
+    )
+    const failedCall = client.listRuntimes.pipe(
+      Effect.flip,
+      Effect.map(({ message }) => message),
+      Effect.catchDefect(defect => Effect.succeed(`died: ${String(defect)}`)),
+    )
+
+    const failures = await Effect.runPromise(
+      Effect.all(
+        Array.makeBy(CONCURRENT_CALL_COUNT, () => failedCall),
+        { concurrency: 'unbounded' },
+      ).pipe(Effect.timeout(FAILURE_BUDGET)),
+    )
+
+    expect(failures).toStrictEqual(
+      Array.makeBy(CONCURRENT_CALL_COUNT, () =>
+        expect.stringContaining(NOT_CONNECTED),
+      ),
+    )
+    expect(loggedErrors()).toContainEqual(
+      expect.stringContaining(
+        `[foldkit-devtools-mcp] connect attempt to ${url} failed: `,
+      ),
+    )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'ends every concurrent call promptly with the defect of a registry lookup that dies',
+  async () => {
+    const client = await openClient(
+      Effect.andThen(
+        Effect.sleep(Duration.millis(JOIN_DELAY)),
+        Effect.die(new Error('registry lookup died')),
+      ),
+    )
+    const diedCall = client.listRuntimes.pipe(
+      Effect.as('listed'),
+      Effect.catchDefect(defect => Effect.succeed(String(defect))),
+    )
+
+    const outcomes = await Effect.runPromise(
+      Effect.all(
+        Array.makeBy(CONCURRENT_CALL_COUNT, () => diedCall),
+        { concurrency: 'unbounded' },
+      ).pipe(Effect.timeout(FAILURE_BUDGET)),
+    )
+
+    expect(outcomes).toStrictEqual(
+      Array.makeBy(CONCURRENT_CALL_COUNT, () => 'Error: registry lookup died'),
+    )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'opens no connection and fails a call made after it closes',
+  async () => {
+    const relay = await startAnsweringRelay(runtimesResponse('runtime-relay'))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
+    expect(await listedIds(client)).toStrictEqual(['runtime-relay'])
+
+    await Effect.runPromise(client.close)
+
+    await expect(listedIds(client)).rejects.toThrow(NOT_CONNECTED)
+    expect(relay.connections).toHaveLength(1)
   },
   TEST_TIMEOUT,
 )

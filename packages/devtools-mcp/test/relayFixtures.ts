@@ -25,6 +25,7 @@ import {
 
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
 export const POLL_TIMEOUT = 10_000
+export const NOT_CONNECTED = 'Not connected to a Foldkit dev server.'
 const DECLINE_DELAY = 50
 const RUNTIME_RESPONSE_DELAY = 2 * DECLINE_DELAY
 const RELAY_ERROR_PREFIX = '[foldkit:devTools]'

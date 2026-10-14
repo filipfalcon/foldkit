@@ -13,6 +13,7 @@ import {
   makeRelayRegistryReader,
 } from '../src/relayRegistry.ts'
 import {
+  NOT_CONNECTED,
   POLL_TIMEOUT,
   listedIds,
   loggedErrors,
@@ -131,11 +132,9 @@ it.runIf(process.platform === 'win32')(
       `*${USERS_GROUP_SID}:(OI)(CI)RX`,
     ])
 
-    await expect(listedIds(session)).rejects.toThrow(
-      'Not connected to a Foldkit dev server.',
-    )
+    await expect(listedIds(session)).rejects.toThrow(NOT_CONNECTED)
     expect(await replay(session, 'runtime-application', 1)).toContain(
-      'Not connected to a Foldkit dev server.',
+      NOT_CONNECTED,
     )
     expect(requests).toStrictEqual([])
     await expect

@@ -4,6 +4,7 @@ import { expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import {
+  POLL_TIMEOUT,
   announceRuntime,
   listedRuntimeIds,
   openWebSocket,
@@ -55,7 +56,7 @@ it(
     const secondSession = await openWebSocket(record.url)
     announceRuntime(browser, 'tab')
     await expect
-      .poll(() => listedRuntimeIds(firstSession))
+      .poll(() => listedRuntimeIds(firstSession), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['tab'])
     const seenByFirst: Array<string> = []
     const seenBySecond: Array<string> = []

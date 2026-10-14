@@ -83,14 +83,14 @@ it(
 
     announceRuntime(firstTab, 'runtime-moved')
     await expect
-      .poll(() => listedRuntimeIds(session))
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-moved'])
     announceRuntime(secondTab, 'runtime-moved')
     announceRuntime(thirdTab, 'runtime-disposed')
     announceRuntime(thirdTab, 'runtime-live')
     disconnectRuntime(thirdTab, 'runtime-disposed')
     await expect
-      .poll(() => listedRuntimeIds(session))
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-moved', 'runtime-live'])
 
     await closeTab(server, firstTab)
@@ -102,11 +102,13 @@ it(
 
     await closeTab(server, secondTab)
     await expect
-      .poll(() => listedRuntimeIds(session))
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-live'])
 
     await closeTab(server, thirdTab)
-    await expect.poll(() => listedRuntimeIds(session)).toStrictEqual([])
+    await expect
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual([])
     expect(
       loggedLinesContaining('runtime pruned (socket close)'),
     ).toStrictEqual([
@@ -157,7 +159,7 @@ it(
     }
 
     await expect
-      .poll(() => listedRuntimeIds(session))
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(connectionIds)
     expect(socket.listenerCount('close')).toBe(closeListenersBefore + 1)
   },
@@ -173,7 +175,9 @@ it(
     const otherSession = await openWebSocket(record.url)
     announceRuntime(tab, 'runtime-listed')
     await expect
-      .poll(() => listedRuntimeIds(requestingSession))
+      .poll(() => listedRuntimeIds(requestingSession), {
+        timeout: POLL_TIMEOUT,
+      })
       .toStrictEqual(['runtime-listed'])
     const requestsToTab = receivedRequestFrames(tab)
     const framesToRequester = receivedFrames(requestingSession)

@@ -3,6 +3,7 @@ import { expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import {
+  POLL_TIMEOUT,
   announceRuntime,
   listedRuntimeIds,
   openWebSocket,
@@ -49,7 +50,9 @@ it(
     }
 
     await expect
-      .poll(async () => (await listedRuntimeIds(session)).length)
+      .poll(async () => (await listedRuntimeIds(session)).length, {
+        timeout: POLL_TIMEOUT,
+      })
       .toBe(RUNTIME_COUNT)
     expect(await listedRuntimeIds(session)).toStrictEqual(connectionIds)
   },
@@ -67,7 +70,7 @@ it(
     announceRuntime(browser, 'runtime-first')
 
     await expect
-      .poll(() => listedRuntimeIds(session))
+      .poll(() => listedRuntimeIds(session), { timeout: POLL_TIMEOUT })
       .toStrictEqual(['runtime-second', 'runtime-third', 'runtime-first'])
   },
   TEST_TIMEOUT,

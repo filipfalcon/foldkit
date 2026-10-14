@@ -6,6 +6,7 @@ import { expect, it } from 'vitest'
 import type { RelayClient } from '../src/relayClient.ts'
 import { buildTools } from '../src/tools.ts'
 import {
+  NOT_CONNECTED,
   POLL_TIMEOUT,
   RELAY_PATH,
   catchAllUpgrades,
@@ -25,7 +26,6 @@ const TEST_TIMEOUT = 30_000
 const OBSERVATION_WINDOW = 1_000
 const REQUESTS_PER_SESSION = 10
 const UNKNOWN_RUNTIME_FAILURE_BUDGET = 5_000
-const NOT_CONNECTED = 'Not connected to a Foldkit dev server.'
 
 const workspace = useWorkspace()
 
