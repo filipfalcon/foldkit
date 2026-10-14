@@ -90,6 +90,7 @@ const readRecordFile = (
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem
     const raw = yield* fileSystem.readFileString(filePath)
+
     return decodeRelayRecord(raw)
   }).pipe(Effect.orElseSucceed(() => Option.none<RelayRecord>()))
 
@@ -152,6 +153,7 @@ const removeDeadRecords = (
       filePath =>
         Effect.gen(function* () {
           const maybeRecord = yield* readRecordFile(filePath)
+
           if (
             Option.isSome(maybeRecord) &&
             !isProcessAlive(maybeRecord.value.pid)
@@ -180,6 +182,7 @@ export const publishRelayRecord = (
     })
 
     const maybeRefusal = yield* trust.refusal(directory)
+
     if (Option.isSome(maybeRefusal)) {
       return yield* Effect.fail(
         new RelayRegistryDirectoryRefused({
@@ -207,6 +210,7 @@ export const readRelayRecords: Effect.Effect<
   const directory = yield* relayRegistryDirectory
   const filePaths = yield* recordFilePaths(directory)
   const maybeRecords = yield* Effect.forEach(filePaths, readRecordFile)
+
   return Array.getSomes(maybeRecords)
 })
 

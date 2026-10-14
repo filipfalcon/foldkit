@@ -20,7 +20,7 @@ export const runWithNode = <A, E>(
     ),
   )
 
-// NOTE: On Windows, each new reader checks the registry directory through a
+// NOTE: On Windows, every registry lookup checks the directory through a
 // PowerShell probe. Tests that are not about that check read through this
 // reader, which accepts every directory, so they start no probe.
 export const makeUncheckedRegistryReader: Effect.Effect<RelayRegistryReader> =
@@ -30,5 +30,6 @@ export const makeUncheckedRegistryReader: Effect.Effect<RelayRegistryReader> =
       trust: { refusal: () => Effect.succeedNone },
       reportedRefusals,
     }
+
     return registryReader
   })

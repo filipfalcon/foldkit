@@ -30,6 +30,7 @@ export const findFreePort = () =>
     })
     probe.listen(0, '127.0.0.1', () => {
       const maybePort = boundPort(probe.address())
+
       if (Option.isSome(maybePort)) {
         probe.close(() => resolvePort(maybePort.value))
       } else {
@@ -96,11 +97,13 @@ export const useRelayRegistry = () => {
 
     onTestFinished(async () => {
       vi.restoreAllMocks()
+
       if (previousRegistryDirectory === undefined) {
         delete process.env[RELAY_DIRECTORY_VARIABLE]
       } else {
         process.env[RELAY_DIRECTORY_VARIABLE] = previousRegistryDirectory
       }
+
       await rm(directories.registry, { recursive: true, force: true })
       await rm(directories.root, { recursive: true, force: true })
     })
@@ -156,6 +159,7 @@ export const openWebSocket = async (url: string, protocol?: string) => {
     client.once('open', () => resolveOpen())
     client.once('error', reject)
   })
+
   return client
 }
 
@@ -189,6 +193,7 @@ export const listedRuntimeIds = (session: WebSocket) =>
     const requestId = `list-${randomUUID()}`
     const onMessage = (raw: RawData) => {
       const frame = JSON.parse(raw.toString())
+
       if (frame.id !== requestId) {
         return
       }
@@ -246,6 +251,7 @@ export const startOnConfiguredRelayPort = async (
     return { server, relayPort }
   } else if (attemptsLeft > 1) {
     await server.close()
+
     return startOnConfiguredRelayPort(start, attemptsLeft - 1)
   } else {
     throw new Error(

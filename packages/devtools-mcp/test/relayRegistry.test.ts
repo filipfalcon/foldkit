@@ -137,6 +137,7 @@ describe('discoverRelays', () => {
 
   afterEach(async () => {
     vi.restoreAllMocks()
+
     if (previousRegistryDirectory === undefined) {
       delete process.env[RELAY_DIRECTORY_VARIABLE]
     } else {

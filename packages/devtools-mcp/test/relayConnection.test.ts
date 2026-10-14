@@ -1,11 +1,11 @@
 import { Array, Deferred, Duration, Effect, Exit, Option, pipe } from 'effect'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
-import { expect, it, onTestFinished } from 'vitest'
+import { expect, it, onTestFinished, vi } from 'vitest'
 import { WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
-import { type RelayTarget, configuredRelayUrl } from '../src/relayLocation.ts'
+import type { RelayTarget } from '../src/relayLocation.ts'
 import { buildTools } from '../src/tools.ts'
 import { boundPort } from './boundPort.ts'
 import {
@@ -16,6 +16,7 @@ import {
   loggedErrors,
   openBrowserRuntime,
   openSession,
+  silenceRelayErrors,
   startApplication,
   useWorkspace,
 } from './relayFixtures.ts'
@@ -28,6 +29,9 @@ const CONNECT_TIMEOUT = 2_000
 const CONCURRENT_CALL_COUNT = 10
 const JOIN_DELAY = 100
 const FAILURE_BUDGET = Duration.seconds(2)
+const UNPARSEABLE_RELAY_URL = 'ws://relay host:9988'
+const INVALID_ADDRESS_REASON = 'the relay address is not a valid URL'
+const CONNECTED_PREFIX = '[foldkit-devtools-mcp] connected to '
 
 const workspace = useWorkspace()
 
@@ -48,6 +52,7 @@ const startRelay = async (onConnection: (socket: WebSocket) => void) => {
     () => new Error('relay has no port'),
   )
   relay.on('connection', onConnection)
+
   return `ws://127.0.0.1:${port}`
 }
 
@@ -65,6 +70,7 @@ const startAnsweringRelay = async (response: unknown) => {
       socket.send(JSON.stringify({ id, response }))
     })
   })
+
   return { url, connections }
 }
 
@@ -73,6 +79,7 @@ const startRuntimeRelay = async (connectionId: string) => {
   const url = await startRelay(socket => {
     socket.on('message', raw => {
       const { id, request } = JSON.parse(raw.toString())
+
       if (request._tag === 'RequestListRuntimes') {
         listings.count += 1
         socket.send(
@@ -85,6 +92,7 @@ const startRuntimeRelay = async (connectionId: string) => {
       }
     })
   })
+
   return { url, listings }
 }
 
@@ -99,6 +107,7 @@ const openClient = async (
 ) => {
   const client = await Effect.runPromise(makeRelayClient(resolveTargets))
   onTestFinished(() => Effect.runPromise(client.close))
+
   return client
 }
 
@@ -108,6 +117,7 @@ const startDroppingRelay = async () => {
     connections.count += 1
     socket.close()
   })
+
   return { url, connections }
 }
 
@@ -123,6 +133,7 @@ const startStalledServer = async () => {
     boundPort(stalled.address()),
     () => new Error('server has no port'),
   )
+
   return `ws://127.0.0.1:${port}`
 }
 
@@ -302,6 +313,7 @@ it(
     const pending = Effect.runPromise(Effect.exit(client.listRuntimes)).then(
       exit => {
         settledOperations.push('listRuntimes')
+
         return exit
       },
     )
@@ -329,9 +341,11 @@ it(
     const resolveTargets = Effect.gen(function* () {
       registry.lookups += 1
       const { targets } = registry
+
       if (registry.lookups === 1) {
         yield* Deferred.await(firstLookupReleased)
       }
+
       return targets
     })
     const client = await openClient(resolveTargets)
@@ -361,6 +375,7 @@ it(
     const client = await openClient(
       Effect.sync(() => {
         registry.lookups += 1
+
         return [fixedTarget(relay.url)]
       }),
     )
@@ -390,15 +405,10 @@ it(
 it(
   'fails every concurrent call promptly when the relay address cannot be parsed',
   async () => {
-    const url = Option.getOrThrow(
-      configuredRelayUrl({
-        maybeConfiguredPort: Option.none(),
-        maybeConfiguredHost: Option.some('::1'),
-        projectRoot: workspace.root,
-      }),
-    )
     const client = await openClient(
-      Effect.as(Effect.sleep(Duration.millis(JOIN_DELAY)), [fixedTarget(url)]),
+      Effect.as(Effect.sleep(Duration.millis(JOIN_DELAY)), [
+        fixedTarget(UNPARSEABLE_RELAY_URL),
+      ]),
     )
     const failedCall = client.listRuntimes.pipe(
       Effect.flip,
@@ -419,10 +429,27 @@ it(
       ),
     )
     expect(loggedErrors()).toContainEqual(
-      expect.stringContaining(
-        `[foldkit-devtools-mcp] connect attempt to ${url} failed: `,
-      ),
+      `[foldkit-devtools-mcp] connect attempt to ${UNPARSEABLE_RELAY_URL} failed: ${INVALID_ADDRESS_REASON}`,
     )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'logs an unparseable relay address without its token',
+  async () => {
+    const client = await openClient(
+      Effect.succeed([fixedTarget(`${UNPARSEABLE_RELAY_URL}/?token=secret`)]),
+    )
+
+    await expect(listedIds(client)).rejects.toThrow(NOT_CONNECTED)
+
+    expect(loggedErrors()).toContainEqual(
+      `[foldkit-devtools-mcp] connect attempt to ${UNPARSEABLE_RELAY_URL}/ failed: ${INVALID_ADDRESS_REASON}`,
+    )
+    expect(
+      loggedErrors().filter(line => line.includes('secret')),
+    ).toStrictEqual([])
   },
   TEST_TIMEOUT,
 )
@@ -451,6 +478,39 @@ it(
     expect(outcomes).toStrictEqual(
       Array.makeBy(CONCURRENT_CALL_COUNT, () => 'Error: registry lookup died'),
     )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'closes a connection that a refresh opened before it died',
+  async () => {
+    const relay = await startAnsweringRelay(runtimesResponse('runtime-relay'))
+    const client = await openClient(Effect.succeed([fixedTarget(relay.url)]))
+    vi.mocked(console.error).mockImplementation((...args) => {
+      if (args.map(String).join(' ').startsWith(CONNECTED_PREFIX)) {
+        throw new Error('stderr is closed')
+      }
+    })
+
+    const outcome = await Effect.runPromise(
+      client.listRuntimes.pipe(
+        Effect.as('listed'),
+        Effect.catchDefect(defect => Effect.succeed(String(defect))),
+      ),
+    )
+    silenceRelayErrors()
+
+    expect(outcome).toBe('Error: stderr is closed')
+    expect(firstConnection(relay.connections).readyState).toBe(WebSocket.OPEN)
+
+    await Effect.runPromise(client.close)
+
+    await expect
+      .poll(() => firstConnection(relay.connections).readyState, {
+        timeout: POLL_TIMEOUT,
+      })
+      .toBe(WebSocket.CLOSED)
   },
   TEST_TIMEOUT,
 )

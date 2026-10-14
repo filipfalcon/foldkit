@@ -41,9 +41,11 @@ export const catchAllUpgrades = (seenPaths: Array<string>): Plugin => ({
         Option.fromNullishOr(request.headers['sec-websocket-protocol']),
         Option.exists(protocol => protocol.startsWith('vite')),
       )
+
       if (isViteUpgrade) {
         return
       }
+
       seenPaths.push(new URL(request.url ?? '/', 'http://dev').pathname)
       setTimeout(() => socket.destroy(), DECLINE_DELAY)
     })
@@ -175,6 +177,7 @@ export const openBrowserRuntime = async (
     browser.send(JSON.stringify({ type: 'custom', event, data }))
   browser.on('message', raw => {
     const payload = JSON.parse(raw.toString())
+
     if (
       payload.type !== 'custom' ||
       payload.event !== 'foldkit:devTools:request' ||
@@ -182,6 +185,7 @@ export const openBrowserRuntime = async (
     ) {
       return
     }
+
     setTimeout(
       () =>
         sendCustom('foldkit:devTools:response', {
@@ -204,6 +208,7 @@ export const openBrowserRuntime = async (
       runtime: { connectionId, url: 'http://app/', title: connectionId },
     },
   })
+
   return browser
 }
 
@@ -213,10 +218,12 @@ export const receivedRequests = (
   const requests: Array<unknown> = []
   browser.on('message', (raw: RawData) => {
     const payload = JSON.parse(raw.toString())
+
     if (payload.event === 'foldkit:devTools:request') {
       requests.push(payload.data)
     }
   })
+
   return requests
 }
 
@@ -229,6 +236,7 @@ export const openSession = async (
     ),
   )
   onTestFinished(() => Effect.runPromise(client.close))
+
   return client
 }
 

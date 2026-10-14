@@ -65,9 +65,11 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
           plugins: [...plugins, foldkit(options)],
         })
         onTestFinished(() => server.close().catch(() => undefined))
+
         if (isListening) {
           await server.listen()
         }
+
         return server
       }
 
@@ -86,6 +88,7 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
         expect(await readdir(directories.registry)).toStrictEqual([])
         expect(relayLines()).toStrictEqual([])
         expect(relayErrorLines()).toStrictEqual([])
+
         if (isListening) {
           expect(server.httpServer?.listenerCount('upgrade')).toBe(1)
         }
@@ -100,6 +103,7 @@ describe.each(vitestRuns)('under $name', ({ config, plugins }) => {
         expect(await readdir(directories.registry)).toStrictEqual([])
         expect(relayLines()).toStrictEqual([])
         expect(relayErrorLines()).toStrictEqual([])
+
         if (isListening) {
           expect(server.httpServer?.listenerCount('upgrade')).toBe(1)
         }

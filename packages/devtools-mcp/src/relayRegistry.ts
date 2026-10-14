@@ -135,6 +135,7 @@ export const isWithinRoot = (
   pathApi: RootPathApi,
 ): boolean => {
   const relativePath = pathApi.relative(root, candidate)
+
   return (
     relativePath === '' ||
     (relativePath !== '..' &&
@@ -150,6 +151,7 @@ export const makeRelayRegistryReader: Effect.Effect<RelayRegistryReader> =
       trust: relayRegistryTrust,
       reportedRefusals,
     }
+
     return registryReader
   })
 
@@ -188,12 +190,14 @@ const trustedRegistryDirectory = (
     }
 
     const maybeRefusal = yield* registryReader.trust.refusal(directory)
+
     if (Option.isSome(maybeRefusal)) {
       yield* reportRefusal(
         registryReader.reportedRefusals,
         directory,
         maybeRefusal.value,
       )
+
       return Option.none()
     }
 
@@ -207,6 +211,7 @@ const realRoot = (
     const fileSystem = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const resolvedRoot = path.resolve(root)
+
     return yield* fileSystem
       .realPath(resolvedRoot)
       .pipe(Effect.orElseSucceed(() => resolvedRoot))
@@ -225,6 +230,7 @@ export const discoverRelays = (
 > =>
   Effect.gen(function* () {
     const maybeDirectory = yield* trustedRegistryDirectory(registryReader)
+
     if (Option.isNone(maybeDirectory)) {
       return []
     }

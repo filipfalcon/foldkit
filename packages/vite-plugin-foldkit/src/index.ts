@@ -781,6 +781,7 @@ const loopbackRelayUrl = (httpServer: Server, token: string): string => {
     relayHasNoBoundPort,
   )
   const url = new URL(`ws://${RELAY_LOOPBACK_HOST}:${port}${RELAY_PATH}`)
+
   return withRelayToken(url, token)
 }
 
@@ -993,6 +994,7 @@ const startMcpRelay = (
       }
 
       const token = yield* relayToken
+
       return yield* bindLoopbackRelay(id, token, enqueue)
     })
   return Effect.acquireRelease(

@@ -106,6 +106,7 @@ const holdFreePort = async (): Promise<number> => {
     squatter.on('error', reject)
     squatter.listen(0, () => resolveListening())
   })
+
   return Option.getOrThrowWith(
     boundPort(squatter.address()),
     () => new Error('The squatter has no bound port'),
@@ -263,13 +264,16 @@ const expectOwnLoopbackRelay = async (
   expect(url.protocol).toBe('ws:')
   expect(url.hostname).toBe('127.0.0.1')
   expect(Number(url.port)).toBeGreaterThan(0)
+
   if (Option.isSome(maybeDevServerPort)) {
     expect(Number(url.port)).not.toBe(maybeDevServerPort.value)
   }
+
   expect(url.pathname).toBe(RELAY_PATH)
   expect(url.searchParams.get('token')).toMatch(RELAY_TOKEN_PATTERN)
   const client = await openWebSocket(record.url)
   expect(client.readyState).toBe(client.OPEN)
+
   return url
 }
 
@@ -806,6 +810,7 @@ describe('DevTools MCP relay discovery', () => {
       const info = await Effect.runPromise(
         Effect.gen(function* () {
           const fileSystem = yield* FileSystem.FileSystem
+
           return yield* fileSystem.stat(directories.registry)
         }).pipe(Effect.provide(NodeServices.layer)),
       )
@@ -831,6 +836,7 @@ describe('DevTools MCP relay discovery', () => {
     const info = await Effect.runPromise(
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
+
         return yield* fileSystem.stat(directories.registry)
       }).pipe(Effect.provide(NodeServices.layer)),
     )
@@ -993,6 +999,7 @@ describe('DevTools MCP relay discovery', () => {
                     JSON.stringify(republished),
                   )
                 }
+
                 yield* fileSystem.rename(fromPath, toPath)
               }),
           }

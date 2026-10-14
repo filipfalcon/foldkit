@@ -29,9 +29,11 @@ const catchAllUpgrades = (seenPaths: Array<string>): Plugin => ({
         Option.fromNullishOr(request.headers['sec-websocket-protocol']),
         Option.exists(protocol => protocol.startsWith('vite')),
       )
+
       if (isViteUpgrade) {
         return
       }
+
       seenPaths.push(new URL(request.url ?? '/', 'http://dev').pathname)
       setTimeout(() => socket.destroy(), DECLINE_DELAY)
     })
@@ -46,6 +48,7 @@ const startDecliningBackend = async (): Promise<number> => {
   await new Promise<void>(resolveListening =>
     backend.listen(0, '127.0.0.1', () => resolveListening()),
   )
+
   return Option.getOrThrowWith(
     boundPort(backend.address()),
     () => new Error('backend has no port'),
@@ -61,6 +64,7 @@ const openRelayClient = async (): Promise<WebSocket> => {
     client.once('open', () => resolveOpen())
     client.once('close', () => reject(new Error('closed before open')))
   })
+
   return client
 }
 

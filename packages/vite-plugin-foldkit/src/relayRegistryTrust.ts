@@ -100,6 +100,7 @@ const parseAccessControlEntry = (
   entry: string,
 ): Option.Option<AccessControlEntry> => {
   const fields = String.split(entry, ';')
+
   if (fields.length !== ACCESS_CONTROL_ENTRY_FIELD_COUNT) {
     return Option.none()
   }
@@ -136,6 +137,7 @@ export const windowsDirectoryRefusal = (
   const maybeDescriptor = Option.fromNullishOr(
     SECURITY_DESCRIPTOR_PATTERN.exec(sddl),
   )
+
   if (Option.isNone(maybeDescriptor)) {
     return Option.some(UNVERIFIED_OWNERSHIP)
   }
@@ -149,16 +151,19 @@ export const windowsDirectoryRefusal = (
       parseAccessControlEntries,
     ),
   ])
+
   if (Option.isNone(maybeAccessControl)) {
     return Option.some(UNVERIFIED_PERMISSIONS)
   }
 
   const [owner, flags, entries] = maybeAccessControl.value
+
   if (String.includes(NO_ACCESS_CONTROL_FLAG)(flags)) {
     return Option.some(SHARED_WITH_OTHER_USERS)
   }
 
   const trustedOwners = [currentUserSid, ...PRIVILEGED_ACCOUNTS]
+
   if (!Array.contains(trustedOwners, owner)) {
     return Option.some(OWNED_BY_ANOTHER_USER)
   }
@@ -170,6 +175,7 @@ export const windowsDirectoryRefusal = (
       Array.contains(ALLOW_ENTRY_TYPES, type) &&
       !Array.contains(trustedAccounts, account),
   )
+
   if (isSharedWithOtherUsers) {
     return Option.some(SHARED_WITH_OTHER_USERS)
   }
@@ -287,6 +293,7 @@ export const relayRegistryTrust: RelayRegistryTrust = {
       return Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
         const info = yield* fileSystem.stat(directory)
+
         return relayRegistryDirectoryRefusal(
           info,
           Option.fromNullishOr(process.getuid?.()),

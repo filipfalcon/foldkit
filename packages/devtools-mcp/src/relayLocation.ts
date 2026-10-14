@@ -1,5 +1,6 @@
 import { Array, Config, Effect, Option } from 'effect'
 import type { ChildProcessSpawner } from 'effect/process'
+import { isIPv6 } from 'node:net'
 
 import {
   type RelayRegistryReader,
@@ -39,8 +40,10 @@ export const loadSettings: Effect.Effect<Settings> = Effect.gen(function* () {
   }
 }).pipe(Effect.orDie)
 
+const urlHost = (host: string): string => (isIPv6(host) ? `[${host}]` : host)
+
 const relayUrl = (host: string, port: number | string): string =>
-  `ws://${host}:${port}`
+  `ws://${urlHost(host)}:${port}`
 
 const fixedTarget = (url: string): RelayTarget => ({
   key: url,

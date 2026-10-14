@@ -45,6 +45,7 @@ const toolText = async (
   input: unknown,
 ): Promise<string> => {
   const result = await Effect.runPromise(findTool(client, name).handle(input))
+
   return pipe(
     Array.head(result.content),
     Option.map(({ text }) => text),

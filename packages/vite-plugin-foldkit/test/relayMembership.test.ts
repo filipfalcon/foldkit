@@ -34,6 +34,7 @@ const startServer = async () => {
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
   const record = await waitUntilPublished(directories.root)
+
   return { server, record }
 }
 
@@ -58,6 +59,7 @@ const receivedFrames = (socket: WebSocket) => {
   socket.on('message', (raw: RawData) =>
     frames.push(JSON.parse(raw.toString())),
   )
+
   return frames
 }
 
@@ -65,10 +67,12 @@ const receivedRequestFrames = (tab: WebSocket) => {
   const frames: Array<unknown> = []
   tab.on('message', (raw: RawData) => {
     const payload = JSON.parse(raw.toString())
+
     if (payload.event === 'foldkit:devTools:request') {
       frames.push(payload.data)
     }
   })
+
   return frames
 }
 

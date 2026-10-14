@@ -26,6 +26,7 @@ const startServer = async (options: FoldkitPluginOptions = {}) => {
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
+
   return server
 }
 

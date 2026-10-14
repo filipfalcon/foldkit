@@ -143,6 +143,7 @@ const standInPowerShell = async (
   const executable = join(directory, 'powershell')
   await copyFile(STAND_IN_POWERSHELL, executable)
   await chmod(executable, 0o755)
+
   for (const [name, contents] of Object.entries(inputs)) {
     await writeFile(join(directory, name), contents)
   }
@@ -290,6 +291,7 @@ describe('relayRegistryTrust', () => {
         Effect.map(ChildProcessSpawner.ChildProcessSpawner, spawner =>
           ChildProcessSpawner.make(command => {
             spawned.count += 1
+
             return spawner.spawn(command)
           }),
         ),

@@ -144,6 +144,7 @@ const startProxyTarget = async (): Promise<string> => {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', resolveListen)
   })
+
   return originOf(server.address())
 }
 
@@ -274,6 +275,7 @@ const startServer = async (
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
+
   return originOf(server.httpServer?.address())
 }
 
@@ -300,6 +302,7 @@ const startAutomaticIdentityServer = async (): Promise<
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
+
   return {
     origin: originOf(server.httpServer?.address()),
     server,

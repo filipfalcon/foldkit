@@ -271,6 +271,7 @@ const runRuntimeTool =
   (rawInput: unknown): Effect.Effect<ToolResult> =>
     Effect.gen(function* () {
       const input = yield* decodeInput(inputSchema, rawInput)
+
       return yield* callRuntimeRequest(relayClient, input.runtime_id, () =>
         buildRequest(input),
       )

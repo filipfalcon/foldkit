@@ -38,6 +38,7 @@ it(
     )
     browser.on('message', raw => {
       const payload = JSON.parse(raw.toString())
+
       if (payload.event === 'foldkit:devTools:request') {
         browser.send(
           JSON.stringify({

@@ -105,6 +105,12 @@ describe('resolveRelayTargets', () => {
     ).toStrictEqual(['ws://devbox:4600'])
   })
 
+  it('brackets a configured IPv6 host', async () => {
+    expect(
+      await resolveUrls(settings({ maybeConfiguredHost: Option.some('::1') })),
+    ).toStrictEqual(['ws://[::1]:9988'])
+  })
+
   it('uses a published relay address with its token', async () => {
     await publish()
     expect(await resolve(settings())).toStrictEqual([

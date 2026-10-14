@@ -33,6 +33,7 @@ const startServer = async () => {
     'vite-hmr',
   )
   const session = await openWebSocket(record.url)
+
   return { browser, session }
 }
 
