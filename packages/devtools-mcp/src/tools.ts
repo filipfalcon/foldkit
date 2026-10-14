@@ -229,32 +229,6 @@ const decodeInput = <Input>(
     Effect.mapError(error => new Error(`Invalid input: ${error.message}`)),
   )
 
-/**
- * Resolve a runtime id, defaulting to the most recently connected runtime of
- * the most recently started dev server when the caller did not specify one.
- * Failures (no runtimes connected, relay error) surface as `Error` for the
- * outer handler's `catchAll` to convert.
- */
-const resolveRuntimeId = (
-  relayClient: RelayClient,
-  explicit: string | undefined,
-): Effect.Effect<string, Error> => {
-  if (explicit !== undefined) {
-    return Effect.succeed(explicit)
-  }
-  return Effect.flatMap(relayClient.listRuntimes, listed =>
-    Option.match(Array.last(listed), {
-      onNone: () =>
-        Effect.fail(
-          new Error(
-            'No connected Foldkit runtimes. Open a Foldkit dev page and try again.',
-          ),
-        ),
-      onSome: ({ runtime }) => Effect.succeed(runtime.connectionId),
-    }),
-  )
-}
-
 const listedRuntimeOutput = ({ runtime, maybeProjectRoot }: ListedRuntime) =>
   Option.match(maybeProjectRoot, {
     onNone: () => runtime,
@@ -272,8 +246,10 @@ const callRuntimeRequest = (
   buildRequest: () => typeof Request.Type,
 ): Effect.Effect<ToolResult> =>
   Effect.gen(function* () {
-    const runtimeId = yield* resolveRuntimeId(relayClient, explicitRuntimeId)
-    const response = yield* relayClient.sendRequest(buildRequest(), runtimeId)
+    const response = yield* relayClient.sendRequest(
+      buildRequest(),
+      Option.fromNullishOr(explicitRuntimeId),
+    )
     return responseToToolResult(response)
   }).pipe(
     Effect.catch(error => Effect.succeed(formatError(errorReason(error)))),

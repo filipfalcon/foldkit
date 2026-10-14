@@ -4,10 +4,8 @@ import {
   Duration,
   Effect,
   FileSystem,
-  HashMap,
   Option,
   type PlatformError,
-  Ref,
   Stream,
   String,
   pipe,
@@ -259,76 +257,41 @@ const readWindowsDirectoryRefusal = (
     }),
   )
 
-export const makeCachedWindowsProbe = (
+export const probeWindowsDirectory = (
   maybeExecutable: Option.Option<string>,
+  directory: string,
 ): Effect.Effect<
-  (
-    directory: string,
-    info: FileSystem.File.Info,
-  ) => Effect.Effect<
-    Option.Option<string>,
-    never,
-    ChildProcessSpawner.ChildProcessSpawner
-  >
+  Option.Option<string>,
+  never,
+  ChildProcessSpawner.ChildProcessSpawner
 > =>
-  Effect.gen(function* () {
-    const verdictsByDirectory = yield* Ref.make(
-      HashMap.empty<string, Option.Option<string>>(),
-    )
-
-    const readVerdict = (directory: string) =>
-      Option.match(maybeExecutable, {
-        onNone: () => Effect.fail(new WindowsProbeFailed()),
-        onSome: executable =>
-          readWindowsDirectoryRefusal(directory, executable),
-      })
-
-    const cachedVerdict = (directory: string, key: string) =>
-      Effect.gen(function* () {
-        const maybeVerdict = HashMap.get(
-          yield* Ref.get(verdictsByDirectory),
-          key,
-        )
-        if (Option.isSome(maybeVerdict)) {
-          return maybeVerdict.value
-        }
-
-        const verdict = yield* readVerdict(directory)
-        yield* Ref.update(verdictsByDirectory, HashMap.set(key, verdict))
-        return verdict
-      })
-
-    return (directory: string, info: FileSystem.File.Info) =>
-      Option.match(info.ino, {
-        onNone: () => readVerdict(directory),
-        onSome: inode => cachedVerdict(directory, `${info.dev}:${inode}`),
-      }).pipe(Effect.orElseSucceed(() => Option.some(UNVERIFIED_OWNERSHIP)))
+  Option.match(maybeExecutable, {
+    onNone: () => Effect.succeed(Option.some(UNVERIFIED_OWNERSHIP)),
+    onSome: executable =>
+      readWindowsDirectoryRefusal(directory, executable).pipe(
+        Effect.orElseSucceed(() => Option.some(UNVERIFIED_OWNERSHIP)),
+      ),
   })
 
-export const makeRelayRegistryTrust: Effect.Effect<RelayRegistryTrust> =
-  Effect.gen(function* () {
-    const windowsRefusal = yield* makeCachedWindowsProbe(
-      Option.map(
-        Option.fromNullishOr(process.env['SystemRoot']),
-        powershellPath,
-      ),
-    )
-
-    const refusal = (directory: string) =>
-      Effect.gen(function* () {
+export const relayRegistryTrust: RelayRegistryTrust = {
+  refusal: directory => {
+    if (process.platform === 'win32') {
+      return probeWindowsDirectory(
+        Option.map(
+          Option.fromNullishOr(process.env['SystemRoot']),
+          powershellPath,
+        ),
+        directory,
+      )
+    } else {
+      return Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem
         const info = yield* fileSystem.stat(directory)
-
-        if (process.platform === 'win32') {
-          return yield* windowsRefusal(directory, info)
-        } else {
-          return relayRegistryDirectoryRefusal(
-            info,
-            Option.fromNullishOr(process.getuid?.()),
-          )
-        }
+        return relayRegistryDirectoryRefusal(
+          info,
+          Option.fromNullishOr(process.getuid?.()),
+        )
       })
-
-    const trust: RelayRegistryTrust = { refusal }
-    return trust
-  })
+    }
+  },
+}

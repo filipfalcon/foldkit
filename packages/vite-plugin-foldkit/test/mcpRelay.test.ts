@@ -33,8 +33,8 @@ import {
   retireRelayRecord,
 } from '../src/relayRegistry.ts'
 import {
-  makeRelayRegistryTrust,
   relayRegistryDirectoryRefusal,
+  relayRegistryTrust,
 } from '../src/relayRegistryTrust.ts'
 import { boundPort } from './boundPort.ts'
 import {
@@ -232,9 +232,7 @@ const runRegistry = <A, E>(
   )
 
 const publish = (record: RelayRecord) =>
-  Effect.flatMap(makeRelayRegistryTrust, trust =>
-    publishRelayRecord(record, trust),
-  )
+  publishRelayRecord(record, relayRegistryTrust)
 
 const decodeRelayRecordJson = Schema.decodeUnknownSync(
   Schema.fromJsonString(RelayRecord),

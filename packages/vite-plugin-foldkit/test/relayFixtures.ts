@@ -1,12 +1,13 @@
 import { Array, ConfigProvider, Effect, Option, Predicate } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
+import { randomUUID } from 'node:crypto'
 import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { Server, createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ViteDevServer } from 'vite'
 import { beforeEach, expect, onTestFinished, vi } from 'vitest'
-import { WebSocket } from 'ws'
+import { type RawData, WebSocket } from 'ws'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
@@ -16,6 +17,7 @@ import { boundPort } from './boundPort.ts'
 export const RELAY_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_RELAY_DIRECTORY'
 export const RELAY_PATH = '/__foldkit/devtools-mcp'
 export const POLL_TIMEOUT = 10_000
+export const UNKNOWN_RUNTIME_FAILURE_BUDGET = 5_000
 
 const CONFIGURED_RELAY_PORT_ATTEMPTS = 3
 
@@ -156,6 +158,57 @@ export const openWebSocket = async (url: string, protocol?: string) => {
   })
   return client
 }
+
+const sendDevToolsEvent = (
+  browser: WebSocket,
+  connectionId: string,
+  event: unknown,
+) =>
+  browser.send(
+    JSON.stringify({
+      type: 'custom',
+      event: 'foldkit:devTools:event',
+      data: { maybeConnectionId: connectionId, event },
+    }),
+  )
+
+export const announceRuntime = (browser: WebSocket, connectionId: string) =>
+  sendDevToolsEvent(browser, connectionId, {
+    _tag: 'EventConnected',
+    runtime: { connectionId, url: 'http://app/', title: connectionId },
+  })
+
+export const disconnectRuntime = (browser: WebSocket, connectionId: string) =>
+  sendDevToolsEvent(browser, connectionId, {
+    _tag: 'EventDisconnected',
+    connectionId,
+  })
+
+export const listedRuntimeIds = (session: WebSocket) =>
+  new Promise<Array<string>>(resolveListed => {
+    const requestId = `list-${randomUUID()}`
+    const onMessage = (raw: RawData) => {
+      const frame = JSON.parse(raw.toString())
+      if (frame.id !== requestId) {
+        return
+      }
+
+      session.off('message', onMessage)
+      resolveListed(
+        frame.response.runtimes.map(
+          (runtime: { connectionId: string }) => runtime.connectionId,
+        ),
+      )
+    }
+    session.on('message', onMessage)
+    session.send(
+      JSON.stringify({
+        id: requestId,
+        maybeConnectionId: null,
+        request: { _tag: 'RequestListRuntimes' },
+      }),
+    )
+  })
 
 export const loggedLines = (
   method: typeof console.log,

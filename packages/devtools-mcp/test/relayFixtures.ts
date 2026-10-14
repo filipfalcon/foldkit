@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Plugin, type ViteDevServer, createServer } from 'vite'
 import { beforeEach, expect, onTestFinished, vi } from 'vitest'
-import { WebSocket } from 'ws'
+import { type RawData, WebSocket } from 'ws'
 
 import { foldkit } from '@foldkit/vite-plugin'
 
@@ -160,7 +160,7 @@ export const startApplication = async (
 export const openBrowserRuntime = async (
   server: ViteDevServer,
   connectionId: string,
-): Promise<void> => {
+): Promise<WebSocket> => {
   const browser = new WebSocket(
     `ws://127.0.0.1:${serverPort(server)}`,
     'vite-hmr',
@@ -203,6 +203,20 @@ export const openBrowserRuntime = async (
       runtime: { connectionId, url: 'http://app/', title: connectionId },
     },
   })
+  return browser
+}
+
+export const receivedRequests = (
+  browser: WebSocket,
+): ReadonlyArray<unknown> => {
+  const requests: Array<unknown> = []
+  browser.on('message', (raw: RawData) => {
+    const payload = JSON.parse(raw.toString())
+    if (payload.event === 'foldkit:devTools:request') {
+      requests.push(payload.data)
+    }
+  })
+  return requests
 }
 
 export const openSession = async (
@@ -231,7 +245,7 @@ export const replay = (
     client
       .sendRequest(
         Request.RequestReplayToKeyframe({ keyframeIndex }),
-        connectionId,
+        Option.some(connectionId),
       )
       .pipe(
         Effect.map((response: typeof Response.Type) =>
@@ -249,3 +263,9 @@ export const loggedErrors = (): ReadonlyArray<string> =>
 
 export const connectionCount = (): number =>
   loggedErrors().filter(line => line.includes('] connected to ')).length
+
+export const relayLogLines = (text: string): ReadonlyArray<string> =>
+  vi
+    .mocked(console.log)
+    .mock.calls.map(call => call.map(String).join(' '))
+    .filter(line => line.includes(text))

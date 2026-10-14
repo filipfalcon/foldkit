@@ -1,4 +1,5 @@
 import { Array, Effect, Option, pipe } from 'effect'
+import { chmod, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
 
@@ -10,8 +11,11 @@ import {
   catchAllUpgrades,
   connectionCount,
   listedIds,
+  loggedErrors,
   openBrowserRuntime,
   openSession,
+  receivedRequests,
+  relayLogLines,
   replay,
   startApplication,
   useWorkspace,
@@ -21,6 +25,7 @@ const TEST_TIMEOUT = 30_000
 const OBSERVATION_WINDOW = 1_000
 const REQUESTS_PER_SESSION = 10
 const UNKNOWN_RUNTIME_FAILURE_BUDGET = 5_000
+const NOT_CONNECTED = 'Not connected to a Foldkit dev server.'
 
 const workspace = useWorkspace()
 
@@ -301,6 +306,94 @@ it(
     ).toBe(
       'Error: No connected Foldkit runtimes. Open a Foldkit dev page and try again.',
     )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'fails at once for a listed Runtime whose tab closed while its dev server runs',
+  async () => {
+    const application = applicationRoot('first')
+    const server = await startApplication(application)
+    const tab = await openBrowserRuntime(server, 'runtime-first')
+    const session = await openSession(application)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
+
+    tab.close()
+
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual([])
+    const startedAt = Date.now()
+    expect(await replay(session, 'runtime-first', 1)).toContain(
+      'No connected Foldkit Runtime has the id runtime-first',
+    )
+    expect(Date.now() - startedAt).toBeLessThan(UNKNOWN_RUNTIME_FAILURE_BUDGET)
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'reaches no Runtime of a relay whose record is gone from the registry',
+  async () => {
+    const application = applicationRoot('first')
+    const server = await startApplication(application)
+    const tab = await openBrowserRuntime(server, 'runtime-first')
+    const requests = receivedRequests(tab)
+    const session = await openSession(application)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
+
+    for (const file of await readdir(workspace.registry)) {
+      await rm(join(workspace.registry, file), { force: true })
+    }
+
+    expect(await replay(session, 'runtime-first', 1)).toContain(NOT_CONNECTED)
+    await expect
+      .poll(() => relayLogLines('MCP client disconnected'), {
+        timeout: POLL_TIMEOUT,
+      })
+      .toStrictEqual([
+        '[foldkit:devTools] MCP client disconnected (0 remaining)',
+      ])
+    expect(requests).toStrictEqual([])
+  },
+  TEST_TIMEOUT,
+)
+
+it.skipIf(process.platform === 'win32')(
+  'reaches no Runtime once the registry directory is shared with other users',
+  async () => {
+    const application = applicationRoot('first')
+    const server = await startApplication(application)
+    const tab = await openBrowserRuntime(server, 'runtime-first')
+    const requests = receivedRequests(tab)
+    const session = await openSession(application)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-first'])
+
+    await chmod(workspace.registry, 0o777)
+
+    expect(await replay(session, 'runtime-first', 1)).toContain(NOT_CONNECTED)
+    await expect
+      .poll(() => relayLogLines('MCP client disconnected'), {
+        timeout: POLL_TIMEOUT,
+      })
+      .toStrictEqual([
+        '[foldkit:devTools] MCP client disconnected (0 remaining)',
+      ])
+    expect(requests).toStrictEqual([])
+    expect(
+      loggedErrors().filter(line =>
+        line.includes('ignoring the relay registry'),
+      ),
+    ).toStrictEqual([
+      `[foldkit-devtools-mcp] ignoring the relay registry at ${workspace.registry}: it is readable or writable by other users`,
+    ])
   },
   TEST_TIMEOUT,
 )

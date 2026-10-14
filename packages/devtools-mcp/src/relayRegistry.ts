@@ -23,7 +23,7 @@ import { tmpdir } from 'node:os'
 
 import {
   type RelayRegistryTrust,
-  makeRelayRegistryTrust,
+  relayRegistryTrust,
 } from './relayRegistryTrust.js'
 
 const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
@@ -145,9 +145,11 @@ export const isWithinRoot = (
 
 export const makeRelayRegistryReader: Effect.Effect<RelayRegistryReader> =
   Effect.gen(function* () {
-    const trust = yield* makeRelayRegistryTrust
     const reportedRefusals = yield* Ref.make(HashSet.empty<string>())
-    const registryReader: RelayRegistryReader = { trust, reportedRefusals }
+    const registryReader: RelayRegistryReader = {
+      trust: relayRegistryTrust,
+      reportedRefusals,
+    }
     return registryReader
   })
 

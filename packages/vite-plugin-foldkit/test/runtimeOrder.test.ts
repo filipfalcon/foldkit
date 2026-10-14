@@ -1,9 +1,10 @@
 import { createServer } from 'vite'
 import { expect, it, onTestFinished } from 'vitest'
-import type { WebSocket } from 'ws'
 
 import { foldkit } from '../src/index.ts'
 import {
+  announceRuntime,
+  listedRuntimeIds,
   openWebSocket,
   serverPort,
   useRelayRegistry,
@@ -34,39 +35,6 @@ const startServer = async () => {
   return { browser, session }
 }
 
-const announce = (browser: WebSocket, connectionId: string) =>
-  browser.send(
-    JSON.stringify({
-      type: 'custom',
-      event: 'foldkit:devTools:event',
-      data: {
-        maybeConnectionId: connectionId,
-        event: {
-          _tag: 'EventConnected',
-          runtime: { connectionId, url: 'http://app/', title: connectionId },
-        },
-      },
-    }),
-  )
-
-const listedIds = (session: WebSocket) =>
-  new Promise<Array<string>>(resolveListed => {
-    session.once('message', raw =>
-      resolveListed(
-        JSON.parse(raw.toString()).response.runtimes.map(
-          (runtime: { connectionId: string }) => runtime.connectionId,
-        ),
-      ),
-    )
-    session.send(
-      JSON.stringify({
-        id: 'list',
-        maybeConnectionId: null,
-        request: { _tag: 'RequestListRuntimes' },
-      }),
-    )
-  })
-
 it(
   'lists Runtimes in the order they connected',
   async () => {
@@ -77,13 +45,13 @@ it(
     )
 
     for (const connectionId of connectionIds) {
-      announce(browser, connectionId)
+      announceRuntime(browser, connectionId)
     }
 
     await expect
-      .poll(async () => (await listedIds(session)).length)
+      .poll(async () => (await listedRuntimeIds(session)).length)
       .toBe(RUNTIME_COUNT)
-    expect(await listedIds(session)).toStrictEqual(connectionIds)
+    expect(await listedRuntimeIds(session)).toStrictEqual(connectionIds)
   },
   TEST_TIMEOUT,
 )
@@ -93,13 +61,13 @@ it(
   async () => {
     const { browser, session } = await startServer()
 
-    announce(browser, 'runtime-first')
-    announce(browser, 'runtime-second')
-    announce(browser, 'runtime-third')
-    announce(browser, 'runtime-first')
+    announceRuntime(browser, 'runtime-first')
+    announceRuntime(browser, 'runtime-second')
+    announceRuntime(browser, 'runtime-third')
+    announceRuntime(browser, 'runtime-first')
 
     await expect
-      .poll(() => listedIds(session))
+      .poll(() => listedRuntimeIds(session))
       .toStrictEqual(['runtime-second', 'runtime-third', 'runtime-first'])
   },
   TEST_TIMEOUT,

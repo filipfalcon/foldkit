@@ -32,6 +32,8 @@ const LIST_RUNTIMES_TIMEOUT = Duration.seconds(2)
 
 const NOT_CONNECTED_REASON =
   'Not connected to a Foldkit dev server. Start your Foldkit Vite dev server and retry the tool call.'
+const NO_RUNTIMES_REASON =
+  'No connected Foldkit runtimes. Open a Foldkit dev page and try again.'
 
 const encodeRequestFrameToJson = Schema.encodeUnknownSync(
   Schema.fromJsonString(RequestFrame),
@@ -47,6 +49,21 @@ type RelaySocket = Readonly<{
   target: RelayTarget
 }>
 
+type RelayListing = Readonly<{
+  relaySocket: RelaySocket
+  runtimes: ReadonlyArray<typeof RuntimeInfo.Type>
+}>
+
+type RuntimeRoute = Readonly<{
+  socket: WebSocket
+  connectionId: string
+}>
+
+type RefreshTurn = Readonly<{
+  refresh: Deferred.Deferred<ReadonlyArray<RelaySocket>>
+  isLeader: boolean
+}>
+
 export type ListedRuntime = Readonly<{
   runtime: typeof RuntimeInfo.Type
   maybeProjectRoot: Option.Option<string>
@@ -55,22 +72,27 @@ export type ListedRuntime = Readonly<{
 /**
  * A client to the DevTools relays of the Foldkit dev servers it finds.
  *
- * It connects only when called. Each call looks up the relays again, drops the
- * sockets of relays that are gone, and opens one socket to each relay that has
- * none. A dev server that starts or restarts between calls is reached on the
- * next call, and a relay that drops every connection costs one connection
- * attempt per call.
+ * It connects only when called. Each call, including `sendRequest` with an
+ * explicit Runtime id, looks up the relays in the registry, drops the sockets
+ * of relays that are gone, opens one socket to each relay that has none, and
+ * lists the Runtimes of every relay before it routes a request. It keeps no
+ * Runtime membership between calls. Concurrent calls share one lookup that
+ * starts after each of them arrives. A dev server that starts or restarts
+ * between calls is reached on the next call, and a relay that drops every
+ * connection costs one connection attempt per call.
  *
  * `listRuntimes` lists the Runtimes of every relay, oldest dev server first,
  * and fails when no relay accepts a connection. `sendRequest` sends to the
- * relay that listed the Runtime. It fails at once for an id that no relay
- * lists, and with `TimeoutError` when no response arrives in time.
+ * newest relay that lists the given Runtime, or without an id to the most
+ * recently connected Runtime of the most recently started dev server. It fails
+ * at once for an id that no relay lists, and with `TimeoutError` when no
+ * response arrives in time.
  */
 export type RelayClient = Readonly<{
   listRuntimes: Effect.Effect<ReadonlyArray<ListedRuntime>, Error>
   sendRequest: (
     request: typeof Request.Type,
-    runtimeId: string,
+    maybeRuntimeId: Option.Option<string>,
   ) => Effect.Effect<typeof Response.Type, Cause.TimeoutError | Error>
   close: Effect.Effect<void>
 }>
@@ -123,8 +145,11 @@ export const makeRelayClient = <Services>(
       HashMap.empty(),
     )
     const socketsRef = yield* Ref.make(HashMap.empty<string, RelaySocket>())
-    const runtimeOwnersRef = yield* Ref.make(HashMap.empty<string, string>())
-    const reconcileLock = yield* Semaphore.make(1)
+    const refreshLock = yield* Semaphore.make(1)
+    const pendingRefreshRef = yield* Ref.make<
+      Option.Option<Deferred.Deferred<ReadonlyArray<RelaySocket>>>
+    >(Option.none())
+    const isClosedRef = yield* Ref.make(false)
     const context = yield* Effect.context<Services>()
 
     const attachHandlers = (socket: WebSocket): void => {
@@ -168,54 +193,93 @@ export const makeRelayClient = <Services>(
         ),
       )
 
-    const reconcile: Effect.Effect<ReadonlyArray<RelaySocket>> =
-      reconcileLock.withPermits(1)(
+    const reconcile: Effect.Effect<ReadonlyArray<RelaySocket>> = Effect.gen(
+      function* () {
+        if (yield* Ref.get(isClosedRef)) {
+          return []
+        }
+
+        const targets = yield* Effect.provideContext(resolveTargets, context)
+        const targetKeys = HashSet.fromIterable(
+          Array.map(targets, ({ key }) => key),
+        )
+        const sockets = yield* Ref.get(socketsRef)
+
+        const isKept = (relaySocket: RelaySocket, key: string): boolean =>
+          HashSet.has(targetKeys, key) && isOpen(relaySocket)
+        const keptSockets = HashMap.filter(sockets, isKept)
+        const droppedSockets = HashMap.filter(
+          sockets,
+          (relaySocket, key) => !isKept(relaySocket, key),
+        )
+        yield* Effect.sync(() => {
+          for (const { socket } of HashMap.values(droppedSockets)) {
+            socket.terminate()
+          }
+        })
+
+        const missingTargets = Array.filter(
+          targets,
+          ({ key }) => !HashMap.has(keptSockets, key),
+        )
+        const opened = Array.getSomes(
+          yield* Effect.forEach(missingTargets, openTarget, {
+            concurrency: 'unbounded',
+          }),
+        )
+        const nextSockets = HashMap.union(
+          keptSockets,
+          HashMap.fromIterable(
+            Array.map(opened, relaySocket => [
+              relaySocket.target.key,
+              relaySocket,
+            ]),
+          ),
+        )
+        yield* Ref.set(socketsRef, nextSockets)
+
+        return pipe(
+          targets,
+          Array.reverse,
+          Array.map(({ key }) => HashMap.get(nextSockets, key)),
+          Array.getSomes,
+        )
+      },
+    )
+
+    const takeRefreshTurn = (
+      ownRefresh: Deferred.Deferred<ReadonlyArray<RelaySocket>>,
+    ): Effect.Effect<RefreshTurn> =>
+      Ref.modify(pendingRefreshRef, maybePendingRefresh => {
+        if (Option.isSome(maybePendingRefresh)) {
+          const turn: RefreshTurn = {
+            refresh: maybePendingRefresh.value,
+            isLeader: false,
+          }
+          return [turn, maybePendingRefresh]
+        } else {
+          const turn: RefreshTurn = { refresh: ownRefresh, isLeader: true }
+          return [turn, Option.some(ownRefresh)]
+        }
+      })
+
+    const refreshRelays: Effect.Effect<ReadonlyArray<RelaySocket>> =
+      Effect.uninterruptibleMask(restore =>
         Effect.gen(function* () {
-          const targets = yield* Effect.provideContext(resolveTargets, context)
-          const targetKeys = HashSet.fromIterable(
-            Array.map(targets, ({ key }) => key),
-          )
-          const sockets = yield* Ref.get(socketsRef)
+          const ownRefresh = yield* Deferred.make<ReadonlyArray<RelaySocket>>()
+          const { refresh, isLeader } = yield* takeRefreshTurn(ownRefresh)
 
-          const isKept = (relaySocket: RelaySocket, key: string): boolean =>
-            HashSet.has(targetKeys, key) && isOpen(relaySocket)
-          const keptSockets = HashMap.filter(sockets, isKept)
-          const droppedSockets = HashMap.filter(
-            sockets,
-            (relaySocket, key) => !isKept(relaySocket, key),
-          )
-          yield* Effect.sync(() => {
-            for (const { socket } of HashMap.values(droppedSockets)) {
-              socket.terminate()
-            }
-          })
+          if (isLeader) {
+            yield* refreshLock.withPermits(1)(
+              Effect.gen(function* () {
+                yield* Ref.set(pendingRefreshRef, Option.none())
+                const relaySockets = yield* reconcile
+                yield* Deferred.succeed(refresh, relaySockets)
+              }),
+            )
+          }
 
-          const missingTargets = Array.filter(
-            targets,
-            ({ key }) => !HashMap.has(keptSockets, key),
-          )
-          const opened = Array.getSomes(
-            yield* Effect.forEach(missingTargets, openTarget, {
-              concurrency: 'unbounded',
-            }),
-          )
-          const nextSockets = HashMap.union(
-            keptSockets,
-            HashMap.fromIterable(
-              Array.map(opened, relaySocket => [
-                relaySocket.target.key,
-                relaySocket,
-              ]),
-            ),
-          )
-          yield* Ref.set(socketsRef, nextSockets)
-
-          return pipe(
-            targets,
-            Array.reverse,
-            Array.map(({ key }) => HashMap.get(nextSockets, key)),
-            Array.getSomes,
-          )
+          return yield* restore(Deferred.await(refresh))
         }),
       )
 
@@ -289,84 +353,56 @@ export const makeRelayClient = <Services>(
         ),
       )
 
-    const listRuntimes: Effect.Effect<
-      ReadonlyArray<ListedRuntime>,
+    const listRelays: Effect.Effect<
+      ReadonlyArray<RelayListing>,
       Error
     > = Effect.gen(function* () {
-      const relaySockets = yield* reconcile
+      const relaySockets = yield* refreshRelays
       if (Array.isReadonlyArrayEmpty(relaySockets)) {
         return yield* Effect.fail(new Error(NOT_CONNECTED_REASON))
       }
 
-      const listings = yield* Effect.forEach(
+      return yield* Effect.forEach(
         relaySockets,
         relaySocket =>
           Effect.map(listRelayRuntimes(relaySocket), runtimes => ({
-            target: relaySocket.target,
+            relaySocket,
             runtimes,
           })),
         { concurrency: 'unbounded' },
       )
-
-      yield* Ref.set(
-        runtimeOwnersRef,
-        HashMap.fromIterable(
-          Array.flatMap(listings, ({ target, runtimes }) =>
-            Array.map(runtimes, runtime => [runtime.connectionId, target.key]),
-          ),
-        ),
-      )
-
-      return Array.flatMap(listings, ({ target, runtimes }) =>
-        Array.map(runtimes, runtime => ({
-          runtime,
-          maybeProjectRoot: target.maybeProjectRoot,
-        })),
-      )
     })
 
-    const ownerSocket = (
-      runtimeId: string,
-    ): Effect.Effect<Option.Option<WebSocket>> =>
-      Effect.gen(function* () {
-        const owners = yield* Ref.get(runtimeOwnersRef)
-        const sockets = yield* Ref.get(socketsRef)
-        return pipe(
-          HashMap.get(owners, runtimeId),
-          Option.flatMap(key => HashMap.get(sockets, key)),
-          Option.filter(isOpen),
-          Option.map(({ socket }) => socket),
-        )
-      })
+    const listRuntimes: Effect.Effect<
+      ReadonlyArray<ListedRuntime>,
+      Error
+    > = Effect.map(listRelays, listings =>
+      Array.flatMap(listings, ({ relaySocket, runtimes }) =>
+        Array.map(runtimes, runtime => ({
+          runtime,
+          maybeProjectRoot: relaySocket.target.maybeProjectRoot,
+        })),
+      ),
+    )
 
     const sendRequest = (
       request: typeof Request.Type,
-      runtimeId: string,
+      maybeRuntimeId: Option.Option<string>,
     ): Effect.Effect<typeof Response.Type, Cause.TimeoutError | Error> =>
       Effect.gen(function* () {
-        const maybeKnownSocket = yield* ownerSocket(runtimeId)
-        const maybeSocket = yield* Option.match(maybeKnownSocket, {
-          onSome: socket => Effect.succeed(Option.some(socket)),
-          onNone: () => Effect.andThen(listRuntimes, ownerSocket(runtimeId)),
-        })
-        if (Option.isNone(maybeSocket)) {
-          return yield* Effect.fail(
-            new Error(
-              `No connected Foldkit Runtime has the id ${runtimeId}. Call foldkit_list_runtimes for the current ids.`,
-            ),
-          )
-        }
-
+        const listings = yield* listRelays
+        const route = yield* routeFromListings(listings, maybeRuntimeId)
         return yield* exchange(
-          maybeSocket.value,
+          route.socket,
           request,
-          Option.some(runtimeId),
+          Option.some(route.connectionId),
           REQUEST_TIMEOUT,
         )
       })
 
-    const close: Effect.Effect<void> = reconcileLock.withPermits(1)(
+    const close: Effect.Effect<void> = refreshLock.withPermits(1)(
       Effect.gen(function* () {
+        yield* Ref.set(isClosedRef, true)
         const sockets = yield* Ref.getAndSet(socketsRef, HashMap.empty())
         yield* Effect.sync(() => {
           for (const { socket } of HashMap.values(sockets)) {
@@ -378,6 +414,58 @@ export const makeRelayClient = <Services>(
 
     const client: RelayClient = { listRuntimes, sendRequest, close }
     return client
+  })
+
+const routeToRuntime = (
+  listings: ReadonlyArray<RelayListing>,
+  runtimeId: string,
+): Effect.Effect<RuntimeRoute, Error> =>
+  Option.match(
+    Array.findLast(listings, ({ runtimes }) =>
+      Array.some(runtimes, ({ connectionId }) => connectionId === runtimeId),
+    ),
+    {
+      onNone: () =>
+        Effect.fail(
+          new Error(
+            `No connected Foldkit Runtime has the id ${runtimeId}. Call foldkit_list_runtimes for the current ids.`,
+          ),
+        ),
+      onSome: ({ relaySocket }) =>
+        Effect.succeed({
+          socket: relaySocket.socket,
+          connectionId: runtimeId,
+        }),
+    },
+  )
+
+const routeToDefaultRuntime = (
+  listings: ReadonlyArray<RelayListing>,
+): Effect.Effect<RuntimeRoute, Error> =>
+  Option.match(
+    pipe(
+      listings,
+      Array.flatMap(({ relaySocket, runtimes }) =>
+        Array.map(runtimes, ({ connectionId }) => ({
+          socket: relaySocket.socket,
+          connectionId,
+        })),
+      ),
+      Array.last,
+    ),
+    {
+      onNone: () => Effect.fail(new Error(NO_RUNTIMES_REASON)),
+      onSome: Effect.succeed,
+    },
+  )
+
+const routeFromListings = (
+  listings: ReadonlyArray<RelayListing>,
+  maybeRuntimeId: Option.Option<string>,
+): Effect.Effect<RuntimeRoute, Error> =>
+  Option.match(maybeRuntimeId, {
+    onNone: () => routeToDefaultRuntime(listings),
+    onSome: runtimeId => routeToRuntime(listings, runtimeId),
   })
 
 const handleIncomingMessage = (

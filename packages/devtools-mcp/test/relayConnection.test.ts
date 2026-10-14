@@ -1,4 +1,4 @@
-import { Array, Effect, Exit, Option } from 'effect'
+import { Array, Deferred, Effect, Exit, Option, pipe } from 'effect'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
 import { expect, it, onTestFinished } from 'vitest'
@@ -6,6 +6,7 @@ import { WebSocket, WebSocketServer } from 'ws'
 
 import { makeRelayClient } from '../src/relayClient.ts'
 import type { RelayTarget } from '../src/relayLocation.ts'
+import { buildTools } from '../src/tools.ts'
 import { boundPort } from './boundPort.ts'
 import {
   POLL_TIMEOUT,
@@ -23,6 +24,8 @@ const IDLE_WINDOW = 500
 const CALL_COUNT = 3
 const CLOSE_DELAY = 100
 const CONNECT_TIMEOUT = 2_000
+const CONCURRENT_CALL_COUNT = 10
+const JOIN_DELAY = 100
 
 const workspace = useWorkspace()
 
@@ -61,6 +64,26 @@ const startAnsweringRelay = async (response: unknown) => {
     })
   })
   return { url, connections }
+}
+
+const startRuntimeRelay = async (connectionId: string) => {
+  const listings = { count: 0 }
+  const url = await startRelay(socket => {
+    socket.on('message', raw => {
+      const { id, request } = JSON.parse(raw.toString())
+      if (request._tag === 'RequestListRuntimes') {
+        listings.count += 1
+        socket.send(
+          JSON.stringify({ id, response: runtimesResponse(connectionId) }),
+        )
+      } else {
+        socket.send(
+          JSON.stringify({ id, response: { _tag: 'ResponseResumed' } }),
+        )
+      }
+    })
+  })
+  return { url, listings }
 }
 
 const firstConnection = (connections: ReadonlyArray<WebSocket>): WebSocket =>
@@ -292,6 +315,74 @@ it(
     expect(Exit.isFailure(exit)).toBe(true)
     expect(Date.now() - startedAt).toBeGreaterThanOrEqual(CONNECT_TIMEOUT)
     expect(uncaught).toStrictEqual([])
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'shares one registry lookup among concurrent calls and starts it after each call arrives',
+  async () => {
+    const before = await startAnsweringRelay(runtimesResponse('runtime-before'))
+    const after = await startAnsweringRelay(runtimesResponse('runtime-after'))
+    const registry = { targets: [fixedTarget(before.url)], lookups: 0 }
+    const firstLookupReleased = Deferred.makeUnsafe<void>()
+    const resolveTargets = Effect.gen(function* () {
+      registry.lookups += 1
+      const { targets } = registry
+      if (registry.lookups === 1) {
+        yield* Deferred.await(firstLookupReleased)
+      }
+      return targets
+    })
+    const client = await openClient(resolveTargets)
+    const settle = () => new Promise(done => setTimeout(done, JOIN_DELAY))
+
+    const concurrentCalls = Array.makeBy(CONCURRENT_CALL_COUNT, () =>
+      listedIds(client),
+    )
+    await settle()
+    registry.targets = [fixedTarget(after.url)]
+    const laterCall = listedIds(client)
+    await settle()
+    Deferred.doneUnsafe(firstLookupReleased, Effect.void)
+
+    await Promise.all(concurrentCalls)
+    expect(registry.lookups).toBeLessThanOrEqual(2)
+    expect(await laterCall).toStrictEqual(['runtime-after'])
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'looks up the registry and lists each relay once per tool call',
+  async () => {
+    const relay = await startRuntimeRelay('runtime-relay')
+    const registry = { lookups: 0 }
+    const client = await openClient(
+      Effect.sync(() => {
+        registry.lookups += 1
+        return [fixedTarget(relay.url)]
+      }),
+    )
+    const resume = pipe(
+      buildTools(client),
+      Array.findFirst(({ name }) => name === 'foldkit_resume'),
+      Option.getOrThrowWith(() => new Error('tool foldkit_resume is missing')),
+    )
+
+    expect(
+      JSON.stringify(await Effect.runPromise(resume.handle({}))),
+    ).toContain('ResponseResumed')
+    expect(registry.lookups).toBe(1)
+    expect(relay.listings.count).toBe(1)
+
+    expect(
+      JSON.stringify(
+        await Effect.runPromise(resume.handle({ runtime_id: 'runtime-relay' })),
+      ),
+    ).toContain('ResponseResumed')
+    expect(registry.lookups).toBe(2)
+    expect(relay.listings.count).toBe(2)
   },
   TEST_TIMEOUT,
 )

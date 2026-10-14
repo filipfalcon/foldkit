@@ -1,23 +1,25 @@
-import { Effect, FileSystem, Layer, Option } from 'effect'
+import { Effect, Layer, Option, pipe } from 'effect'
 import { ChildProcessSpawner } from 'effect/process'
+import { execFileSync } from 'node:child_process'
 import {
   chmod,
-  mkdir,
+  copyFile,
   mkdtemp,
   readFile,
   rm,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, win32 } from 'node:path'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import {
-  makeCachedWindowsProbe,
-  makeRelayRegistryTrust,
   powershellPath,
+  probeWindowsDirectory,
+  relayRegistryTrust,
   windowsDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
 
@@ -27,7 +29,15 @@ const GROUP = 'S-1-5-21-1111111111-2222222222-3333333333-513'
 const PRIVATE = `O:${USER}G:${GROUP}D:(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;${USER})`
 const SHARED = `O:${USER}G:${GROUP}D:(A;OICI;FA;;;${USER})(A;OICI;0x1200a9;;;BU)`
 const IDENTITY = `"host\\user","${USER}"`
+const USERS_GROUP_SID = 'S-1-5-32-545'
+const PROBED_DIRECTORY = 'C:\\registry'
 const PROBE_TEST_TIMEOUT = 30_000
+const SECONDS_PAST_PROBE_LIMIT = '30'
+const STAND_IN_POWERSHELL = join(
+  import.meta.dirname,
+  'fixtures',
+  'standInPowerShell.sh',
+)
 
 const UNVERIFIED_OWNERSHIP = Option.some(
   'has ownership that cannot be verified',
@@ -116,65 +126,59 @@ describe('powershellPath', () => {
   })
 })
 
-const temporaryDirectory = async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'foldkit-registry-'))
-  onTestFinished(() => rm(directory, { recursive: true, force: true }))
-  return directory
-}
+const probeOutput = (...lines: ReadonlyArray<string>): string =>
+  lines.map(line => `${line}\n`).join('')
 
-type CachedWindowsProbe = Effect.Success<
-  ReturnType<typeof makeCachedWindowsProbe>
->
+type StandInPowerShell = Readonly<{
+  executable: string
+  runCount: () => Promise<number>
+  receivedDirectory: () => Promise<string>
+}>
 
-const probedVerdict = (
-  cachedProbe: CachedWindowsProbe,
-  probedDirectory: string,
-  identifyingDirectory: string,
-) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem
-      const info = yield* fileSystem.stat(identifyingDirectory)
-      return yield* cachedProbe(probedDirectory, info)
-    }).pipe(Effect.provide(NodeServices.layer)),
-  )
-
-const verdictFor = (cachedProbe: CachedWindowsProbe, target: string) =>
-  probedVerdict(cachedProbe, target, target)
-
-const freshProbeVerdict = async (executable: string, target: string) => {
-  const cachedProbe = await Effect.runPromise(
-    makeCachedWindowsProbe(Option.some(executable)),
-  )
-  return probedVerdict(cachedProbe, target, await temporaryDirectory())
-}
-
-const standInProbe = async (body: string) => {
+const standInPowerShell = async (
+  inputs: Readonly<Record<string, string>>,
+): Promise<StandInPowerShell> => {
   const directory = await mkdtemp(join(tmpdir(), 'foldkit-probe-'))
   onTestFinished(() => rm(directory, { recursive: true, force: true }))
   const executable = join(directory, 'powershell')
-  await writeFile(executable, `#!/bin/sh\n${body}\n`)
+  await copyFile(STAND_IN_POWERSHELL, executable)
   await chmod(executable, 0o755)
+  for (const [name, contents] of Object.entries(inputs)) {
+    await writeFile(join(directory, name), contents)
+  }
+
   return {
-    directory,
     executable,
-    probe: (target: string) => freshProbeVerdict(executable, target),
+    runCount: async () =>
+      (await readFile(join(directory, 'runs'), 'utf-8'))
+        .split('\n')
+        .filter(line => line !== '').length,
+    receivedDirectory: () => readFile(join(directory, 'received'), 'utf-8'),
   }
 }
 
-describe('makeCachedWindowsProbe', () => {
+const probe = (executable: string, directory: string) =>
+  Effect.runPromise(
+    probeWindowsDirectory(Option.some(executable), directory).pipe(
+      Effect.provide(NodeServices.layer),
+    ),
+  )
+
+describe('probeWindowsDirectory', () => {
   it.skipIf(process.platform === 'win32')(
     'reads the descriptor and the user from the probe output',
     async () => {
-      const accepted = await standInProbe(
-        `printf '%s\\r\\n' '${PRIVATE}' '${IDENTITY}'`,
-      )
-      const shared = await standInProbe(
-        `printf '%s\\n' '' '${SHARED}' '${IDENTITY}'`,
-      )
+      const accepted = await standInPowerShell({
+        reply: `${PRIVATE}\r\n${IDENTITY}\r\n`,
+      })
+      const shared = await standInPowerShell({
+        reply: probeOutput('', SHARED, IDENTITY),
+      })
 
-      expect(await accepted.probe('C:\\registry')).toStrictEqual(Option.none())
-      expect(await shared.probe('C:\\registry')).toStrictEqual(
+      expect(await probe(accepted.executable, PROBED_DIRECTORY)).toStrictEqual(
+        Option.none(),
+      )
+      expect(await probe(shared.executable, PROBED_DIRECTORY)).toStrictEqual(
         SHARED_WITH_OTHER_USERS,
       )
     },
@@ -184,41 +188,41 @@ describe('makeCachedWindowsProbe', () => {
     'passes the directory through the environment',
     async () => {
       const directory = `C:\\it's "here" $(exit 1)`
-      const echoing = await standInProbe(
-        'printf \'%s\' "$FOLDKIT_DEVTOOLS_PROBED_DIRECTORY" > "$(dirname "$0")/received"',
-      )
+      const echoing = await standInPowerShell({})
 
-      expect(await echoing.probe(directory)).toStrictEqual(UNVERIFIED_OWNERSHIP)
-      expect(await readFile(join(echoing.directory, 'received'), 'utf-8')).toBe(
-        directory,
+      expect(await probe(echoing.executable, directory)).toStrictEqual(
+        UNVERIFIED_OWNERSHIP,
       )
+      expect(await echoing.receivedDirectory()).toBe(directory)
     },
   )
 
   it.skipIf(process.platform === 'win32')(
     'refuses when the probe fails, prints too little, or does not finish',
     async () => {
-      const failing = await standInProbe(
-        `printf '%s\\n' '${PRIVATE}' '${IDENTITY}'\necho 'Access is denied.' >&2\nexit 1`,
-      )
-      const silent = await standInProbe(`printf '%s\\n' '${PRIVATE}'`)
-      const anonymous = await standInProbe(
-        `printf '%s\\n' '${PRIVATE}' '"host\\\\user","unknown"'`,
-      )
-      const hanging = await standInProbe(
-        `printf '%s\\n' '${PRIVATE}' '${IDENTITY}'\nsleep 30`,
-      )
+      const failing = await standInPowerShell({
+        reply: probeOutput(PRIVATE, IDENTITY),
+        status: '1',
+      })
+      const silent = await standInPowerShell({ reply: probeOutput(PRIVATE) })
+      const anonymous = await standInPowerShell({
+        reply: probeOutput(PRIVATE, '"host\\user","unknown"'),
+      })
+      const hanging = await standInPowerShell({
+        reply: probeOutput(PRIVATE, IDENTITY),
+        delay: SECONDS_PAST_PROBE_LIMIT,
+      })
 
-      expect(await failing.probe('C:\\registry')).toStrictEqual(
+      expect(await probe(failing.executable, PROBED_DIRECTORY)).toStrictEqual(
         UNVERIFIED_OWNERSHIP,
       )
-      expect(await silent.probe('C:\\registry')).toStrictEqual(
+      expect(await probe(silent.executable, PROBED_DIRECTORY)).toStrictEqual(
         UNVERIFIED_OWNERSHIP,
       )
-      expect(await anonymous.probe('C:\\registry')).toStrictEqual(
+      expect(await probe(anonymous.executable, PROBED_DIRECTORY)).toStrictEqual(
         UNVERIFIED_OWNERSHIP,
       )
-      expect(await hanging.probe('C:\\registry')).toStrictEqual(
+      expect(await probe(hanging.executable, PROBED_DIRECTORY)).toStrictEqual(
         UNVERIFIED_OWNERSHIP,
       )
     },
@@ -228,59 +232,55 @@ describe('makeCachedWindowsProbe', () => {
   it('refuses when the probe cannot start', async () => {
     const missing = join(tmpdir(), 'foldkit-missing-probe', 'powershell.exe')
 
-    expect(await freshProbeVerdict(missing, 'C:\\registry')).toStrictEqual(
+    expect(await probe(missing, PROBED_DIRECTORY)).toStrictEqual(
       UNVERIFIED_OWNERSHIP,
     )
   })
 
   it.skipIf(process.platform === 'win32')(
-    'probes again after a probe that failed and keeps a verdict it read',
+    'reads the descriptor again on every lookup',
     async () => {
-      const recoveringProbe = await standInProbe(
-        [
-          'runs="$(dirname "$0")/runs"',
-          'echo run >> "$runs"',
-          'if [ "$(wc -l < "$runs")" -eq 1 ]; then exit 1; fi',
-          `printf '%s\\n' '${PRIVATE}' '${IDENTITY}'`,
-        ].join('\n'),
-      )
-      const runCount = async () =>
-        (await readFile(join(recoveringProbe.directory, 'runs'), 'utf-8'))
-          .split('\n')
-          .filter(line => line !== '').length
-      const target = await temporaryDirectory()
-      const cachedProbe = await Effect.runPromise(
-        makeCachedWindowsProbe(Option.some(recoveringProbe.executable)),
-      )
-      const probeTarget = () => verdictFor(cachedProbe, target)
+      const changingAccess = await standInPowerShell({
+        'reply-1': probeOutput(PRIVATE, IDENTITY),
+        'reply-2': probeOutput(SHARED, IDENTITY),
+        'reply-3': probeOutput(PRIVATE, IDENTITY),
+      })
 
-      expect(await probeTarget()).toStrictEqual(UNVERIFIED_OWNERSHIP)
-      expect(await runCount()).toBe(1)
-
-      expect(await probeTarget()).toStrictEqual(Option.none())
-      expect(await runCount()).toBe(2)
-
-      expect(await probeTarget()).toStrictEqual(Option.none())
-      expect(await runCount()).toBe(2)
+      expect(
+        await probe(changingAccess.executable, PROBED_DIRECTORY),
+      ).toStrictEqual(Option.none())
+      expect(
+        await probe(changingAccess.executable, PROBED_DIRECTORY),
+      ).toStrictEqual(SHARED_WITH_OTHER_USERS)
+      expect(
+        await probe(changingAccess.executable, PROBED_DIRECTORY),
+      ).toStrictEqual(Option.none())
+      expect(await changingAccess.runCount()).toBe(3)
     },
     PROBE_TEST_TIMEOUT,
   )
 
   it('refuses without probing when no PowerShell path is known', async () => {
-    const target = await temporaryDirectory()
-    const cachedProbe = await Effect.runPromise(
-      makeCachedWindowsProbe(Option.none()),
-    )
-
-    expect(await verdictFor(cachedProbe, target)).toStrictEqual(
-      UNVERIFIED_OWNERSHIP,
-    )
+    expect(
+      await Effect.runPromise(
+        probeWindowsDirectory(Option.none(), PROBED_DIRECTORY).pipe(
+          Effect.provide(NodeServices.layer),
+        ),
+      ),
+    ).toStrictEqual(UNVERIFIED_OWNERSHIP)
   })
 })
 
-describe('makeRelayRegistryTrust', () => {
+const icaclsPath = (): string =>
+  pipe(
+    Option.fromNullishOr(process.env['SystemRoot']),
+    Option.map(systemRoot => win32.join(systemRoot, 'System32', 'icacls.exe')),
+    Option.getOrThrowWith(() => new Error('SystemRoot is not set')),
+  )
+
+describe('relayRegistryTrust', () => {
   it.runIf(process.platform === 'win32')(
-    'probes a directory once until it is replaced',
+    'reads the access list again on every lookup',
     async () => {
       const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
       onTestFinished(() => rm(directory, { recursive: true, force: true }))
@@ -294,28 +294,30 @@ describe('makeRelayRegistryTrust', () => {
           }),
         ),
       ).pipe(Layer.provide(NodeServices.layer))
-      const trust = await Effect.runPromise(makeRelayRegistryTrust)
-      const refusal = () =>
+      const services = Layer.merge(NodeFileSystem.layer, countingSpawner)
+      const lookUp = () =>
         Effect.runPromise(
-          trust
-            .refusal(directory)
-            .pipe(
-              Effect.provide(countingSpawner),
-              Effect.provide(NodeServices.layer),
-            ),
+          relayRegistryTrust.refusal(directory).pipe(Effect.provide(services)),
         )
 
-      expect(await refusal()).toStrictEqual(Option.none())
+      expect(await lookUp()).toStrictEqual(Option.none())
       expect(spawned.count).toBe(1)
 
-      expect(await refusal()).toStrictEqual(Option.none())
-      expect(spawned.count).toBe(1)
-
-      await rm(directory, { recursive: true })
-      await mkdir(directory)
-
-      expect(await refusal()).toStrictEqual(Option.none())
+      execFileSync(icaclsPath(), [
+        directory,
+        '/grant',
+        `*${USERS_GROUP_SID}:(OI)(CI)RX`,
+      ])
+      expect(await lookUp()).toStrictEqual(SHARED_WITH_OTHER_USERS)
       expect(spawned.count).toBe(2)
+
+      execFileSync(icaclsPath(), [
+        directory,
+        '/remove:g',
+        `*${USERS_GROUP_SID}`,
+      ])
+      expect(await lookUp()).toStrictEqual(Option.none())
+      expect(spawned.count).toBe(3)
     },
     PROBE_TEST_TIMEOUT,
   )

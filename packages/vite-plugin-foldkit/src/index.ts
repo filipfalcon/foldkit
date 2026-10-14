@@ -10,7 +10,6 @@ import {
   Exit,
   Fiber,
   HashMap,
-  HashSet,
   Layer,
   Match,
   Number,
@@ -66,10 +65,7 @@ import { foldkitBuildToken } from './buildToken.js'
 import { devToolsOverlayPlugin } from './devToolsOverlay.js'
 import { crawlFoldkitPackages } from './foldkitPackages.js'
 import { publishRelayRecord, retireRelayRecord } from './relayRegistry.js'
-import {
-  type RelayRegistryTrust,
-  makeRelayRegistryTrust,
-} from './relayRegistryTrust.js'
+import { relayRegistryTrust } from './relayRegistryTrust.js'
 import { type FoldkitSsrOptions, foldkitSsr } from './ssr.js'
 import { foldkitViewIdentity } from './viewIdentity.js'
 
@@ -255,17 +251,18 @@ type PreservedEntry = Readonly<{
 type ConnectedRuntime = Readonly<{
   runtime: typeof RuntimeInfo.Type
   sequence: number
+  client: WebSocketClient
 }>
 
+// NOTE: Sockets are kept in native collections, which compare identity.
+// Effect's HashMap and HashSet hash a socket by its fields, which change while
+// it runs, so they cannot find the same socket again.
 type State = Readonly<{
   preservedModels: Ref.Ref<HashMap.HashMap<string, PreservedEntry>>
   connectedRuntimes: Ref.Ref<HashMap.HashMap<string, ConnectedRuntime>>
   nextSequence: Ref.Ref<number>
-  mcpClients: Ref.Ref<HashSet.HashSet<WebSocket>>
-  clientConnections: Ref.Ref<
-    HashMap.HashMap<WebSocketClient, HashSet.HashSet<string>>
-  >
-  trackedClients: Ref.Ref<HashSet.HashSet<WebSocketClient>>
+  mcpClients: Set<WebSocket>
+  trackedClients: WeakSet<WebSocketClient>
 }>
 
 const makeState = Effect.gen(function* () {
@@ -276,22 +273,12 @@ const makeState = Effect.gen(function* () {
     HashMap.HashMap<string, ConnectedRuntime>
   >(HashMap.empty())
   const nextSequence = yield* Ref.make(0)
-  const mcpClients = yield* Ref.make<HashSet.HashSet<WebSocket>>(
-    HashSet.empty(),
-  )
-  const clientConnections = yield* Ref.make<
-    HashMap.HashMap<WebSocketClient, HashSet.HashSet<string>>
-  >(HashMap.empty())
-  const trackedClients = yield* Ref.make<HashSet.HashSet<WebSocketClient>>(
-    HashSet.empty(),
-  )
   const state: State = {
     preservedModels,
     connectedRuntimes,
     nextSequence,
-    mcpClients,
-    clientConnections,
-    trackedClients,
+    mcpClients: new Set(),
+    trackedClients: new WeakSet(),
   }
   return state
 })
@@ -417,21 +404,12 @@ const handleConnectedEvent = (
     const connectedRuntime: ConnectedRuntime = {
       runtime: event.runtime,
       sequence,
+      client,
     }
     yield* Ref.update(
       state.connectedRuntimes,
       HashMap.set(event.runtime.connectionId, connectedRuntime),
     )
-    yield* Ref.update(state.clientConnections, currentMap => {
-      const existing = HashMap.get(currentMap, client).pipe(
-        Option.getOrElse(() => HashSet.empty<string>()),
-      )
-      return HashMap.set(
-        currentMap,
-        client,
-        HashSet.add(existing, event.runtime.connectionId),
-      )
-    })
     yield* Console.log(
       `[foldkit:devTools] runtime connected: ${event.runtime.connectionId} (${event.runtime.title})`,
     )
@@ -451,33 +429,33 @@ const handleDisconnectedEvent = (
     )
   })
 
-const pruneRuntime = (state: State, connectionId: string) =>
-  Effect.gen(function* () {
-    yield* Ref.update(state.connectedRuntimes, HashMap.remove(connectionId))
-    yield* Console.log(
-      `[foldkit:devTools] runtime pruned (socket close): ${connectionId}`,
-    )
-  })
-
-const pruneRuntimesForClient = (
-  state: State,
-  connectionIds: HashSet.HashSet<string>,
-) =>
-  Effect.forEach(
-    Array.fromIterable(connectionIds),
-    connectionId => pruneRuntime(state, connectionId),
-    { discard: true },
-  )
-
 const handleViteClientClosed = (state: State, client: WebSocketClient) =>
   Effect.gen(function* () {
-    const connections = yield* Ref.get(state.clientConnections)
-    yield* Option.match(HashMap.get(connections, client), {
-      onNone: () => Effect.void,
-      onSome: connectionIds => pruneRuntimesForClient(state, connectionIds),
-    })
-    yield* Ref.update(state.clientConnections, HashMap.remove(client))
-    yield* Ref.update(state.trackedClients, HashSet.remove(client))
+    const prunedConnectionIds = yield* Ref.modify(
+      state.connectedRuntimes,
+      current => [
+        pipe(
+          current,
+          HashMap.filter(
+            connectedRuntime => connectedRuntime.client === client,
+          ),
+          HashMap.keys,
+          Array.fromIterable,
+        ),
+        HashMap.filter(
+          current,
+          connectedRuntime => connectedRuntime.client !== client,
+        ),
+      ],
+    )
+    yield* Effect.forEach(
+      prunedConnectionIds,
+      connectionId =>
+        Console.log(
+          `[foldkit:devTools] runtime pruned (socket close): ${connectionId}`,
+        ),
+      { discard: true },
+    )
   })
 
 const handleBrowserResponseFrameReceived = (state: State, data: unknown) =>
@@ -495,10 +473,9 @@ const broadcastResponseToMcpClients = (
   frame: typeof ResponseFrame.Type,
 ) =>
   Effect.gen(function* () {
-    const clients = yield* Ref.get(state.mcpClients)
     const payload = encodeResponseFrameJson(frame)
     yield* Effect.sync(() => {
-      for (const client of clients) {
+      for (const client of state.mcpClients) {
         if (client.readyState === client.OPEN) {
           client.send(payload)
         }
@@ -508,8 +485,7 @@ const broadcastResponseToMcpClients = (
 
 const handleMcpClientConnected = (state: State, client: WebSocket) =>
   Effect.gen(function* () {
-    yield* Ref.update(state.mcpClients, HashSet.add(client))
-    const total = HashSet.size(yield* Ref.get(state.mcpClients))
+    const total = yield* Effect.sync(() => state.mcpClients.add(client).size)
     yield* Console.log(
       `[foldkit:devTools] MCP client connected (${total} total)`,
     )
@@ -517,8 +493,10 @@ const handleMcpClientConnected = (state: State, client: WebSocket) =>
 
 const handleMcpClientDisconnected = (state: State, client: WebSocket) =>
   Effect.gen(function* () {
-    yield* Ref.update(state.mcpClients, HashSet.remove(client))
-    const remaining = HashSet.size(yield* Ref.get(state.mcpClients))
+    const remaining = yield* Effect.sync(() => {
+      state.mcpClients.delete(client)
+      return state.mcpClients.size
+    })
     yield* Console.log(
       `[foldkit:devTools] MCP client disconnected (${remaining} remaining)`,
     )
@@ -541,8 +519,18 @@ const handleMcpRequestReceived = (
         Match.tag('RequestListRuntimes', () =>
           replyListRuntimes(state, client, frame.id),
         ),
-        Match.orElse(() => forwardRequestToBrowsers(server, frame)),
+        Match.orElse(() => routeRequestToRuntime(server, state, client, frame)),
       ),
+  })
+
+const sendToRequester = (
+  client: WebSocket,
+  responseFrame: typeof ResponseFrame.Type,
+) =>
+  Effect.sync(() => {
+    if (client.readyState === client.OPEN) {
+      client.send(encodeResponseFrameJson(responseFrame))
+    }
   })
 
 const replyListRuntimes = (
@@ -558,15 +546,35 @@ const replyListRuntimes = (
       Array.sort(byConnectionOrder),
       Array.map(({ runtime }) => runtime),
     )
-    const responseFrame = {
+    yield* sendToRequester(client, {
       id: requestId,
       response: Response.ResponseRuntimes({ runtimes }),
-    }
-    yield* Effect.sync(() => {
-      if (client.readyState === client.OPEN) {
-        client.send(encodeResponseFrameJson(responseFrame))
-      }
     })
+  })
+
+const routeRequestToRuntime = (
+  server: ViteDevServer,
+  state: State,
+  client: WebSocket,
+  frame: typeof RequestFrame.Type,
+) =>
+  Effect.gen(function* () {
+    const connectedRuntimes = yield* Ref.get(state.connectedRuntimes)
+    const maybeUnknownConnectionId = Option.filter(
+      frame.maybeConnectionId,
+      connectionId => !HashMap.has(connectedRuntimes, connectionId),
+    )
+
+    if (Option.isSome(maybeUnknownConnectionId)) {
+      yield* sendToRequester(client, {
+        id: frame.id,
+        response: Response.ResponseError({
+          reason: `No connected Foldkit Runtime has the id ${maybeUnknownConnectionId.value}. Call foldkit_list_runtimes for the current ids.`,
+        }),
+      })
+    } else {
+      yield* forwardRequestToBrowsers(server, frame)
+    }
   })
 
 const forwardRequestToBrowsers = (
@@ -611,23 +619,18 @@ const dispatchEvent = (server: ViteDevServer, state: State, event: Event) =>
 
 // VITE WS BRIDGE
 
-const ensureClientTracked = (
+const trackClientClose = (
   state: State,
   client: WebSocketClient,
   enqueue: (event: Event) => void,
-) =>
-  Effect.gen(function* () {
-    const tracked = yield* Ref.get(state.trackedClients)
-    if (HashSet.has(tracked, client)) {
-      return
-    }
-    yield* Ref.update(state.trackedClients, HashSet.add(client))
-    yield* Effect.sync(() =>
-      client.socket.on('close', () =>
-        enqueue(Event.ViteClientClosed({ client })),
-      ),
-    )
-  })
+): void => {
+  if (state.trackedClients.has(client)) {
+    return
+  }
+
+  state.trackedClients.add(client)
+  client.socket.on('close', () => enqueue(Event.ViteClientClosed({ client })))
+}
 
 const registerViteWsHandlers = (
   server: ViteDevServer,
@@ -644,7 +647,7 @@ const registerViteWsHandlers = (
     server.ws.on(
       'foldkit:devTools:event',
       (data: unknown, client: WebSocketClient) => {
-        Effect.runFork(ensureClientTracked(state, client, enqueue))
+        trackClientClose(state, client, enqueue)
         enqueue(Event.BrowserEventFrameReceived({ data, client }))
       },
     )
@@ -944,7 +947,7 @@ const reportRelayBindFailed = (
 const unpublishedRelayMessage = (reason: string): string =>
   `[foldkit:devTools] Cannot publish the MCP relay address: ${reason}. Set matching devToolsMcpPort and FOLDKIT_DEVTOOLS_MCP_PORT values for MCP access on a trusted network, or set FOLDKIT_DEVTOOLS_RELAY_DIRECTORY to a directory private to your user.`
 
-const publishRelay = (root: string, relay: Relay, trust: RelayRegistryTrust) =>
+const publishRelay = (root: string, relay: Relay) =>
   Effect.gen(function* () {
     const startedAt = yield* Clock.currentTimeMillis
     yield* publishRelayRecord(
@@ -956,7 +959,7 @@ const publishRelay = (root: string, relay: Relay, trust: RelayRegistryTrust) =>
         pid: process.pid,
         startedAt,
       },
-      trust,
+      relayRegistryTrust,
     )
   }).pipe(
     Effect.catchTag('RelayRegistryDirectoryRefused', ({ directory, reason }) =>
@@ -977,7 +980,6 @@ const publishRelay = (root: string, relay: Relay, trust: RelayRegistryTrust) =>
 const startMcpRelay = (
   server: ViteDevServer,
   devToolsMcpPort: number | undefined,
-  trust: RelayRegistryTrust,
   enqueue: (event: Event) => void,
 ) => {
   const root = server.config.root
@@ -1000,7 +1002,7 @@ const startMcpRelay = (
           `[foldkit:devTools] MCP relay listening at ${relayUrlForLog(relay.url)}`,
         ),
       ),
-      Effect.tap(relay => publishRelay(root, relay, trust)),
+      Effect.tap(relay => publishRelay(root, relay)),
     ),
     relay =>
       Effect.gen(function* () {
@@ -1053,9 +1055,8 @@ const main = (
     // sequencing the dispatch loop behind the bind would cost model
     // preservation whenever the port is contended.
     if (options.devToolsMcpPort !== false && !isTestRun(server)) {
-      const trust = yield* makeRelayRegistryTrust
       yield* Effect.forkScoped(
-        startMcpRelay(server, options.devToolsMcpPort, trust, enqueue),
+        startMcpRelay(server, options.devToolsMcpPort, enqueue),
       )
     }
 

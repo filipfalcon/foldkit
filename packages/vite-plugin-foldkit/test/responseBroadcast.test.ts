@@ -4,6 +4,8 @@ import { expect, it, onTestFinished } from 'vitest'
 
 import { foldkit } from '../src/index.ts'
 import {
+  announceRuntime,
+  listedRuntimeIds,
   openWebSocket,
   serverPort,
   useRelayRegistry,
@@ -51,6 +53,10 @@ it(
 
     const firstSession = await openWebSocket(record.url)
     const secondSession = await openWebSocket(record.url)
+    announceRuntime(browser, 'tab')
+    await expect
+      .poll(() => listedRuntimeIds(firstSession))
+      .toStrictEqual(['tab'])
     const seenByFirst: Array<string> = []
     const seenBySecond: Array<string> = []
     firstSession.on('message', raw =>

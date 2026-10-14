@@ -18,6 +18,9 @@ import {
   loggedErrors,
   openBrowserRuntime,
   openSession,
+  receivedRequests,
+  relayLogLines,
+  replay,
   silenceRelayErrors,
   startApplication,
   useWorkspace,
@@ -106,6 +109,49 @@ it.runIf(process.platform === 'win32')(
         ),
       ),
     ).toStrictEqual([])
+  },
+  TEST_TIMEOUT,
+)
+
+it.runIf(process.platform === 'win32')(
+  'reaches no Runtime once the registry directory is shared with other users',
+  async () => {
+    const application = join(workspace.root, 'application')
+    const server = await startApplication(application)
+    const tab = await openBrowserRuntime(server, 'runtime-application')
+    const requests = receivedRequests(tab)
+    const session = await openSession(application)
+    await expect
+      .poll(() => listedIds(session), { timeout: POLL_TIMEOUT })
+      .toStrictEqual(['runtime-application'])
+
+    execFileSync(icaclsPath(), [
+      workspace.registry,
+      '/grant',
+      `*${USERS_GROUP_SID}:(OI)(CI)RX`,
+    ])
+
+    await expect(listedIds(session)).rejects.toThrow(
+      'Not connected to a Foldkit dev server.',
+    )
+    expect(await replay(session, 'runtime-application', 1)).toContain(
+      'Not connected to a Foldkit dev server.',
+    )
+    expect(requests).toStrictEqual([])
+    await expect
+      .poll(() => relayLogLines('MCP client disconnected'), {
+        timeout: POLL_TIMEOUT,
+      })
+      .toStrictEqual([
+        '[foldkit:devTools] MCP client disconnected (0 remaining)',
+      ])
+    expect(
+      loggedErrors().filter(line =>
+        line.includes('ignoring the relay registry'),
+      ),
+    ).toStrictEqual([
+      `[foldkit-devtools-mcp] ignoring the relay registry at ${workspace.registry}: it ${SHARED_WITH_OTHER_USERS}`,
+    ])
   },
   TEST_TIMEOUT,
 )
