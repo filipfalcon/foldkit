@@ -406,6 +406,7 @@ const SDDL_ACCESS_RIGHT_CODES: ReadonlyArray<string> = [
   'GW',
   'GX',
   'RC',
+  'LC',
   'SD',
   'WD',
   'WO',

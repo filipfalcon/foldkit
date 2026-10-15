@@ -152,7 +152,7 @@ describe('windowsDirectoryRefusal', () => {
 
 describe('windowsDirectoryChainRefusal', () => {
   it('accepts read and create access on standard shared ancestors', () => {
-    const rootWithSharedCreate = `O:BAG:${GROUP}D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)(A;;0x00000006;;;BU)`
+    const rootWithSharedCreate = `O:BAG:${GROUP}D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)(A;;LC;;;BU)(A;;0x00000006;;;BU)`
 
     expect(
       windowsDirectoryChainRefusal([rootWithSharedCreate, PRIVATE], USER),
