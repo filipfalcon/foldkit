@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 import { Cause, Console, Effect, HashMap, Layer, Logger, Option } from 'effect'
 
-import {
-  NodeChildProcessSpawner,
-  NodeFileSystem,
-  NodePath,
-  NodeRuntime,
-} from '@effect/platform-node'
+import * as NodeChildProcessSpawner from '@effect/platform-node/NodeChildProcessSpawner'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodePath from '@effect/platform-node/NodePath'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {

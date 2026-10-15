@@ -55,12 +55,10 @@ import type {
 } from 'vite'
 import { type WebSocket, WebSocketServer } from 'ws'
 
-import {
-  NodeChildProcessSpawner,
-  NodeCrypto,
-  NodeFileSystem,
-  NodePath,
-} from '@effect/platform-node'
+import * as NodeChildProcessSpawner from '@effect/platform-node/NodeChildProcessSpawner'
+import * as NodeCrypto from '@effect/platform-node/NodeCrypto'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodePath from '@effect/platform-node/NodePath'
 
 import { type FoldkitBuildOptions, foldkitBuild } from './build.js'
 import { foldkitBuildToken } from './buildToken.js'
