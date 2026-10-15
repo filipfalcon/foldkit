@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import {
   chmod,
   copyFile,
+  mkdir,
   mkdtemp,
   realpath,
   readFile,
@@ -21,6 +22,7 @@ import {
   powershellPath,
   probeWindowsDirectory,
   relayRegistryTrust,
+  windowsDirectoryChainRefusal,
   windowsDirectoryRefusal,
 } from '../src/relayRegistryTrust.ts'
 
@@ -30,13 +32,16 @@ const DOMAIN_ADMINISTRATOR = 'S-1-5-21-4444444444-5555555555-6666666666-500'
 const GROUP = 'S-1-5-21-1111111111-2222222222-3333333333-513'
 const PRIVATE = `O:${USER}G:${GROUP}D:(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;${USER})`
 const SHARED = `O:${USER}G:${GROUP}D:(A;OICI;FA;;;${USER})(A;OICI;0x1200a9;;;BU)`
+const WINDOWS_ROOT = `O:BAG:${GROUP}D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FR;;;BU)`
 const IDENTITY = `"host\\user","${USER}"`
 const USERS_GROUP_SID = 'S-1-5-32-545'
+const TRUSTED_INSTALLER =
+  'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464'
 const PROBED_DIRECTORY = 'C:\\registry'
 const PROBE_TEST_TIMEOUT = 30_000
 const NATIVE_PROBE_TIMEOUT = 10_000
 const NATIVE_PROBE_SCRIPT =
-  '$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; ([System.IO.Directory]::GetAccessControl($env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY)).GetSecurityDescriptorSddlForm($sections); & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
+  '$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
 const SECONDS_PAST_PROBE_LIMIT = '30'
 const STAND_IN_POWERSHELL = join(
   import.meta.dirname,
@@ -53,6 +58,9 @@ const UNVERIFIED_PERMISSIONS = Option.some(
 const OWNED_BY_ANOTHER_USER = Option.some('is owned by another user')
 const SHARED_WITH_OTHER_USERS = Option.some(
   'is readable or writable by other users',
+)
+const REPLACEABLE_PARENT = Option.some(
+  'has a parent directory that another user can replace',
 )
 
 describe('windowsDirectoryRefusal', () => {
@@ -141,6 +149,78 @@ describe('windowsDirectoryRefusal', () => {
   })
 })
 
+describe('windowsDirectoryChainRefusal', () => {
+  it('accepts read and create access on standard shared ancestors', () => {
+    const rootWithSharedCreate = `O:BAG:${GROUP}D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)(A;;0x00000006;;;BU)`
+
+    expect(
+      windowsDirectoryChainRefusal([rootWithSharedCreate, PRIVATE], USER),
+    ).toStrictEqual(Option.none())
+  })
+
+  it('accepts a protected ancestor owned by TrustedInstaller', () => {
+    const protectedRoot = `O:${TRUSTED_INSTALLER}G:${GROUP}D:(A;;FA;;;${TRUSTED_INSTALLER})(A;;FA;;;SY)(A;;FR;;;BU)`
+
+    expect(
+      windowsDirectoryChainRefusal([protectedRoot, PRIVATE], USER),
+    ).toStrictEqual(Option.none())
+  })
+
+  it('refuses delete-child access on a parent', () => {
+    const replaceableRoot = `O:BAG:${GROUP}D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00000040;;;BU)`
+
+    expect(
+      windowsDirectoryChainRefusal([replaceableRoot, PRIVATE], USER),
+    ).toStrictEqual(REPLACEABLE_PARENT)
+  })
+
+  it('refuses delete or permission-control access on a child', () => {
+    for (const rights of ['SD', 'WD', 'WO', 'FA', '0x00010000', '0x10000000']) {
+      const replaceable = `O:${USER}G:${GROUP}D:(A;;FA;;;${USER})(A;;${rights};;;BU)`
+
+      expect(
+        windowsDirectoryChainRefusal(
+          [WINDOWS_ROOT, replaceable, PRIVATE],
+          USER,
+        ),
+      ).toStrictEqual(REPLACEABLE_PARENT)
+    }
+  })
+
+  it('refuses another owner or an unrecognized access-right family', () => {
+    const anotherOwner = `O:${OTHER}G:${GROUP}D:(A;;FR;;;BU)`
+    const registryKeyRights = `O:${USER}G:${GROUP}D:(A;;FA;;;${USER})(A;;KA;;;BU)`
+    const unknownNumericRights = `O:${USER}G:${GROUP}D:(A;;FA;;;${USER})(A;;0x02000000;;;BU)`
+
+    expect(
+      windowsDirectoryChainRefusal([WINDOWS_ROOT, anotherOwner, PRIVATE], USER),
+    ).toStrictEqual(REPLACEABLE_PARENT)
+    expect(
+      windowsDirectoryChainRefusal(
+        [WINDOWS_ROOT, registryKeyRights, PRIVATE],
+        USER,
+      ),
+    ).toStrictEqual(UNVERIFIED_PERMISSIONS)
+    expect(
+      windowsDirectoryChainRefusal(
+        [WINDOWS_ROOT, unknownNumericRights, PRIVATE],
+        USER,
+      ),
+    ).toStrictEqual(UNVERIFIED_PERMISSIONS)
+  })
+
+  it('ignores inherit-only replacement access on the current object', () => {
+    const inheritedForChildren = `O:${USER}G:${GROUP}D:(A;OICIIO;FA;;;BU)(A;;FA;;;${USER})`
+
+    expect(
+      windowsDirectoryChainRefusal(
+        [WINDOWS_ROOT, inheritedForChildren, PRIVATE],
+        USER,
+      ),
+    ).toStrictEqual(Option.none())
+  })
+})
+
 describe('powershellPath', () => {
   it('names PowerShell by its absolute path under the system root', () => {
     expect(powershellPath('C:\\Windows')).toBe(
@@ -193,10 +273,10 @@ describe('probeWindowsDirectory', () => {
     'reads the descriptor and the user from the probe output',
     async () => {
       const accepted = await standInPowerShell({
-        reply: `${PRIVATE}\r\n${IDENTITY}\r\n`,
+        reply: `${WINDOWS_ROOT}\r\n${PRIVATE}\r\n${IDENTITY}\r\n`,
       })
       const shared = await standInPowerShell({
-        reply: probeOutput('', SHARED, IDENTITY),
+        reply: probeOutput('', WINDOWS_ROOT, SHARED, IDENTITY),
       })
 
       expect(await probe(accepted.executable, PROBED_DIRECTORY)).toStrictEqual(
@@ -225,15 +305,17 @@ describe('probeWindowsDirectory', () => {
     'refuses when the probe fails, prints too little, or does not finish',
     async () => {
       const failing = await standInPowerShell({
-        reply: probeOutput(PRIVATE, IDENTITY),
+        reply: probeOutput(WINDOWS_ROOT, PRIVATE, IDENTITY),
         status: '1',
       })
-      const silent = await standInPowerShell({ reply: probeOutput(PRIVATE) })
+      const silent = await standInPowerShell({
+        reply: probeOutput(WINDOWS_ROOT, PRIVATE),
+      })
       const anonymous = await standInPowerShell({
-        reply: probeOutput(PRIVATE, '"host\\user","unknown"'),
+        reply: probeOutput(WINDOWS_ROOT, PRIVATE, '"host\\user","unknown"'),
       })
       const hanging = await standInPowerShell({
-        reply: probeOutput(PRIVATE, IDENTITY),
+        reply: probeOutput(WINDOWS_ROOT, PRIVATE, IDENTITY),
         delay: SECONDS_PAST_PROBE_LIMIT,
       })
 
@@ -265,9 +347,9 @@ describe('probeWindowsDirectory', () => {
     'reads the descriptor again on every lookup',
     async () => {
       const changingAccess = await standInPowerShell({
-        'reply-1': probeOutput(PRIVATE, IDENTITY),
-        'reply-2': probeOutput(SHARED, IDENTITY),
-        'reply-3': probeOutput(PRIVATE, IDENTITY),
+        'reply-1': probeOutput(WINDOWS_ROOT, PRIVATE, IDENTITY),
+        'reply-2': probeOutput(WINDOWS_ROOT, SHARED, IDENTITY),
+        'reply-3': probeOutput(WINDOWS_ROOT, PRIVATE, IDENTITY),
       })
 
       expect(
@@ -372,6 +454,59 @@ describe('relayRegistryTrust', () => {
     expect(inspection.maybeRefusal).toStrictEqual(Option.none())
     expect(inspection.directory).toBe(await realpath(directory))
   })
+
+  it.skipIf(process.platform === 'win32')(
+    'accepts a private directory through a canonical ancestor link',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+      const target = join(root, 'target')
+      const link = join(root, 'link')
+      const directory = join(target, 'registry')
+      onTestFinished(() => rm(root, { recursive: true, force: true }))
+      await mkdir(target, { mode: 0o700 })
+      await mkdir(directory, { mode: 0o700 })
+      await symlink(target, link, 'dir')
+
+      const inspection = await inspect(join(link, 'registry'))
+
+      expect(inspection.maybeRefusal).toStrictEqual(Option.none())
+      expect(inspection.directory).toBe(await realpath(directory))
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'accepts a private directory beneath a sticky shared parent',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+      const parent = join(root, 'shared')
+      const directory = join(parent, 'registry')
+      onTestFinished(() => rm(root, { recursive: true, force: true }))
+      await mkdir(parent)
+      await chmod(parent, 0o1777)
+      await mkdir(directory, { mode: 0o700 })
+
+      expect((await inspect(directory)).maybeRefusal).toStrictEqual(
+        Option.none(),
+      )
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'refuses a private directory beneath a replaceable parent',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+      const parent = join(root, 'shared')
+      const directory = join(parent, 'registry')
+      onTestFinished(() => rm(root, { recursive: true, force: true }))
+      await mkdir(parent)
+      await chmod(parent, 0o777)
+      await mkdir(directory, { mode: 0o700 })
+
+      expect((await inspect(directory)).maybeRefusal).toStrictEqual(
+        REPLACEABLE_PARENT,
+      )
+    },
+  )
 
   it('refuses a regular file', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))

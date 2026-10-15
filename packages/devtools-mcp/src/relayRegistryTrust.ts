@@ -11,18 +11,23 @@ import {
 } from 'effect'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import { lstat, realpath } from 'node:fs/promises'
-import { win32 } from 'node:path'
+import { dirname, win32 } from 'node:path'
 
 const PERMISSIONS_BEYOND_OWNER = 0o077
+const PARENT_WRITE_PERMISSIONS = 0o022
+const STICKY_DIRECTORY = 0o1000
+const ROOT_UID = 0
 const PROBE_TIMEOUT = Duration.seconds(10)
 const PROBED_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_PROBED_DIRECTORY'
-const PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; ([System.IO.Directory]::GetAccessControl($env:${PROBED_DIRECTORY_VARIABLE})).GetSecurityDescriptorSddlForm($sections); & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
+const PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:${PROBED_DIRECTORY_VARIABLE}); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
 
 const UNVERIFIED_OWNERSHIP = 'has ownership that cannot be verified'
 const UNVERIFIED_PERMISSIONS = 'has permissions that cannot be verified'
 const OWNED_BY_ANOTHER_USER = 'is owned by another user'
 const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
 const NOT_REGULAR_DIRECTORY = 'is not a regular directory'
+const REPLACEABLE_PARENT =
+  'has a parent directory that another user can replace'
 
 const SECURITY_DESCRIPTOR_PATTERN =
   /^O:(S-1-[0-9-]+|[A-Z]{2})(?:G:(?:S-1-[0-9-]+|[A-Z]{2}))?(?:D:([A-Z_]*)((?:\([^()]*\))*))?(?:S:.*)?$/
@@ -42,6 +47,8 @@ const PRIVILEGED_ACCOUNTS: ReadonlyArray<string> = [
   'S-1-5-32-544',
   'LA',
 ]
+const TRUSTED_INSTALLER_SID =
+  'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464'
 const CREATOR_ACCOUNTS: ReadonlyArray<string> = [
   'CO',
   'S-1-3-0',
@@ -54,7 +61,15 @@ const SECURITY_IDENTIFIER_PATTERN = /^S-1-[0-9-]+$/
 
 type AccessControlEntry = Readonly<{
   type: string
+  flags: string
+  rights: string
   account: string
+}>
+
+type SecurityDescriptor = Readonly<{
+  owner: string
+  flags: string
+  entries: ReadonlyArray<AccessControlEntry>
 }>
 
 class WindowsProbeFailed extends Data.TaggedError('WindowsProbeFailed')<{}> {}
@@ -122,6 +137,66 @@ const posixDirectoryRefusal = (
   )
 }
 
+const directoryChain = (
+  directory: string,
+  parentOf: (path: string) => string = dirname,
+): ReadonlyArray<string> => {
+  const directories: Array<string> = []
+  let current = directory
+
+  while (true) {
+    directories.push(current)
+    const parent = parentOf(current)
+
+    if (parent === current) {
+      return Array.reverse(directories)
+    }
+
+    current = parent
+  }
+}
+
+const posixParentChainRefusal = (directory: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const currentUid = process.getuid?.()
+
+      if (currentUid === undefined) {
+        return Option.some(UNVERIFIED_OWNERSHIP)
+      }
+
+      for (const component of directoryChain(directory)) {
+        const entry = await lstat(component, { bigint: true })
+        const uid = globalThis.Number(entry.uid)
+        const mode = globalThis.Number(entry.mode)
+
+        if (
+          entry.isSymbolicLink() ||
+          !entry.isDirectory() ||
+          !globalThis.Number.isSafeInteger(uid) ||
+          !globalThis.Number.isSafeInteger(mode)
+        ) {
+          return Option.some(UNVERIFIED_OWNERSHIP)
+        }
+
+        if (uid !== currentUid && uid !== ROOT_UID) {
+          return Option.some(REPLACEABLE_PARENT)
+        }
+
+        const isParent = component !== directory
+        const isWritableByOtherUsers = (mode & PARENT_WRITE_PERMISSIONS) !== 0
+        const isSticky = (mode & STICKY_DIRECTORY) !== 0
+
+        if (isParent && isWritableByOtherUsers && !isSticky) {
+          return Option.some(REPLACEABLE_PARENT)
+        }
+      }
+
+      return Option.none<string>()
+    },
+    catch: () => new DirectoryProbeFailed(),
+  })
+
 const capturedGroup = (
   match: RegExpMatchArray,
   group: number,
@@ -145,7 +220,12 @@ const parseAccessControlEntry = (
     return Option.none()
   }
 
-  return Option.some({ type, account: Array.lastNonEmpty(fields) })
+  return Option.all({
+    type: Option.some(type),
+    flags: Array.get(fields, 1),
+    rights: Array.get(fields, 2),
+    account: Option.some(Array.lastNonEmpty(fields)),
+  })
 }
 
 const parseAccessControlEntries = (
@@ -164,33 +244,41 @@ const parseAccessControlEntries = (
     Option.all,
   )
 
+const parseSecurityDescriptor = (
+  sddl: string,
+): Option.Option<SecurityDescriptor> =>
+  Option.flatMap(
+    Option.fromNullishOr(SECURITY_DESCRIPTOR_PATTERN.exec(sddl)),
+    descriptor =>
+      Option.all({
+        owner: capturedGroup(descriptor, OWNER_GROUP),
+        flags: capturedGroup(descriptor, ACCESS_CONTROL_FLAGS_GROUP),
+        entries: Option.flatMap(
+          capturedGroup(descriptor, ACCESS_CONTROL_ENTRIES_GROUP),
+          parseAccessControlEntries,
+        ),
+      }),
+  )
+
 export const windowsDirectoryRefusal = (
   sddl: string,
   currentUserSid: string,
 ): Option.Option<string> => {
-  const maybeDescriptor = Option.fromNullishOr(
+  const maybeRawDescriptor = Option.fromNullishOr(
     SECURITY_DESCRIPTOR_PATTERN.exec(sddl),
   )
 
-  if (Option.isNone(maybeDescriptor)) {
+  if (Option.isNone(maybeRawDescriptor)) {
     return Option.some(UNVERIFIED_OWNERSHIP)
   }
 
-  const descriptor = maybeDescriptor.value
-  const maybeAccessControl = Option.all([
-    capturedGroup(descriptor, OWNER_GROUP),
-    capturedGroup(descriptor, ACCESS_CONTROL_FLAGS_GROUP),
-    Option.flatMap(
-      capturedGroup(descriptor, ACCESS_CONTROL_ENTRIES_GROUP),
-      parseAccessControlEntries,
-    ),
-  ])
+  const maybeDescriptor = parseSecurityDescriptor(sddl)
 
-  if (Option.isNone(maybeAccessControl)) {
+  if (Option.isNone(maybeDescriptor)) {
     return Option.some(UNVERIFIED_PERMISSIONS)
   }
 
-  const [owner, flags, entries] = maybeAccessControl.value
+  const { owner, flags, entries } = maybeDescriptor.value
 
   if (String.includes(NO_ACCESS_CONTROL_FLAG)(flags)) {
     return Option.some(SHARED_WITH_OTHER_USERS)
@@ -217,6 +305,159 @@ export const windowsDirectoryRefusal = (
   return Option.none()
 }
 
+const SDDL_ACCESS_RIGHT_CODES: ReadonlyArray<string> = [
+  'GA',
+  'GR',
+  'GW',
+  'GX',
+  'RC',
+  'SD',
+  'WD',
+  'WO',
+  'FA',
+  'FR',
+  'FW',
+  'FX',
+]
+const HEX_ACCESS_RIGHTS_PATTERN = /^0x[0-9a-f]+$/i
+const SYMBOLIC_ACCESS_RIGHTS_PATTERN = /[A-Z]{2}/g
+const DELETE_ACCESS = 0x0001_0000
+const DELETE_CHILD_ACCESS = 0x0000_0040
+const CHANGE_PERMISSIONS_ACCESS = 0x0004_0000
+const TAKE_OWNERSHIP_ACCESS = 0x0008_0000
+const GENERIC_ALL_ACCESS = 0x1000_0000
+const KNOWN_FILE_ACCESS = 0xf11f_01ff
+const CHILD_REPLACEMENT_ACCESS =
+  DELETE_ACCESS |
+  CHANGE_PERMISSIONS_ACCESS |
+  TAKE_OWNERSHIP_ACCESS |
+  GENERIC_ALL_ACCESS
+const PARENT_REPLACEMENT_ACCESS =
+  DELETE_CHILD_ACCESS |
+  CHANGE_PERMISSIONS_ACCESS |
+  TAKE_OWNERSHIP_ACCESS |
+  GENERIC_ALL_ACCESS
+
+const symbolicAccessRights = (
+  rights: string,
+): Option.Option<ReadonlyArray<string>> =>
+  Option.flatMap(
+    pipe(
+      rights,
+      String.matchAll(SYMBOLIC_ACCESS_RIGHTS_PATTERN),
+      Array.fromIterable,
+      Array.map(Array.head),
+      Option.all,
+    ),
+    codes => {
+      const isComplete = Array.length(codes) * 2 === rights.length
+      const areKnown = Array.every(codes, code =>
+        Array.contains(SDDL_ACCESS_RIGHT_CODES, code),
+      )
+
+      return isComplete && areKnown && Array.isArrayNonEmpty(codes)
+        ? Option.some(codes)
+        : Option.none()
+    },
+  )
+
+const accessGrantsReplacement = (
+  rights: string,
+  mask: number,
+  symbolicRights: ReadonlyArray<string>,
+): Option.Option<boolean> => {
+  if (HEX_ACCESS_RIGHTS_PATTERN.test(rights)) {
+    const parsed = globalThis.Number.parseInt(rights.slice(2), 16)
+    const isKnownMask =
+      globalThis.Number.isSafeInteger(parsed) &&
+      parsed <= 0xffff_ffff &&
+      ((parsed >>> 0) & ~KNOWN_FILE_ACCESS) === 0
+
+    return isKnownMask ? Option.some((parsed & mask) !== 0) : Option.none()
+  }
+
+  return Option.map(symbolicAccessRights(rights), codes =>
+    Array.some(codes, code =>
+      Array.contains([...symbolicRights, 'GA', 'FA'], code),
+    ),
+  )
+}
+
+export const windowsDirectoryChainRefusal = (
+  descriptors: ReadonlyArray<string>,
+  currentUserSid: string,
+): Option.Option<string> => {
+  if (Option.isNone(Array.head(descriptors))) {
+    return Option.some(UNVERIFIED_OWNERSHIP)
+  }
+
+  const maybeParentDescriptors = Option.all(
+    Array.map(Array.dropRight(descriptors, 1), parseSecurityDescriptor),
+  )
+
+  if (Option.isNone(maybeParentDescriptors)) {
+    return Option.some(UNVERIFIED_PERMISSIONS)
+  }
+
+  const parentDescriptors = maybeParentDescriptors.value
+  const trustedParentOwners = [
+    currentUserSid,
+    ...PRIVILEGED_ACCOUNTS,
+    TRUSTED_INSTALLER_SID,
+  ]
+  const trustedAccounts = [...trustedParentOwners, ...CREATOR_ACCOUNTS]
+
+  for (const [index, descriptor] of parentDescriptors.entries()) {
+    if (!Array.contains(trustedParentOwners, descriptor.owner)) {
+      return Option.some(REPLACEABLE_PARENT)
+    }
+
+    if (String.includes(NO_ACCESS_CONTROL_FLAG)(descriptor.flags)) {
+      return Option.some(REPLACEABLE_PARENT)
+    }
+
+    const isRoot = index === 0
+
+    for (const entry of descriptor.entries) {
+      const isUntrustedAllow =
+        Array.contains(ALLOW_ENTRY_TYPES, entry.type) &&
+        !Array.contains(trustedAccounts, entry.account) &&
+        !String.includes('IO')(entry.flags)
+
+      if (!isUntrustedAllow) {
+        continue
+      }
+
+      const maybeCanReplaceSelf = isRoot
+        ? Option.some(false)
+        : accessGrantsReplacement(entry.rights, CHILD_REPLACEMENT_ACCESS, [
+            'SD',
+            'WD',
+            'WO',
+          ])
+      const maybeCanReplaceChild = accessGrantsReplacement(
+        entry.rights,
+        PARENT_REPLACEMENT_ACCESS,
+        ['DC', 'WD', 'WO'],
+      )
+      const maybeCanReplace = Option.map(
+        Option.all([maybeCanReplaceSelf, maybeCanReplaceChild]),
+        Array.some(value => value),
+      )
+
+      if (Option.isNone(maybeCanReplace)) {
+        return Option.some(UNVERIFIED_PERMISSIONS)
+      }
+
+      if (maybeCanReplace.value) {
+        return Option.some(REPLACEABLE_PARENT)
+      }
+    }
+  }
+
+  return Option.none()
+}
+
 export const powershellPath = (systemRoot: string): string =>
   win32.join(
     systemRoot,
@@ -238,6 +479,7 @@ const currentUserSidFromCsv = (identity: string): Option.Option<string> =>
 
 const probeOutputRefusal = (
   output: string,
+  directory: string,
 ): Effect.Effect<Option.Option<string>, WindowsProbeFailed> => {
   const lines = pipe(
     output,
@@ -245,16 +487,35 @@ const probeOutputRefusal = (
     Array.map(String.trim),
     Array.filter(String.isNonEmpty),
   )
-  const maybeDescriptor = Array.head(lines)
   const maybeCurrentUserSid = Option.flatMap(
-    Array.get(lines, 1),
+    Array.last(lines),
     currentUserSidFromCsv,
   )
+  const descriptors = Array.take(lines, Array.length(lines) - 1)
+  const expectedDescriptorCount = Array.length(
+    directoryChain(directory, win32.dirname),
+  )
 
-  return Option.match(Option.all([maybeDescriptor, maybeCurrentUserSid]), {
+  return Option.match(maybeCurrentUserSid, {
     onNone: () => Effect.fail(new WindowsProbeFailed()),
-    onSome: ([descriptor, currentUserSid]) =>
-      Effect.succeed(windowsDirectoryRefusal(descriptor, currentUserSid)),
+    onSome: currentUserSid => {
+      if (Array.length(descriptors) !== expectedDescriptorCount) {
+        return Effect.fail(new WindowsProbeFailed())
+      }
+
+      const maybeLeafDescriptor = Array.last(descriptors)
+
+      return Option.match(maybeLeafDescriptor, {
+        onNone: () => Effect.fail(new WindowsProbeFailed()),
+        onSome: leafDescriptor =>
+          Effect.succeed(
+            Option.orElse(
+              windowsDirectoryChainRefusal(descriptors, currentUserSid),
+              () => windowsDirectoryRefusal(leafDescriptor, currentUserSid),
+            ),
+          ),
+      })
+    },
   })
 }
 
@@ -286,7 +547,7 @@ const readWindowsDirectoryRefusal = (
     )
 
     if (exitCode === 0) {
-      return yield* probeOutputRefusal(output)
+      return yield* probeOutputRefusal(output, directory)
     } else {
       return yield* Effect.fail(new WindowsProbeFailed())
     }
@@ -365,9 +626,31 @@ export const relayRegistryTrust: RelayRegistryTrust = {
               ),
               probe.directory,
             )
-          : posixDirectoryRefusal(probe.entry.mode, probe.entry.uid)
+          : yield* posixParentChainRefusal(probe.directory).pipe(
+              Effect.map(maybeParentRefusal =>
+                Option.orElse(maybeParentRefusal, () =>
+                  posixDirectoryRefusal(probe.entry.mode, probe.entry.uid),
+                ),
+              ),
+            )
 
-      return { directory: probe.directory, maybeRefusal }
+      if (Option.isSome(maybeRefusal)) {
+        return { directory: probe.directory, maybeRefusal }
+      }
+
+      const confirmation = yield* probeDirectoryEntry(directory)
+      const isSameDirectory =
+        Option.isNone(confirmation.maybeRefusal) &&
+        confirmation.directory === probe.directory &&
+        confirmation.entry.dev === probe.entry.dev &&
+        confirmation.entry.ino === probe.entry.ino
+
+      return {
+        directory: probe.directory,
+        maybeRefusal: isSameDirectory
+          ? Option.none<string>()
+          : Option.some(UNVERIFIED_OWNERSHIP),
+      }
     }).pipe(
       Effect.orElseSucceed(() => ({
         directory,
