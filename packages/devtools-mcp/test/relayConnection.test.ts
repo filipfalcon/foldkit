@@ -9,6 +9,7 @@ import {
   pipe,
 } from 'effect'
 import { Request } from 'foldkit/devtools-protocol'
+import type { IncomingMessage } from 'node:http'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
 import { expect, it, onTestFinished, vi } from 'vitest'
@@ -51,7 +52,9 @@ const fixedTarget = (url: string): RelayTarget => ({
   maybeProjectRoot: Option.none(),
 })
 
-const startRelay = async (onConnection: (socket: WebSocket) => void) => {
+const startRelay = async (
+  onConnection: (socket: WebSocket, request: IncomingMessage) => void,
+) => {
   const relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
   onTestFinished(() => new Promise<void>(done => relay.close(() => done())))
   await new Promise<void>(resolveListening =>
@@ -536,6 +539,34 @@ it(
     )
     expect(loggedErrors()).toContainEqual(
       `[foldkit-devtools-mcp] connect attempt to ${UNPARSEABLE_RELAY_URL} failed: ${INVALID_ADDRESS_REASON}`,
+    )
+  },
+  TEST_TIMEOUT,
+)
+
+it(
+  'does not send a registry token or tool request to a relay that cannot prove its identity',
+  async () => {
+    const token = 'a'.repeat(64)
+    const receivedFrames: Array<string> = []
+    const receivedUrls: Array<string> = []
+    const url = await startRelay((socket, request) => {
+      receivedUrls.push(request.url ?? '')
+      socket.on('message', raw => receivedFrames.push(raw.toString()))
+    })
+    const client = await openClient(
+      Effect.succeed([
+        fixedTarget(`${url}/__foldkit/devtools-mcp?token=${token}`),
+      ]),
+    )
+
+    await expect(listedIds(client)).rejects.toThrow(NOT_CONNECTED)
+
+    expect(receivedUrls).toHaveLength(1)
+    expect(receivedUrls.join()).not.toContain(token)
+    expect(receivedFrames).toStrictEqual([])
+    expect(loggedErrors()).toContainEqual(
+      expect.stringContaining('the relay could not prove its identity'),
     )
   },
   TEST_TIMEOUT,

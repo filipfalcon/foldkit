@@ -13,12 +13,13 @@ Several applications, agent sessions, and dev servers now work at once:
 - The MCP server no longer connects in the background. It looks up the registry and connects when a tool is called, so a dev server started or restarted after the agent is reached on the next call, and a relay that drops connections costs one connection attempt per call. Every call, including one that names a `runtime_id`, lists the Runtimes again before it sends a request, so a request for a Runtime that no dev server lists fails at once instead of after ten seconds.
 - The relay removes the Runtimes of a browser tab whose socket closes, and answers a request for a Runtime it does not list with an error. Before, a closed tab stayed in `foldkit_list_runtimes`, and a request to it waited for the MCP server's ten-second timeout.
 - MCP request cancellation interrupts the waiting tool call while shared discovery remains available to other calls. Closing the MCP session interrupts discovery and releases its relay sockets.
-- The MCP server ignores a registry directory that is owned by another user or that other users can read or write, the check the plugin already applied before publishing.
+- The MCP server ignores a registry directory that is owned by another user, that other users can read or write, or that is a symlink or junction. The plugin applies the same check before publishing. Registry record files are created exclusively, so an existing path cannot redirect publication. The MCP client signs a challenge with the published token and verifies the relay's proof before sending tool requests, so a replacement listener cannot impersonate a relay from a stale record.
 - On Windows, the Vite plugin and the MCP server read the registry directory's owner and access list through the Windows .NET API in PowerShell on every lookup and use the directory when it is private to the current user, so automatic discovery is no longer limited to macOS and Linux.
 
-This breaks two setups:
+This breaks three setups:
 
 - The relay no longer follows `server.host`, so an agent on another host cannot reach a discovered relay. Set `devToolsMcpPort` in the Vite config, and set `FOLDKIT_DEVTOOLS_MCP_PORT` and `FOLDKIT_DEVTOOLS_MCP_HOST` for the MCP server. That port has no token, so do not use it on a shared or untrusted network.
 - `FOLDKIT_DEVTOOLS_MCP_HOST` no longer replaces the host of a discovered relay. Like `FOLDKIT_DEVTOOLS_MCP_PORT`, it now skips discovery and connects to that host on the configured port, or on `9988`.
+- A new MCP server refuses an older automatic relay that cannot prove its identity. Upgrade the MCP server and Vite plugin together to use the signed connection handshake.
 
 `devToolsMcpPort`, the token, the registry location, the record format, the `9988` fallback, and every tool name and input are unchanged. An MCP server from an earlier release still discovers the new records, but the connection only survives beside other upgrade handlers once the plugin is upgraded.

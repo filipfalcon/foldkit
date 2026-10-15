@@ -18,6 +18,7 @@ import {
 
 const PROJECT_ROOT = '/workspace/app'
 const PRIVATE_DIRECTORY_MODE = 0o700
+const RELAY_TOKEN = 'a'.repeat(64)
 
 const settings = (overrides: Partial<Settings> = {}): Settings => ({
   maybeConfiguredPort: Option.none(),
@@ -30,7 +31,7 @@ const published: RelayRecord = {
   version: 1,
   id: 'relay',
   root: PROJECT_ROOT,
-  url: 'ws://127.0.0.1:5173/__foldkit/devtools-mcp?token=abc',
+  url: `ws://127.0.0.1:5173/__foldkit/devtools-mcp?token=${RELAY_TOKEN}`,
   pid: process.pid,
   startedAt: 1,
 }
@@ -65,14 +66,14 @@ describe('resolveRelayTargets', () => {
     await rm(registryDirectory, { recursive: true, force: true })
   })
 
-  const publish = async () => {
+  const publish = async (record: RelayRecord = published) => {
     await mkdir(registryDirectory, {
       recursive: true,
       mode: PRIVATE_DIRECTORY_MODE,
     })
     await writeFile(
       join(registryDirectory, 'app.json'),
-      JSON.stringify(published),
+      JSON.stringify(record),
       'utf-8',
     )
   }
@@ -120,6 +121,33 @@ describe('resolveRelayTargets', () => {
         maybeProjectRoot: Option.some(PROJECT_ROOT),
       },
     ])
+  })
+
+  it('uses a published configured relay on localhost', async () => {
+    const configured = { ...published, url: 'ws://localhost:4600' }
+    await publish(configured)
+
+    expect(await resolveUrls(settings())).toStrictEqual([configured.url])
+  })
+
+  it.each([
+    'ws://remote.example:5173/__foldkit/devtools-mcp?token=' + RELAY_TOKEN,
+    'wss://127.0.0.1:5173/__foldkit/devtools-mcp?token=' + RELAY_TOKEN,
+    'ws://127.0.0.1:5173/__foldkit/devtools-mcp?token=short',
+    'ws://127.0.0.1:5173/__foldkit/devtools-mcp?token=' +
+      RELAY_TOKEN +
+      '&extra=value',
+    'ws://user@127.0.0.1:5173/__foldkit/devtools-mcp?token=' + RELAY_TOKEN,
+    'ws://127.0.0.1:5173/__foldkit/devtools-mcp?token=' +
+      RELAY_TOKEN +
+      '#fragment',
+    'ws://127.0.0.1/__foldkit/devtools-mcp?token=' + RELAY_TOKEN,
+    'ws://localhost:4600/other',
+    'ws://localhost:4600?token=' + RELAY_TOKEN,
+  ])('ignores an unsafe published relay address: %s', async url => {
+    await publish({ ...published, url })
+
+    expect(await resolveUrls(settings())).toStrictEqual(['ws://localhost:9988'])
   })
 
   it('uses the legacy port when no relay is published', async () => {

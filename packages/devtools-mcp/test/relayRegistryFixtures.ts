@@ -1,4 +1,4 @@
-import { ConfigProvider, Effect, HashSet, Ref } from 'effect'
+import { ConfigProvider, Effect, HashSet, Option, Ref } from 'effect'
 
 import { NodeServices } from '@effect/platform-node'
 
@@ -27,7 +27,10 @@ export const makeUncheckedRegistryReader: Effect.Effect<RelayRegistryReader> =
   Effect.gen(function* () {
     const reportedRefusals = yield* Ref.make(HashSet.empty<string>())
     const registryReader: RelayRegistryReader = {
-      trust: { refusal: () => Effect.succeedNone },
+      trust: {
+        inspect: directory =>
+          Effect.succeed({ directory, maybeRefusal: Option.none() }),
+      },
       reportedRefusals,
     }
 

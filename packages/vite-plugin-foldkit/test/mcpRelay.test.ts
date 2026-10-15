@@ -9,7 +9,16 @@ import {
   Schema,
 } from 'effect'
 import { RelayRecord } from 'foldkit/devtools-protocol'
-import { chmod, readFile, readdir, writeFile } from 'node:fs/promises'
+import { createHmac } from 'node:crypto'
+import {
+  chmod,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { createServer as createNetServer } from 'node:net'
 import { networkInterfaces } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -570,6 +579,59 @@ describe('DevTools MCP relay discovery', () => {
   )
 
   it(
+    'proves its identity to a client that sends a signed challenge',
+    async () => {
+      const server = await startListeningServer({})
+      const record = await waitUntilPublished(server.config.root)
+      const url = new URL(record.url)
+      const token = Option.getOrThrowWith(
+        Option.fromNullishOr(url.searchParams.get('token')),
+        () => new Error('the relay record has no token'),
+      )
+      url.search = ''
+      const challenge = '1'.repeat(64)
+      const proof = (role: 'client' | 'server') =>
+        createHmac('sha256', token).update(`${role}:${challenge}`).digest('hex')
+      const client = new WebSocket(url, {
+        headers: {
+          'X-Foldkit-Relay-Challenge': challenge,
+          'X-Foldkit-Relay-Client-Proof': proof('client'),
+        },
+      })
+      onTestFinished(() => client.terminate())
+      const serverProof = new Promise<string | undefined>(resolveProof => {
+        client.once('upgrade', response => {
+          const received = response.headers['x-foldkit-relay-server-proof']
+          resolveProof(Predicate.isString(received) ? received : undefined)
+        })
+      })
+
+      await new Promise<void>((resolveOpen, reject) => {
+        client.once('open', () => resolveOpen())
+        client.once('error', reject)
+      })
+
+      expect(await serverProof).toBe(proof('server'))
+
+      const wrongClient = new WebSocket(url, {
+        headers: {
+          'X-Foldkit-Relay-Challenge': challenge,
+          'X-Foldkit-Relay-Client-Proof': '0'.repeat(64),
+        },
+      })
+      onTestFinished(() => wrongClient.terminate())
+
+      await expect(
+        new Promise<void>((resolveOpen, reject) => {
+          wrongClient.once('open', () => resolveOpen())
+          wrongClient.once('error', reject)
+        }),
+      ).rejects.toThrow()
+    },
+    TEST_TIMEOUT,
+  )
+
+  it(
     'refuses a middleware-mode relay connection that lacks the token',
     async () => {
       const server = await startMiddlewareServer({})
@@ -743,14 +805,12 @@ describe('DevTools MCP relay discovery', () => {
       delete process.env[RELAY_DIRECTORY_VARIABLE]
       const server = await startMiddlewareServer({})
 
-      await expect
-        .poll(() => readdir(runtimeDirectory).catch(() => []), {
-          timeout: POLL_TIMEOUT,
-        })
-        .toHaveLength(1)
-      expect(
-        (await publishedRecords(server.config.root)).map(({ root }) => root),
-      ).toStrictEqual([server.config.root])
+      const record = await waitUntilPublished(server.config.root)
+
+      expect(record.root).toBe(server.config.root)
+      expect(await readdir(runtimeDirectory)).toStrictEqual([
+        `${encodeURIComponent(record.id)}.json`,
+      ])
     },
     TEST_TIMEOUT,
   )
@@ -851,6 +911,76 @@ describe('DevTools MCP relay discovery', () => {
     )
   })
 
+  it('refuses to publish through a symbolic link or junction', async () => {
+    const targetDirectory = join(directories.root, 'registry-target')
+    await rm(directories.registry, { recursive: true, force: true })
+    await mkdir(targetDirectory, { mode: 0o700 })
+    await symlink(
+      targetDirectory,
+      directories.registry,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+    const record: RelayRecord = {
+      version: 1,
+      id: 'linked',
+      root: directories.root,
+      url: 'ws://localhost:9988',
+      pid: process.pid,
+      startedAt: 1,
+    }
+
+    await expect(runRegistry(publish(record))).rejects.toMatchObject({
+      _tag: 'RelayRegistryDirectoryRefused',
+      reason: 'is not a regular directory',
+    })
+    expect(await readdir(targetDirectory)).toStrictEqual([])
+  })
+
+  it('publishes through the canonical directory returned by trust', async () => {
+    const canonicalDirectory = join(directories.root, 'canonical-registry')
+    await mkdir(canonicalDirectory, { mode: 0o700 })
+    const record: RelayRecord = {
+      version: 1,
+      id: 'canonical',
+      root: directories.root,
+      url: 'ws://localhost:9988',
+      pid: process.pid,
+      startedAt: 1,
+    }
+    const trust = {
+      inspect: () =>
+        Effect.succeed({
+          directory: canonicalDirectory,
+          maybeRefusal: Option.none(),
+        }),
+    }
+
+    expect(await runRegistry(publishRelayRecord(record, trust))).toBe(
+      canonicalDirectory,
+    )
+    expect(await readdir(directories.registry)).toStrictEqual([])
+    expect(await readdir(canonicalDirectory)).toStrictEqual(['canonical.json'])
+  })
+
+  it('does not follow an existing pending record', async () => {
+    const record: RelayRecord = {
+      version: 1,
+      id: 'pending',
+      root: directories.root,
+      url: 'ws://localhost:9988',
+      pid: process.pid,
+      startedAt: 1,
+    }
+    const pendingPath = join(directories.registry, 'pending.json.pending')
+    await writeFile(pendingPath, 'preserve me', 'utf-8')
+
+    await expect(runRegistry(publish(record))).rejects.toThrow()
+    expect(await readFile(pendingPath, 'utf-8')).toBe('preserve me')
+    expect(await readdir(directories.registry)).toStrictEqual([
+      'pending.json.pending',
+    ])
+  })
+
   it.skipIf(Option.isNone(maybeNetworkAddress))(
     'publishes a loopback relay of its own for a dev server bound to a network address',
     async () => {
@@ -878,13 +1008,13 @@ describe('DevTools MCP relay discovery', () => {
       }
       const second: RelayRecord = { ...first, id: 'second', startedAt: 2 }
       await runRegistry(publish(first))
-      await runRegistry(publish(second))
+      const registryDirectory = await runRegistry(publish(second))
 
       expect(
         Array.sort(await readdir(directories.registry), Order.String),
       ).toStrictEqual(['first.json', 'second.json'])
 
-      await runRegistry(retireRelayRecord(second.id))
+      await runRegistry(retireRelayRecord(second.id, registryDirectory))
 
       expect(await publishedRecords(root)).toStrictEqual([first])
     },

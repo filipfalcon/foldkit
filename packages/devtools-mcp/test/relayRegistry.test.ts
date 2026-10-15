@@ -1,4 +1,4 @@
-import { Effect, FileSystem } from 'effect'
+import { Effect, FileSystem, Option } from 'effect'
 import type { RelayRecord } from 'foldkit/devtools-protocol'
 import {
   chmod,
@@ -8,6 +8,7 @@ import {
   readdir,
   rename,
   rm,
+  symlink,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -277,6 +278,68 @@ describe('discoverRelays', () => {
     expect(urls(await discover('/workspace'))).toStrictEqual([
       record('/workspace/app', 4800).url,
     ])
+  })
+
+  it('reads records through the canonical directory returned by trust', async () => {
+    const canonicalDirectory = `${registryDirectory}-canonical`
+    await mkdir(registryDirectory, { mode: PRIVATE_DIRECTORY_MODE })
+    await mkdir(canonicalDirectory, { mode: PRIVATE_DIRECTORY_MODE })
+
+    try {
+      await writeFile(
+        join(canonicalDirectory, 'app.json'),
+        JSON.stringify(record('/workspace/app', 4850)),
+        'utf-8',
+      )
+      const registryReader = await Effect.runPromise(
+        makeUncheckedRegistryReader,
+      )
+      const canonicalReader: RelayRegistryReader = {
+        ...registryReader,
+        trust: {
+          inspect: () =>
+            Effect.succeed({
+              directory: canonicalDirectory,
+              maybeRefusal: Option.none(),
+            }),
+        },
+      }
+
+      expect(urls(await discoverWith(canonicalReader, '/workspace'))).toEqual([
+        record('/workspace/app', 4850).url,
+      ])
+    } finally {
+      await rm(canonicalDirectory, { recursive: true, force: true })
+    }
+  })
+
+  it('reads no record through a symbolic link or junction', async () => {
+    const targetDirectory = `${registryDirectory}-target`
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await mkdir(targetDirectory, { mode: PRIVATE_DIRECTORY_MODE })
+    await writeFile(
+      join(targetDirectory, 'planted.json'),
+      JSON.stringify(record('/workspace/app', 4860)),
+      'utf-8',
+    )
+    await symlink(
+      targetDirectory,
+      registryDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+
+    try {
+      const registryReader = await Effect.runPromise(makeRelayRegistryReader)
+
+      expect(
+        await discoverWith(registryReader, '/workspace/app'),
+      ).toStrictEqual([])
+      expect(reported.mock.calls.map(call => call.join(' '))).toStrictEqual([
+        `[foldkit-devtools-mcp] ignoring the relay registry at ${registryDirectory}: it is not a regular directory`,
+      ])
+    } finally {
+      await rm(targetDirectory, { recursive: true, force: true })
+    }
   })
 
   it.skipIf(process.platform === 'win32')(

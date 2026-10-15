@@ -5,8 +5,10 @@ import {
   chmod,
   copyFile,
   mkdtemp,
+  realpath,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -24,6 +26,7 @@ import {
 
 const USER = 'S-1-5-21-1111111111-2222222222-3333333333-1001'
 const OTHER = 'S-1-5-21-1111111111-2222222222-3333333333-1002'
+const DOMAIN_ADMINISTRATOR = 'S-1-5-21-4444444444-5555555555-6666666666-500'
 const GROUP = 'S-1-5-21-1111111111-2222222222-3333333333-513'
 const PRIVATE = `O:${USER}G:${GROUP}D:(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;${USER})`
 const SHARED = `O:${USER}G:${GROUP}D:(A;OICI;FA;;;${USER})(A;OICI;0x1200a9;;;BU)`
@@ -61,6 +64,24 @@ describe('windowsDirectoryRefusal', () => {
         USER,
       ),
     ).toStrictEqual(Option.none())
+  })
+
+  it('accepts the local Administrator alias', () => {
+    expect(
+      windowsDirectoryRefusal(
+        `O:LAG:${GROUP}D:(A;OICI;FA;;;SY)(A;OICI;FA;;;LA)`,
+        USER,
+      ),
+    ).toStrictEqual(Option.none())
+  })
+
+  it('refuses a domain Administrator SID', () => {
+    expect(
+      windowsDirectoryRefusal(
+        `O:${DOMAIN_ADMINISTRATOR}G:${GROUP}D:(A;OICI;FA;;;${DOMAIN_ADMINISTRATOR})`,
+        USER,
+      ),
+    ).toStrictEqual(OWNED_BY_ANOTHER_USER)
   })
 
   it('refuses another owner', () => {
@@ -316,6 +337,63 @@ const describeNativeProbe = (directory: string, spawnedCount: number) => {
 }
 
 describe('relayRegistryTrust', () => {
+  const inspect = (directory: string) =>
+    Effect.runPromise(
+      relayRegistryTrust
+        .inspect(directory)
+        .pipe(Effect.provide(NodeServices.layer)),
+    )
+
+  it('refuses a symbolic link or junction to a private directory', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+    const linkedDirectory = `${directory}-link`
+    onTestFinished(() =>
+      rm(linkedDirectory, { recursive: true, force: true }).then(() =>
+        rm(directory, { recursive: true, force: true }),
+      ),
+    )
+    await symlink(
+      directory,
+      linkedDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+
+    expect((await inspect(linkedDirectory)).maybeRefusal).toStrictEqual(
+      Option.some('is not a regular directory'),
+    )
+  })
+
+  it('returns the canonical path for a private directory', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+    onTestFinished(() => rm(directory, { recursive: true, force: true }))
+
+    const inspection = await inspect(directory)
+
+    expect(inspection.maybeRefusal).toStrictEqual(Option.none())
+    expect(inspection.directory).toBe(await realpath(directory))
+  })
+
+  it('refuses a regular file', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+    const file = join(directory, 'registry')
+    onTestFinished(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(file, '')
+
+    expect((await inspect(file)).maybeRefusal).toStrictEqual(
+      Option.some('is not a regular directory'),
+    )
+  })
+
+  it('fails closed when the directory cannot be inspected', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+    const missing = join(directory, 'missing')
+    onTestFinished(() => rm(directory, { recursive: true, force: true }))
+
+    expect((await inspect(missing)).maybeRefusal).toStrictEqual(
+      UNVERIFIED_OWNERSHIP,
+    )
+  })
+
   it.runIf(process.platform === 'win32')(
     'reads the access list again on every lookup',
     async () => {
@@ -335,8 +413,8 @@ describe('relayRegistryTrust', () => {
       const services = Layer.merge(NodeFileSystem.layer, countingSpawner)
       const lookUp = () =>
         Effect.runPromise(
-          relayRegistryTrust.refusal(directory).pipe(Effect.provide(services)),
-        )
+          relayRegistryTrust.inspect(directory).pipe(Effect.provide(services)),
+        ).then(({ maybeRefusal }) => maybeRefusal)
 
       const firstRefusal = await lookUp()
 

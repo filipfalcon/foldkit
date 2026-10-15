@@ -65,10 +65,12 @@ const relayRegistryDirectory: Effect.Effect<string, never, Path.Path> =
     )
   }).pipe(Effect.orDie)
 
-const relayRecordPath = (id: string): Effect.Effect<string, never, Path.Path> =>
+const relayRecordPath = (
+  directory: string,
+  id: string,
+): Effect.Effect<string, never, Path.Path> =>
   Effect.gen(function* () {
     const path = yield* Path.Path
-    const directory = yield* relayRegistryDirectory
     return path.join(
       directory,
       `${encodeURIComponent(id)}${RECORD_FILE_EXTENSION}`,
@@ -169,7 +171,7 @@ export const publishRelayRecord = (
   record: RelayRecord,
   trust: RelayRegistryTrust,
 ): Effect.Effect<
-  void,
+  string,
   PlatformError.PlatformError | RelayRegistryDirectoryRefused,
   RelayPublisherServices
 > =>
@@ -181,25 +183,29 @@ export const publishRelayRecord = (
       mode: REGISTRY_DIRECTORY_MODE,
     })
 
-    const maybeRefusal = yield* trust.refusal(directory)
+    const inspection = yield* trust.inspect(directory)
 
-    if (Option.isSome(maybeRefusal)) {
+    if (Option.isSome(inspection.maybeRefusal)) {
       return yield* Effect.fail(
         new RelayRegistryDirectoryRefused({
           directory,
-          reason: maybeRefusal.value,
+          reason: inspection.maybeRefusal.value,
         }),
       )
     }
 
-    yield* removeDeadRecords(directory)
+    const trustedDirectory = inspection.directory
+    yield* removeDeadRecords(trustedDirectory)
 
-    const recordPath = yield* relayRecordPath(record.id)
+    const recordPath = yield* relayRecordPath(trustedDirectory, record.id)
     const pendingPath = `${recordPath}${PENDING_RECORD_SUFFIX}`
     yield* fileSystem.writeFileString(pendingPath, encodeRelayRecord(record), {
+      flag: 'wx',
       mode: RECORD_FILE_MODE,
     })
     yield* fileSystem.rename(pendingPath, recordPath)
+
+    return trustedDirectory
   })
 
 export const readRelayRecords: Effect.Effect<
@@ -216,9 +222,10 @@ export const readRelayRecords: Effect.Effect<
 
 export const retireRelayRecord = (
   id: string,
-): Effect.Effect<void, never, RelayRegistryServices> =>
+  directory: string,
+): Effect.Effect<void, PlatformError.PlatformError, RelayRegistryServices> =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem
-    const recordPath = yield* relayRecordPath(id)
-    yield* fileSystem.remove(recordPath, { force: true }).pipe(Effect.ignore)
+    const recordPath = yield* relayRecordPath(directory, id)
+    yield* fileSystem.remove(recordPath, { force: true })
   })

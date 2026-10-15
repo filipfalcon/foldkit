@@ -5,12 +5,12 @@ import {
   Effect,
   FileSystem,
   Option,
-  type PlatformError,
   Stream,
   String,
   pipe,
 } from 'effect'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
+import { lstat, realpath } from 'node:fs/promises'
 import { win32 } from 'node:path'
 
 const PERMISSIONS_BEYOND_OWNER = 0o077
@@ -22,6 +22,7 @@ const UNVERIFIED_OWNERSHIP = 'has ownership that cannot be verified'
 const UNVERIFIED_PERMISSIONS = 'has permissions that cannot be verified'
 const OWNED_BY_ANOTHER_USER = 'is owned by another user'
 const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
+const NOT_REGULAR_DIRECTORY = 'is not a regular directory'
 
 const SECURITY_DESCRIPTOR_PATTERN =
   /^O:(S-1-[0-9-]+|[A-Z]{2})(?:G:(?:S-1-[0-9-]+|[A-Z]{2}))?(?:D:([A-Z_]*)((?:\([^()]*\))*))?(?:S:.*)?$/
@@ -39,6 +40,7 @@ const PRIVILEGED_ACCOUNTS: ReadonlyArray<string> = [
   'S-1-5-18',
   'BA',
   'S-1-5-32-544',
+  'LA',
 ]
 const CREATOR_ACCOUNTS: ReadonlyArray<string> = [
   'CO',
@@ -56,19 +58,29 @@ type AccessControlEntry = Readonly<{
 }>
 
 class WindowsProbeFailed extends Data.TaggedError('WindowsProbeFailed')<{}> {}
+class DirectoryProbeFailed extends Data.TaggedError(
+  'DirectoryProbeFailed',
+)<{}> {}
+
+export type RelayRegistryInspection = Readonly<{
+  directory: string
+  maybeRefusal: Option.Option<string>
+}>
 
 export type RelayRegistryTrust = Readonly<{
-  refusal: (
+  inspect: (
     directory: string,
   ) => Effect.Effect<
-    Option.Option<string>,
-    PlatformError.PlatformError,
-    FileSystem.FileSystem | ChildProcessSpawner.ChildProcessSpawner
+    RelayRegistryInspection,
+    never,
+    ChildProcessSpawner.ChildProcessSpawner
   >
 }>
 
+type DirectoryInfo = Pick<FileSystem.File.Info, 'mode' | 'uid'>
+
 export const relayRegistryDirectoryRefusal = (
-  info: FileSystem.File.Info,
+  info: DirectoryInfo,
   maybeCurrentUid: Option.Option<number>,
 ): Option.Option<string> =>
   Option.match(maybeCurrentUid, {
@@ -89,6 +101,26 @@ export const relayRegistryDirectoryRefusal = (
       return Option.none()
     },
   })
+
+const posixDirectoryRefusal = (
+  modeValue: bigint,
+  uidValue: bigint,
+): Option.Option<string> => {
+  const mode = globalThis.Number(modeValue)
+  const uid = globalThis.Number(uidValue)
+
+  if (
+    !globalThis.Number.isSafeInteger(mode) ||
+    !globalThis.Number.isSafeInteger(uid)
+  ) {
+    return Option.some(UNVERIFIED_OWNERSHIP)
+  }
+
+  return relayRegistryDirectoryRefusal(
+    { mode, uid: Option.some(uid) },
+    Option.fromNullishOr(process.getuid?.()),
+  )
+}
 
 const capturedGroup = (
   match: RegExpMatchArray,
@@ -283,26 +315,63 @@ export const probeWindowsDirectory = (
       ),
   })
 
-export const relayRegistryTrust: RelayRegistryTrust = {
-  refusal: directory => {
-    if (process.platform === 'win32') {
-      return probeWindowsDirectory(
-        Option.map(
-          Option.fromNullishOr(process.env['SystemRoot']),
-          powershellPath,
-        ),
-        directory,
-      )
-    } else {
-      return Effect.gen(function* () {
-        const fileSystem = yield* FileSystem.FileSystem
-        const info = yield* fileSystem.stat(directory)
+const probeDirectoryEntry = (directory: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const entry = await lstat(directory, { bigint: true })
 
-        return relayRegistryDirectoryRefusal(
-          info,
-          Option.fromNullishOr(process.getuid?.()),
-        )
-      })
-    }
-  },
+      if (entry.isSymbolicLink() || !entry.isDirectory()) {
+        return {
+          directory,
+          entry,
+          maybeRefusal: Option.some(NOT_REGULAR_DIRECTORY),
+        }
+      }
+
+      const canonicalDirectory = await realpath(directory)
+      const canonicalEntry = await lstat(canonicalDirectory, { bigint: true })
+      const isSameEntry =
+        entry.dev === canonicalEntry.dev && entry.ino === canonicalEntry.ino
+
+      return {
+        directory: canonicalDirectory,
+        entry: canonicalEntry,
+        maybeRefusal: isSameEntry
+          ? Option.none<string>()
+          : Option.some(UNVERIFIED_OWNERSHIP),
+      }
+    },
+    catch: () => new DirectoryProbeFailed(),
+  })
+
+export const relayRegistryTrust: RelayRegistryTrust = {
+  inspect: directory =>
+    Effect.gen(function* () {
+      const probe = yield* probeDirectoryEntry(directory)
+
+      if (Option.isSome(probe.maybeRefusal)) {
+        return {
+          directory: probe.directory,
+          maybeRefusal: probe.maybeRefusal,
+        }
+      }
+
+      const maybeRefusal =
+        process.platform === 'win32'
+          ? yield* probeWindowsDirectory(
+              Option.map(
+                Option.fromNullishOr(process.env['SystemRoot']),
+                powershellPath,
+              ),
+              probe.directory,
+            )
+          : posixDirectoryRefusal(probe.entry.mode, probe.entry.uid)
+
+      return { directory: probe.directory, maybeRefusal }
+    }).pipe(
+      Effect.orElseSucceed(() => ({
+        directory,
+        maybeRefusal: Option.some(UNVERIFIED_OWNERSHIP),
+      })),
+    ),
 }

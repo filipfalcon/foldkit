@@ -37,7 +37,7 @@ import {
   RequestModelMessage,
   RestoreModelMessage,
 } from 'foldkit/model-preservation'
-import { timingSafeEqual } from 'node:crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import {
   type IncomingMessage,
   type Server,
@@ -668,6 +668,11 @@ const RELAY_LOOPBACK_HOST = '127.0.0.1'
 const RELAY_CONFIGURED_PORT_HOST = 'localhost'
 const RELAY_TOKEN_PARAMETER = 'token'
 const RELAY_TOKEN_BYTES = 32
+const RELAY_CHALLENGE_HEADER = 'x-foldkit-relay-challenge'
+const RELAY_CLIENT_PROOF_HEADER = 'x-foldkit-relay-client-proof'
+const RELAY_SERVER_PROOF_HEADER = 'X-Foldkit-Relay-Server-Proof'
+const RELAY_CHALLENGE_PATTERN = /^[0-9a-f]{64}$/
+const RELAY_PROOF_PATTERN = /^[0-9a-f]{64}$/
 const BAD_REQUEST = 400
 const UNAUTHORIZED = 401
 const NOT_FOUND = 404
@@ -767,6 +772,38 @@ const requestPresentsToken = (url: URL, token: string): boolean => {
   })
 }
 
+const computeRelayProof = (
+  token: string,
+  role: 'client' | 'server',
+  challenge: string,
+): string =>
+  createHmac('sha256', token).update(`${role}:${challenge}`).digest('hex')
+
+const requestPresentsProof = (
+  request: IncomingMessage,
+  token: string,
+): boolean => {
+  const challenge = request.headers[RELAY_CHALLENGE_HEADER]
+  const presented = request.headers[RELAY_CLIENT_PROOF_HEADER]
+
+  if (
+    !Predicate.isString(challenge) ||
+    !RELAY_CHALLENGE_PATTERN.test(challenge) ||
+    !Predicate.isString(presented) ||
+    !RELAY_PROOF_PATTERN.test(presented)
+  ) {
+    return false
+  }
+
+  const expected = Buffer.from(
+    computeRelayProof(token, 'client', challenge),
+    'hex',
+  )
+  const actual = Buffer.from(presented, 'hex')
+
+  return timingSafeEqual(expected, actual)
+}
+
 const refuseUpgrade = (socket: Duplex, status: RefusedUpgradeStatus): void => {
   socket.on('error', () => socket.destroy())
   socket.once('finish', () => socket.destroy())
@@ -794,6 +831,18 @@ const acceptRelayUpgrades = (
   Effect.sync((): Relay => {
     const wss = new WebSocketServer({ noServer: true })
     attachRelayHandlers(wss, enqueue)
+    wss.on('headers', (headers, request) => {
+      const challenge = request.headers[RELAY_CHALLENGE_HEADER]
+
+      if (
+        Predicate.isString(challenge) &&
+        RELAY_CHALLENGE_PATTERN.test(challenge)
+      ) {
+        headers.push(
+          `${RELAY_SERVER_PROOF_HEADER}: ${computeRelayProof(token, 'server', challenge)}`,
+        )
+      }
+    })
 
     httpServer.on('upgrade', (request, socket, head) => {
       const maybeUrl = parseRequestUrl(request)
@@ -808,7 +857,10 @@ const acceptRelayUpgrades = (
         return
       }
 
-      if (!requestPresentsToken(url, token)) {
+      if (
+        !requestPresentsToken(url, token) &&
+        !requestPresentsProof(request, token)
+      ) {
         refuseUpgrade(socket, UNAUTHORIZED)
         return
       }
@@ -951,7 +1003,7 @@ const unpublishedRelayMessage = (reason: string): string =>
 const publishRelay = (root: string, relay: Relay) =>
   Effect.gen(function* () {
     const startedAt = yield* Clock.currentTimeMillis
-    yield* publishRelayRecord(
+    const directory = yield* publishRelayRecord(
       {
         version: RELAY_RECORD_VERSION,
         id: relay.id,
@@ -962,18 +1014,26 @@ const publishRelay = (root: string, relay: Relay) =>
       },
       relayRegistryTrust,
     )
+
+    return Option.some(directory)
   }).pipe(
     Effect.catchTag('RelayRegistryDirectoryRefused', ({ directory, reason }) =>
-      Console.error(
-        unpublishedRelayMessage(
-          `the registry directory ${directory} ${reason}`,
+      Effect.as(
+        Console.error(
+          unpublishedRelayMessage(
+            `the registry directory ${directory} ${reason}`,
+          ),
         ),
+        Option.none<string>(),
       ),
     ),
     Effect.catch(error =>
-      Console.error(
-        unpublishedRelayMessage('the registry could not be written'),
-        error,
+      Effect.as(
+        Console.error(
+          unpublishedRelayMessage('the registry could not be written'),
+          error,
+        ),
+        Option.none<string>(),
       ),
     ),
   )
@@ -984,45 +1044,71 @@ const startMcpRelay = (
   enqueue: (event: Event) => void,
 ) => {
   const root = server.config.root
-  // NOTE: A configured port keeps the previous unauthenticated behavior.
-  // An assigned port binds only to loopback and is found through the registry.
-  const acquire: Effect.Effect<Relay, RelayBindFailed, Crypto.Crypto> =
-    Effect.gen(function* () {
-      const id = yield* relayId
-      if (devToolsMcpPort !== undefined) {
-        return yield* bindStandaloneRelay(devToolsMcpPort, id, enqueue)
-      }
+  return Effect.gen(function* () {
+    const publishedDirectory = yield* Ref.make<Option.Option<string>>(
+      Option.none(),
+    )
+    // NOTE: A configured port keeps the previous unauthenticated behavior.
+    // An assigned port binds only to loopback and is found through the registry.
+    const acquire: Effect.Effect<Relay, RelayBindFailed, Crypto.Crypto> =
+      Effect.gen(function* () {
+        const id = yield* relayId
+        if (devToolsMcpPort !== undefined) {
+          return yield* bindStandaloneRelay(devToolsMcpPort, id, enqueue)
+        }
 
-      const token = yield* relayToken
+        const token = yield* relayToken
 
-      return yield* bindLoopbackRelay(id, token, enqueue)
-    })
-  return Effect.acquireRelease(acquire, relay =>
-    Effect.gen(function* () {
-      relay.closeListener()
-      for (const client of relay.wss.clients) {
-        client.terminate()
-      }
-      relay.wss.close()
-      yield* retireRelayRecord(relay.id)
-      yield* Console.log('[foldkit:devTools] MCP relay stopped')
-    }),
-  ).pipe(
-    Effect.retry({
-      while: ({ cause }) => isPortInUse(cause),
-      times: RELAY_BIND_RETRY_COUNT,
-      schedule: Schedule.spaced(RELAY_BIND_RETRY_DELAY),
-    }),
-    Effect.tap(relay =>
-      Console.log(
-        `[foldkit:devTools] MCP relay listening at ${relayUrlForLog(relay.url)}`,
+        return yield* bindLoopbackRelay(id, token, enqueue)
+      })
+
+    return yield* Effect.acquireRelease(acquire, relay =>
+      Effect.gen(function* () {
+        const maybeDirectory = yield* Ref.get(publishedDirectory)
+
+        if (Option.isSome(maybeDirectory)) {
+          yield* retireRelayRecord(relay.id, maybeDirectory.value).pipe(
+            Effect.catch(error =>
+              Console.error(
+                '[foldkit:devTools] could not remove the MCP relay registry record',
+                error,
+              ),
+            ),
+          )
+        }
+
+        relay.closeListener()
+        for (const client of relay.wss.clients) {
+          client.terminate()
+        }
+        relay.wss.close()
+        yield* Console.log('[foldkit:devTools] MCP relay stopped')
+      }),
+    ).pipe(
+      Effect.retry({
+        while: ({ cause }) => isPortInUse(cause),
+        times: RELAY_BIND_RETRY_COUNT,
+        schedule: Schedule.spaced(RELAY_BIND_RETRY_DELAY),
+      }),
+      Effect.tap(relay =>
+        Console.log(
+          `[foldkit:devTools] MCP relay listening at ${relayUrlForLog(relay.url)}`,
+        ),
       ),
-    ),
-    Effect.tap(relay => publishRelay(root, relay)),
-    Effect.catchTag('RelayBindFailed', ({ maybePort, cause }) =>
-      reportRelayBindFailed(maybePort, cause),
-    ),
-  )
+      Effect.tap(relay =>
+        Effect.uninterruptible(
+          publishRelay(root, relay).pipe(
+            Effect.flatMap(maybeDirectory =>
+              Ref.set(publishedDirectory, maybeDirectory),
+            ),
+          ),
+        ),
+      ),
+      Effect.catchTag('RelayBindFailed', ({ maybePort, cause }) =>
+        reportRelayBindFailed(maybePort, cause),
+      ),
+    )
+  })
 }
 
 // NOTE: A Vitest run can override its mode, but still carries Vitest plugins.

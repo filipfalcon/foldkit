@@ -189,19 +189,19 @@ const trustedRegistryDirectory = (
       return Option.none()
     }
 
-    const maybeRefusal = yield* registryReader.trust.refusal(directory)
+    const inspection = yield* registryReader.trust.inspect(directory)
 
-    if (Option.isSome(maybeRefusal)) {
+    if (Option.isSome(inspection.maybeRefusal)) {
       yield* reportRefusal(
         registryReader.reportedRefusals,
         directory,
-        maybeRefusal.value,
+        inspection.maybeRefusal.value,
       )
 
       return Option.none()
     }
 
-    return Option.some(directory)
+    return Option.some(inspection.directory)
   }).pipe(Effect.orElseSucceed(() => Option.none<string>()))
 
 const realRoot = (

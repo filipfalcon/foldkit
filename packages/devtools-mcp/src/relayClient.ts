@@ -11,6 +11,7 @@ import {
   HashSet,
   Match,
   Option,
+  Predicate,
   Ref,
   Result,
   Schema,
@@ -26,6 +27,7 @@ import {
   ResponseFrame,
   type RuntimeInfo,
 } from 'foldkit/devtools-protocol'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { type RawData, WebSocket } from 'ws'
 
 import type { RelayTarget } from './relayLocation.js'
@@ -39,7 +41,15 @@ const NOT_CONNECTED_REASON =
 const NO_RUNTIMES_REASON =
   'No connected Foldkit runtimes. Open a Foldkit dev page and try again.'
 const INVALID_ADDRESS_REASON = 'the relay address is not a valid URL'
+const UNVERIFIED_RELAY_REASON = 'the relay could not prove its identity'
 const CLOSED_REASON = 'The Foldkit relay client is closed.'
+const RELAY_TOKEN_PARAMETER = 'token'
+const RELAY_CHALLENGE_HEADER = 'X-Foldkit-Relay-Challenge'
+const RELAY_CLIENT_PROOF_HEADER = 'X-Foldkit-Relay-Client-Proof'
+const RELAY_SERVER_PROOF_HEADER = 'x-foldkit-relay-server-proof'
+const RELAY_TOKEN_PATTERN = /^[0-9a-f]{64}$/
+const RELAY_PROOF_PATTERN = /^[0-9a-f]{64}$/
+const RELAY_CHALLENGE_BYTES = 32
 
 const encodeRequestFrameToJson = Schema.encodeUnknownSync(
   Schema.fromJsonString(RequestFrame),
@@ -140,41 +150,117 @@ const toError =
       ? cause
       : new Error(`${description}: ${globalThis.String(cause)}`)
 
-const attemptOpen = (url: string): Effect.Effect<WebSocket, Error> =>
-  Option.match(parseUrl(url), {
-    onNone: () => Effect.fail(new Error(INVALID_ADDRESS_REASON)),
-    onSome: parsedUrl =>
-      Effect.callback<WebSocket, Error>(resume => {
-        const constructed = Result.try({
-          try: () => new WebSocket(parsedUrl),
-          catch: toError('Failed to open a connection'),
-        })
+const computeRelayProof = (
+  token: string,
+  role: 'client' | 'server',
+  challenge: string,
+): string =>
+  createHmac('sha256', token).update(`${role}:${challenge}`).digest('hex')
 
-        if (Result.isFailure(constructed)) {
-          resume(Effect.fail(constructed.failure))
-          return
+const attemptOpen = (url: string): Effect.Effect<WebSocket, Error> =>
+  Effect.suspend(() =>
+    Option.match(parseUrl(url), {
+      onNone: () => Effect.fail(new Error(INVALID_ADDRESS_REASON)),
+      onSome: parsedUrl => {
+        const maybeToken = Option.fromNullishOr(
+          parsedUrl.searchParams.get(RELAY_TOKEN_PARAMETER),
+        )
+
+        if (
+          Option.isSome(maybeToken) &&
+          !RELAY_TOKEN_PATTERN.test(maybeToken.value)
+        ) {
+          return Effect.fail(new Error(INVALID_ADDRESS_REASON))
         }
 
-        const socket = constructed.success
-        let isSettled = false
+        const maybeChallenge = Option.map(maybeToken, () =>
+          randomBytes(RELAY_CHALLENGE_BYTES).toString('hex'),
+        )
+        parsedUrl.searchParams.delete(RELAY_TOKEN_PARAMETER)
 
-        socket.once('open', () => {
-          isSettled = true
-          resume(Effect.succeed(socket))
-        })
-        socket.on('error', error => {
-          if (!isSettled) {
-            isSettled = true
-            resume(Effect.fail(error))
+        return Effect.callback<WebSocket, Error>(resume => {
+          const constructed = Result.try({
+            try: () =>
+              Option.match(Option.all([maybeToken, maybeChallenge]), {
+                onNone: () => new WebSocket(parsedUrl),
+                onSome: ([token, challenge]) =>
+                  new WebSocket(parsedUrl, {
+                    headers: {
+                      [RELAY_CHALLENGE_HEADER]: challenge,
+                      [RELAY_CLIENT_PROOF_HEADER]: computeRelayProof(
+                        token,
+                        'client',
+                        challenge,
+                      ),
+                    },
+                  }),
+              }),
+            catch: toError('Failed to open a connection'),
+          })
+
+          if (Result.isFailure(constructed)) {
+            resume(Effect.fail(constructed.failure))
+            return
           }
-        })
 
-        return Effect.sync(() => {
-          isSettled = true
-          socket.terminate()
+          const socket = constructed.success
+          let isSettled = false
+          let isVerified = Option.isNone(maybeToken)
+
+          socket.once('upgrade', response => {
+            if (Option.isNone(maybeToken) || Option.isNone(maybeChallenge)) {
+              return
+            }
+
+            const presented = response.headers[RELAY_SERVER_PROOF_HEADER]
+            const expected = Buffer.from(
+              computeRelayProof(
+                maybeToken.value,
+                'server',
+                maybeChallenge.value,
+              ),
+              'hex',
+            )
+            const isValidProof =
+              Predicate.isString(presented) &&
+              RELAY_PROOF_PATTERN.test(presented) &&
+              timingSafeEqual(expected, Buffer.from(presented, 'hex'))
+
+            if (isValidProof) {
+              isVerified = true
+            } else {
+              isSettled = true
+              socket.terminate()
+              resume(Effect.fail(new Error(UNVERIFIED_RELAY_REASON)))
+            }
+          })
+
+          socket.once('open', () => {
+            if (!isVerified) {
+              isSettled = true
+              socket.terminate()
+              resume(Effect.fail(new Error(UNVERIFIED_RELAY_REASON)))
+              return
+            }
+
+            isSettled = true
+            resume(Effect.succeed(socket))
+          })
+          socket.on('error', error => {
+            if (!isSettled) {
+              isSettled = true
+              resume(Effect.fail(error))
+            }
+          })
+
+          return Effect.sync(() => {
+            isSettled = true
+            socket.terminate()
+          })
         })
-      }),
-  })
+      },
+    }),
+  )
 
 const isOpen = ({ socket }: RelaySocket): boolean =>
   socket.readyState === WebSocket.OPEN
