@@ -1,6 +1,6 @@
 import { Effect, Layer, Option, pipe } from 'effect'
 import { ChildProcessSpawner } from 'effect/process'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import {
   chmod,
   copyFile,
@@ -31,6 +31,9 @@ const IDENTITY = `"host\\user","${USER}"`
 const USERS_GROUP_SID = 'S-1-5-32-545'
 const PROBED_DIRECTORY = 'C:\\registry'
 const PROBE_TEST_TIMEOUT = 30_000
+const NATIVE_PROBE_TIMEOUT = 10_000
+const NATIVE_PROBE_SCRIPT =
+  '(Get-Acl -LiteralPath $env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY).Sddl; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
 const SECONDS_PAST_PROBE_LIMIT = '30'
 const STAND_IN_POWERSHELL = join(
   import.meta.dirname,
@@ -278,6 +281,40 @@ const icaclsPath = (): string =>
     Option.getOrThrowWith(() => new Error('SystemRoot is not set')),
   )
 
+const describeNativeProbe = (directory: string, spawnedCount: number) => {
+  const systemRoots = Object.entries(process.env).filter(
+    ([name]) => name.toLowerCase() === 'systemroot',
+  )
+  const systemRoot = process.env['SystemRoot']
+
+  if (systemRoot === undefined) {
+    return { systemRoots, spawnedCount }
+  }
+
+  const probe = spawnSync(
+    powershellPath(systemRoot),
+    ['-NoProfile', '-NonInteractive', '-Command', NATIVE_PROBE_SCRIPT],
+    {
+      env: {
+        ...process.env,
+        FOLDKIT_DEVTOOLS_PROBED_DIRECTORY: directory,
+      },
+      timeout: NATIVE_PROBE_TIMEOUT,
+    },
+  )
+
+  return {
+    systemRoots,
+    spawnedCount,
+    status: probe.status,
+    error: probe.error?.message,
+    stdout: probe.stdout?.toString('utf8'),
+    stdoutHex: probe.stdout?.toString('hex'),
+    stderr: probe.stderr?.toString('utf8'),
+    stderrHex: probe.stderr?.toString('hex'),
+  }
+}
+
 describe('relayRegistryTrust', () => {
   it.runIf(process.platform === 'win32')(
     'reads the access list again on every lookup',
@@ -301,7 +338,14 @@ describe('relayRegistryTrust', () => {
           relayRegistryTrust.refusal(directory).pipe(Effect.provide(services)),
         )
 
-      expect(await lookUp()).toStrictEqual(Option.none())
+      const firstRefusal = await lookUp()
+
+      expect(
+        firstRefusal,
+        Option.isSome(firstRefusal)
+          ? JSON.stringify(describeNativeProbe(directory, spawned.count))
+          : undefined,
+      ).toStrictEqual(Option.none())
       expect(spawned.count).toBe(1)
 
       execFileSync(icaclsPath(), [
