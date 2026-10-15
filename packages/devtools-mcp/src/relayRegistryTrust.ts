@@ -16,7 +16,7 @@ import { win32 } from 'node:path'
 const PERMISSIONS_BEYOND_OWNER = 0o077
 const PROBE_TIMEOUT = Duration.seconds(10)
 const PROBED_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_PROBED_DIRECTORY'
-const PROBE_SCRIPT = `(Get-Acl -LiteralPath $env:${PROBED_DIRECTORY_VARIABLE}).Sddl; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
+const PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; ([System.IO.Directory]::GetAccessControl($env:${PROBED_DIRECTORY_VARIABLE})).GetSecurityDescriptorSddlForm($sections); & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
 
 const UNVERIFIED_OWNERSHIP = 'has ownership that cannot be verified'
 const UNVERIFIED_PERMISSIONS = 'has permissions that cannot be verified'

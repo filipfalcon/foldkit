@@ -33,7 +33,7 @@ const PROBED_DIRECTORY = 'C:\\registry'
 const PROBE_TEST_TIMEOUT = 30_000
 const NATIVE_PROBE_TIMEOUT = 10_000
 const NATIVE_PROBE_SCRIPT =
-  '(Get-Acl -LiteralPath $env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY).Sddl; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
+  '$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; ([System.IO.Directory]::GetAccessControl($env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY)).GetSecurityDescriptorSddlForm($sections); & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
 const SECONDS_PAST_PROBE_LIMIT = '30'
 const STAND_IN_POWERSHELL = join(
   import.meta.dirname,

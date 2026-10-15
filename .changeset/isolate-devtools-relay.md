@@ -14,7 +14,7 @@ Several applications, agent sessions, and dev servers now work at once:
 - The relay removes the Runtimes of a browser tab whose socket closes, and answers a request for a Runtime it does not list with an error. Before, a closed tab stayed in `foldkit_list_runtimes`, and a request to it waited for the MCP server's ten-second timeout.
 - MCP request cancellation interrupts the waiting tool call while shared discovery remains available to other calls. Closing the MCP session interrupts discovery and releases its relay sockets.
 - The MCP server ignores a registry directory that is owned by another user or that other users can read or write, the check the plugin already applied before publishing.
-- On Windows, the Vite plugin and the MCP server read the registry directory's owner and access list with PowerShell's `Get-Acl` on every lookup and use the directory when it is private to the current user, so automatic discovery is no longer limited to macOS and Linux.
+- On Windows, the Vite plugin and the MCP server read the registry directory's owner and access list through the Windows .NET API in PowerShell on every lookup and use the directory when it is private to the current user, so automatic discovery is no longer limited to macOS and Linux.
 
 This breaks two setups:
 
