@@ -16,7 +16,7 @@ import {
   RELAY_REGISTRY_DIRECTORY_VARIABLE,
   RelayRecord,
 } from 'foldkit/devtools-protocol'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 
 import {
   type RelayRegistryTrust,
@@ -60,12 +60,14 @@ const relayRegistryDirectory: Effect.Effect<string, never, Path.Path> =
     const maybeRuntimeDirectory = yield* Config.option(
       Config.String(RUNTIME_DIRECTORY_VARIABLE),
     )
-    return Option.getOrElse(maybeConfigured, () =>
-      path.join(
-        Option.getOrElse(maybeRuntimeDirectory, tmpdir),
+    return Option.getOrElse(maybeConfigured, () => {
+      const defaultParent =
+        process.platform === 'win32' ? tmpdir() : path.join(homedir(), '.cache')
+      return path.join(
+        Option.getOrElse(maybeRuntimeDirectory, () => defaultParent),
         RELAY_REGISTRY_DIRECTORY_NAME,
-      ),
-    )
+      )
+    })
   }).pipe(Effect.orDie)
 
 const relayRecordPath = (

@@ -815,6 +815,41 @@ describe('DevTools MCP relay discovery', () => {
     TEST_TIMEOUT,
   )
 
+  it.skipIf(process.platform === 'win32')(
+    'publishes under the user cache directory when no runtime directory is set',
+    async () => {
+      const previousHome = process.env['HOME']
+      const previousRuntimeDirectory = process.env[RUNTIME_DIRECTORY_VARIABLE]
+      process.env['HOME'] = directories.registry
+      delete process.env[RUNTIME_DIRECTORY_VARIABLE]
+      delete process.env[RELAY_DIRECTORY_VARIABLE]
+      onTestFinished(() => {
+        if (previousHome === undefined) {
+          delete process.env['HOME']
+        } else {
+          process.env['HOME'] = previousHome
+        }
+        if (previousRuntimeDirectory === undefined) {
+          delete process.env[RUNTIME_DIRECTORY_VARIABLE]
+        } else {
+          process.env[RUNTIME_DIRECTORY_VARIABLE] = previousRuntimeDirectory
+        }
+      })
+      const defaultDirectory = join(
+        directories.registry,
+        '.cache',
+        REGISTRY_DIRECTORY_NAME,
+      )
+      const server = await startMiddlewareServer({})
+      const record = await waitUntilPublished(server.config.root)
+
+      expect(await readdir(defaultDirectory)).toStrictEqual([
+        `${encodeURIComponent(record.id)}.json`,
+      ])
+    },
+    TEST_TIMEOUT,
+  )
+
   it.runIf(process.platform === 'win32')(
     'refuses a Windows registry nested below the user temporary directory',
     async () => {

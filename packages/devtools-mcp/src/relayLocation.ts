@@ -81,7 +81,7 @@ const isPublishedRelayUrl = (value: string): boolean =>
     }
 
     const parameters = Array.fromIterable(url.searchParams)
-    const isAutomaticRelay =
+    return (
       url.hostname === AUTOMATIC_RELAY_HOST &&
       url.pathname === AUTOMATIC_RELAY_PATH &&
       Array.length(parameters) === 1 &&
@@ -90,12 +90,7 @@ const isPublishedRelayUrl = (value: string): boolean =>
         ([name, token]) =>
           name === RELAY_TOKEN_PARAMETER && RELAY_TOKEN_PATTERN.test(token),
       )
-    const isConfiguredRelay =
-      url.hostname === DEFAULT_HOST &&
-      url.pathname === '/' &&
-      Array.isArrayEmpty(parameters)
-
-    return isAutomaticRelay || isConfiguredRelay
+    )
   })
 
 export const configuredRelayUrl = (
@@ -137,16 +132,11 @@ export const resolveRelayTargets = (
             isPublishedRelayUrl(record.url),
           )
 
-          return Array.match(trustedRecords, {
-            onEmpty: () => [
-              fixedTarget(relayUrl(DEFAULT_HOST, LEGACY_DEFAULT_PORT)),
-            ],
-            onNonEmpty: Array.map((record): RelayTarget => ({
-              key: record.id,
-              url: record.url,
-              maybeProjectRoot: Option.some(record.root),
-            })),
-          })
+          return Array.map(trustedRecords, (record): RelayTarget => ({
+            key: record.id,
+            url: record.url,
+            maybeProjectRoot: Option.some(record.root),
+          }))
         },
       ),
   })

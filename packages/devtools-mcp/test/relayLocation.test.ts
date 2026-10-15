@@ -123,11 +123,11 @@ describe('resolveRelayTargets', () => {
     ])
   })
 
-  it('uses a published configured relay on localhost', async () => {
+  it('ignores a published relay without a token', async () => {
     const configured = { ...published, url: 'ws://localhost:4600' }
     await publish(configured)
 
-    expect(await resolveUrls(settings())).toStrictEqual([configured.url])
+    expect(await resolveUrls(settings())).toStrictEqual([])
   })
 
   it.each([
@@ -147,17 +147,11 @@ describe('resolveRelayTargets', () => {
   ])('ignores an unsafe published relay address: %s', async url => {
     await publish({ ...published, url })
 
-    expect(await resolveUrls(settings())).toStrictEqual(['ws://localhost:9988'])
+    expect(await resolveUrls(settings())).toStrictEqual([])
   })
 
-  it('uses the legacy port when no relay is published', async () => {
-    expect(await resolve(settings())).toStrictEqual([
-      {
-        key: 'ws://localhost:9988',
-        url: 'ws://localhost:9988',
-        maybeProjectRoot: Option.none(),
-      },
-    ])
+  it('returns no targets when no relay is published', async () => {
+    expect(await resolve(settings())).toStrictEqual([])
   })
 })
 

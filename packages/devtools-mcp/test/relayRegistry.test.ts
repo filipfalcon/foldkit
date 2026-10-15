@@ -174,6 +174,48 @@ describe('discoverRelays', () => {
     }
   })
 
+  it.skipIf(process.platform === 'win32')(
+    'reads the registry under the user cache directory when no runtime directory is set',
+    async () => {
+      const previousHome = process.env['HOME']
+      const previousRuntimeDirectory = process.env[RUNTIME_DIRECTORY_VARIABLE]
+      process.env['HOME'] = registryDirectory
+      delete process.env[RUNTIME_DIRECTORY_VARIABLE]
+      delete process.env[RELAY_DIRECTORY_VARIABLE]
+      const defaultDirectory = join(
+        registryDirectory,
+        '.cache',
+        REGISTRY_DIRECTORY_NAME,
+      )
+      await mkdir(defaultDirectory, {
+        recursive: true,
+        mode: PRIVATE_DIRECTORY_MODE,
+      })
+      await writeFile(
+        join(defaultDirectory, 'app.json'),
+        JSON.stringify(record('/workspace/app', 4000)),
+        'utf-8',
+      )
+
+      try {
+        expect(urls(await discover('/workspace/app'))).toStrictEqual([
+          record('/workspace/app', 4000).url,
+        ])
+      } finally {
+        if (previousHome === undefined) {
+          delete process.env['HOME']
+        } else {
+          process.env['HOME'] = previousHome
+        }
+        if (previousRuntimeDirectory === undefined) {
+          delete process.env[RUNTIME_DIRECTORY_VARIABLE]
+        } else {
+          process.env[RUNTIME_DIRECTORY_VARIABLE] = previousRuntimeDirectory
+        }
+      }
+    },
+  )
+
   it('finds nothing while no dev server has published a relay', async () => {
     expect(await discover('/workspace/app')).toStrictEqual([])
   })

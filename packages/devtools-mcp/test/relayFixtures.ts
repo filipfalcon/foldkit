@@ -105,9 +105,6 @@ export const silenceRelayErrors = () => {
   vi.mocked(console.error).mockImplementation(() => {})
 }
 
-// NOTE: With no relay published, the MCP server falls back to the fixed port
-// 9988, where a developer may run a dev server of their own. Sessions here
-// reach only discovered relays, so such a server cannot answer them.
 const discoveredTargets = (
   projectRoot: string,
   registryReader: RelayRegistryReader,

@@ -16,10 +16,12 @@ Several applications, agent sessions, and dev servers now work at once:
 - The MCP server ignores a registry directory that is owned by another user, that other users can read or write, that is a symlink or junction, or whose parent chain lets another user replace a directory. The plugin applies the same check before publishing. On macOS, both also refuse ACLs that grant access. Registry record files are created exclusively, so an existing path cannot redirect publication. The MCP client signs a challenge with the published token and verifies the relay's proof before sending tool requests, so a replacement listener cannot impersonate a relay from a stale record.
 - On Windows, the Vite plugin and the MCP server inspect the registry directory and its ancestors through the Windows .NET API in PowerShell on every lookup. They refuse reparse-point ancestors and require the registry to be a private direct child of the user's temporary directory, so automatic discovery is no longer limited to macOS and Linux.
 
-This breaks three setups:
+This breaks five setups:
 
 - The relay no longer follows `server.host`, so an agent on another host cannot reach a discovered relay. Set `devToolsMcpPort` in the Vite config, and set `FOLDKIT_DEVTOOLS_MCP_PORT` and `FOLDKIT_DEVTOOLS_MCP_HOST` for the MCP server. That port has no token, so do not use it on a shared or untrusted network.
 - `FOLDKIT_DEVTOOLS_MCP_HOST` no longer replaces the host of a discovered relay. Like `FOLDKIT_DEVTOOLS_MCP_PORT`, it now skips discovery and connects to that host on the configured port, or on `9988`.
 - A new MCP server refuses an older automatic relay that cannot prove its identity. Upgrade the MCP server and Vite plugin together to use the signed connection handshake.
+- Automatic discovery does not connect to port `9988` when no authenticated relay is published. To use a fixed-port relay, set `FOLDKIT_DEVTOOLS_MCP_PORT` to the port configured with `devToolsMcpPort`.
+- When `XDG_RUNTIME_DIR` is unset on macOS or Linux, the default registry moves from the operating system's temporary directory to `~/.cache/foldkit-devtools-relays`. Upgrade the MCP server and Vite plugin together, or set `FOLDKIT_DEVTOOLS_RELAY_DIRECTORY` to the same private directory in both processes.
 
-`devToolsMcpPort`, the token, the registry location, the record format, the `9988` fallback, and every tool name and input are unchanged. An MCP server from an earlier release still discovers the new records, but the connection only survives beside other upgrade handlers once the plugin is upgraded.
+`devToolsMcpPort`, the token, the record format, and every tool name and input are unchanged.
