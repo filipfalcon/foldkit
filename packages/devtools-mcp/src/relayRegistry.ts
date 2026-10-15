@@ -218,7 +218,12 @@ const realRoot = (
   })
 
 const segmentCount = (root: string, path: Path.Path): number =>
-  pipe(root, String.split(path.sep), Array.filter(String.isNonEmpty)).length
+  pipe(
+    root,
+    String.split(path.sep),
+    Array.filter(String.isNonEmpty),
+    Array.length,
+  )
 
 export const discoverRelays = (
   projectRoot: string,

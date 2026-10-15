@@ -9,7 +9,7 @@ import type { ViteDevServer } from 'vite'
 import { beforeEach, expect, onTestFinished, vi } from 'vitest'
 import { type RawData, WebSocket } from 'ws'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NodeServices } from '@effect/platform-node'
 
 import { readRelayRecords } from '../src/relayRegistry.ts'
 import { boundPort } from './boundPort.ts'

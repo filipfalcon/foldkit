@@ -1,4 +1,14 @@
-import { Array, Deferred, Duration, Effect, Exit, Option, pipe } from 'effect'
+import {
+  Array,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  pipe,
+} from 'effect'
+import { Request } from 'foldkit/devtools-protocol'
 import { createServer as createNetServer } from 'node:net'
 import { join } from 'node:path'
 import { expect, it, onTestFinished, vi } from 'vitest'
@@ -295,7 +305,7 @@ it(
 )
 
 it(
-  'closes only after a call still connecting fails at the connect timeout, without an uncaught error',
+  'closes an unfinished connection promptly without an uncaught error',
   async () => {
     const url = await startStalledServer()
     const uncaught: Array<unknown> = []
@@ -304,9 +314,7 @@ it(
     onTestFinished(() => {
       process.off('uncaughtException', onUncaught)
     })
-    const client = await Effect.runPromise(
-      makeRelayClient(Effect.succeed([fixedTarget(url)])),
-    )
+    const client = await openClient(Effect.succeed([fixedTarget(url)]))
     const settledOperations: Array<string> = []
 
     const startedAt = Date.now()
@@ -325,7 +333,7 @@ it(
 
     expect(settledOperations).toStrictEqual(['listRuntimes', 'close'])
     expect(Exit.isFailure(exit)).toBe(true)
-    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(CONNECT_TIMEOUT)
+    expect(Date.now() - startedAt).toBeLessThan(CONNECT_TIMEOUT)
     expect(uncaught).toStrictEqual([])
   },
   TEST_TIMEOUT,
@@ -366,6 +374,104 @@ it(
   },
   TEST_TIMEOUT,
 )
+
+it('lets a caller cancel without cancelling another registry lookup', async () => {
+  const relay = await startAnsweringRelay(runtimesResponse('runtime'))
+  const started = Deferred.makeUnsafe<void>()
+  const released = Deferred.makeUnsafe<void>()
+  const client = await openClient(
+    Effect.gen(function* () {
+      yield* Deferred.succeed(started, undefined)
+      yield* Deferred.await(released)
+
+      return [fixedTarget(relay.url)]
+    }),
+  )
+  const firstCall = Effect.runFork(client.listRuntimes)
+  await Effect.runPromise(Deferred.await(started))
+  const otherCall = listedIds(client)
+  const interrupted = Effect.runPromise(Fiber.interrupt(firstCall))
+  const isInterruptedPromptly = await Promise.race([
+    interrupted.then(() => true),
+    new Promise<boolean>(resolve =>
+      setTimeout(() => resolve(false), CLOSE_DELAY),
+    ),
+  ])
+
+  Deferred.doneUnsafe(released, Effect.void)
+  await interrupted
+  const runtimes = await otherCall
+
+  expect(isInterruptedPromptly).toBe(true)
+  expect(runtimes).toStrictEqual(['runtime'])
+})
+
+it('closes while registry lookups are running or queued', async () => {
+  const started = Deferred.makeUnsafe<void>()
+  const released = Deferred.makeUnsafe<void>()
+  const client = await openClient(
+    Effect.gen(function* () {
+      yield* Deferred.succeed(started, undefined)
+      yield* Deferred.await(released)
+
+      return []
+    }),
+  )
+  const firstCall = Effect.runPromise(Effect.exit(client.listRuntimes))
+  await Effect.runPromise(Deferred.await(started))
+  const otherCall = Effect.runPromise(Effect.exit(client.listRuntimes))
+  const joinedCall = Effect.runPromise(Effect.exit(client.listRuntimes))
+  const closed = Effect.runPromise(client.close)
+  const isClosedPromptly = await Promise.race([
+    closed.then(() => true),
+    new Promise<boolean>(resolve =>
+      setTimeout(() => resolve(false), CLOSE_DELAY),
+    ),
+  ])
+
+  Deferred.doneUnsafe(released, Effect.void)
+  await closed
+  const exits = await Promise.all([firstCall, otherCall, joinedCall])
+
+  expect(isClosedPromptly).toBe(true)
+  expect(exits.every(Exit.isFailure)).toBe(true)
+})
+
+it('fails a pending Runtime request when the client closes', async () => {
+  const received = Deferred.makeUnsafe<void>()
+  const url = await startRelay(socket => {
+    socket.on('message', raw => {
+      const { id, request } = JSON.parse(raw.toString())
+
+      if (request._tag === 'RequestListRuntimes') {
+        socket.send(
+          JSON.stringify({ id, response: runtimesResponse('runtime') }),
+        )
+      } else {
+        Deferred.doneUnsafe(received, Effect.void)
+      }
+    })
+  })
+  const client = await openClient(Effect.succeed([fixedTarget(url)]))
+  const call = Effect.runFork(
+    client.sendRequest(Request.RequestResume(), Option.some('runtime')),
+  )
+  await Effect.runPromise(Deferred.await(received))
+  await Effect.runPromise(client.close)
+  const settled = Effect.runPromise(Fiber.await(call))
+  const isSettledPromptly = await Promise.race([
+    settled.then(() => true),
+    new Promise<boolean>(resolve =>
+      setTimeout(() => resolve(false), CLOSE_DELAY),
+    ),
+  ])
+
+  await Effect.runPromise(Fiber.interrupt(call))
+  const exit = await settled
+
+  expect(isSettledPromptly).toBe(true)
+  expect(Exit.isFailure(exit)).toBe(true)
+})
 
 it(
   'looks up the registry and lists each relay once per tool call',

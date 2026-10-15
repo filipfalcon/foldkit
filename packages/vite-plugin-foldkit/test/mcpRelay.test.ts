@@ -23,7 +23,7 @@ import {
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NodeServices } from '@effect/platform-node'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 import { type FoldkitPluginOptions, foldkit } from '../src/index.ts'

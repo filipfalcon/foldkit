@@ -53,19 +53,24 @@ const fixedTarget = (url: string): RelayTarget => ({
 
 export const configuredRelayUrl = (
   settings: Settings,
-): Option.Option<string> =>
-  Option.isNone(settings.maybeConfiguredHost) &&
-  Option.isNone(settings.maybeConfiguredPort)
-    ? Option.none()
-    : Option.some(
-        relayUrl(
-          Option.getOrElse(settings.maybeConfiguredHost, () => DEFAULT_HOST),
-          Option.getOrElse(
-            settings.maybeConfiguredPort,
-            () => `${LEGACY_DEFAULT_PORT}`,
-          ),
-        ),
-      )
+): Option.Option<string> => {
+  const { maybeConfiguredHost, maybeConfiguredPort } = settings
+
+  if (
+    Option.isSome(maybeConfiguredHost) ||
+    Option.isSome(maybeConfiguredPort)
+  ) {
+    const host = Option.getOrElse(maybeConfiguredHost, () => DEFAULT_HOST)
+    const port = Option.getOrElse(
+      maybeConfiguredPort,
+      () => LEGACY_DEFAULT_PORT,
+    )
+
+    return Option.some(relayUrl(host, port))
+  } else {
+    return Option.none()
+  }
+}
 
 export const resolveRelayTargets = (
   settings: Settings,

@@ -55,10 +55,12 @@ import type {
 } from 'vite'
 import { type WebSocket, WebSocketServer } from 'ws'
 
-import * as NodeChildProcessSpawner from '@effect/platform-node/NodeChildProcessSpawner'
-import * as NodeCrypto from '@effect/platform-node/NodeCrypto'
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
-import * as NodePath from '@effect/platform-node/NodePath'
+import {
+  NodeChildProcessSpawner,
+  NodeCrypto,
+  NodeFileSystem,
+  NodePath,
+} from '@effect/platform-node'
 
 import { type FoldkitBuildOptions, foldkitBuild } from './build.js'
 import { foldkitBuildToken } from './buildToken.js'
@@ -997,31 +999,28 @@ const startMcpRelay = (
 
       return yield* bindLoopbackRelay(id, token, enqueue)
     })
-  return Effect.acquireRelease(
-    acquire.pipe(
-      Effect.tap(relay =>
-        Console.log(
-          `[foldkit:devTools] MCP relay listening at ${relayUrlForLog(relay.url)}`,
-        ),
-      ),
-      Effect.tap(relay => publishRelay(root, relay)),
-    ),
-    relay =>
-      Effect.gen(function* () {
-        relay.closeListener()
-        for (const client of relay.wss.clients) {
-          client.terminate()
-        }
-        relay.wss.close()
-        yield* retireRelayRecord(relay.id)
-        yield* Console.log('[foldkit:devTools] MCP relay stopped')
-      }),
+  return Effect.acquireRelease(acquire, relay =>
+    Effect.gen(function* () {
+      relay.closeListener()
+      for (const client of relay.wss.clients) {
+        client.terminate()
+      }
+      relay.wss.close()
+      yield* retireRelayRecord(relay.id)
+      yield* Console.log('[foldkit:devTools] MCP relay stopped')
+    }),
   ).pipe(
     Effect.retry({
       while: ({ cause }) => isPortInUse(cause),
       times: RELAY_BIND_RETRY_COUNT,
       schedule: Schedule.spaced(RELAY_BIND_RETRY_DELAY),
     }),
+    Effect.tap(relay =>
+      Console.log(
+        `[foldkit:devTools] MCP relay listening at ${relayUrlForLog(relay.url)}`,
+      ),
+    ),
+    Effect.tap(relay => publishRelay(root, relay)),
     Effect.catchTag('RelayBindFailed', ({ maybePort, cause }) =>
       reportRelayBindFailed(maybePort, cause),
     ),

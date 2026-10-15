@@ -14,6 +14,7 @@ import {
   Ref,
   Result,
   Schema,
+  Scope,
   Semaphore,
   String,
   pipe,
@@ -38,6 +39,7 @@ const NOT_CONNECTED_REASON =
 const NO_RUNTIMES_REASON =
   'No connected Foldkit runtimes. Open a Foldkit dev page and try again.'
 const INVALID_ADDRESS_REASON = 'the relay address is not a valid URL'
+const CLOSED_REASON = 'The Foldkit relay client is closed.'
 
 const encodeRequestFrameToJson = Schema.encodeUnknownSync(
   Schema.fromJsonString(RequestFrame),
@@ -94,6 +96,10 @@ export type ListedRuntime = Readonly<{
  * recently connected Runtime of the most recently started dev server. It fails
  * at once for an id that no relay lists, and with `TimeoutError` when no
  * response arrives in time.
+ *
+ * `close` interrupts discovery, closes relay sockets, and fails requests that
+ * are waiting for a response. A cancelled caller does not cancel a refresh
+ * that other callers can use.
  */
 export type RelayClient = Readonly<{
   listRuntimes: Effect.Effect<ReadonlyArray<ListedRuntime>, Error>
@@ -185,7 +191,8 @@ export const makeRelayClient = <Services>(
     const pendingRefreshRef = yield* Ref.make<Option.Option<Refresh>>(
       Option.none(),
     )
-    const isClosedRef = yield* Ref.make(false)
+    const refreshScope = yield* Scope.make()
+    const closed = yield* Deferred.make<void>()
     const context = yield* Effect.context<Services>()
 
     const attachHandlers = (socket: WebSocket): void => {
@@ -200,29 +207,35 @@ export const makeRelayClient = <Services>(
     }
 
     const openTarget = (target: RelayTarget): Effect.Effect<void> =>
-      attemptOpen(target.url).pipe(
-        Effect.timeoutOrElse({
-          duration: CONNECT_TIMEOUT,
-          orElse: () =>
-            Effect.fail(
-              new Error(
-                `no connection within ${Duration.format(CONNECT_TIMEOUT)}`,
-              ),
-            ),
-        }),
-        Effect.flatMap(socket =>
-          Effect.gen(function* () {
-            attachHandlers(socket)
-            yield* Ref.update(
-              socketsRef,
-              HashMap.set(target.key, { socket, target }),
-            )
+      Effect.uninterruptibleMask(restore =>
+        restore(
+          attemptOpen(target.url).pipe(
+            Effect.timeoutOrElse({
+              duration: CONNECT_TIMEOUT,
+              orElse: () =>
+                Effect.fail(
+                  new Error(
+                    `no connection within ${Duration.format(CONNECT_TIMEOUT)}`,
+                  ),
+                ),
+            }),
+          ),
+        ).pipe(
+          Effect.flatMap(socket =>
+            Effect.gen(function* () {
+              attachHandlers(socket)
+              yield* Ref.update(
+                socketsRef,
+                HashMap.set(target.key, { socket, target }),
+              )
 
-            yield* Console.error(
-              `[foldkit-devtools-mcp] connected to ${relayUrlForLog(target.url)}`,
-            )
-          }),
+              yield* Console.error(
+                `[foldkit-devtools-mcp] connected to ${relayUrlForLog(target.url)}`,
+              )
+            }),
+          ),
         ),
+      ).pipe(
         Effect.catch(error =>
           Console.error(
             `[foldkit-devtools-mcp] connect attempt to ${relayUrlForLog(target.url)} failed: ${errorReason(error)}`,
@@ -232,7 +245,7 @@ export const makeRelayClient = <Services>(
 
     const reconcile: Effect.Effect<ReadonlyArray<RelaySocket>> = Effect.gen(
       function* () {
-        if (yield* Ref.get(isClosedRef)) {
+        if (yield* Deferred.isDone(closed)) {
           return []
         }
 
@@ -294,23 +307,34 @@ export const makeRelayClient = <Services>(
       )
 
     const leadRefresh = (refresh: Refresh): Effect.Effect<void> =>
-      refreshLock.withPermits(1)(
-        Effect.gen(function* () {
-          yield* Ref.set(pendingRefreshRef, Option.none())
-          yield* Deferred.into(reconcile, refresh)
-        }),
-      )
+      Deferred.into(
+        refreshLock.withPermits(1)(
+          Effect.gen(function* () {
+            yield* Ref.set(pendingRefreshRef, Option.none())
+
+            return yield* reconcile
+          }),
+        ),
+        refresh,
+      ).pipe(Effect.asVoid)
 
     const refreshRelays: Effect.Effect<ReadonlyArray<RelaySocket>> =
       Effect.uninterruptibleMask(restore =>
         Effect.gen(function* () {
+          if (yield* Deferred.isDone(closed)) {
+            return []
+          }
+
           const ownRefresh = yield* Deferred.make<ReadonlyArray<RelaySocket>>()
           const turn = yield* takeRefreshTurn(ownRefresh)
 
           yield* Match.value(turn).pipe(
             Match.withReturnType<Effect.Effect<void>>(),
             Match.tagsExhaustive({
-              Leader: ({ refresh }) => leadRefresh(refresh),
+              Leader: ({ refresh }) =>
+                Effect.forkIn(leadRefresh(refresh), refreshScope, {
+                  startImmediately: true,
+                }).pipe(Effect.asVoid),
               Follower: () => Effect.void,
             }),
           )
@@ -325,33 +349,41 @@ export const makeRelayClient = <Services>(
       maybeConnectionId: Option.Option<string>,
       timeout: Duration.Duration,
     ): Effect.Effect<typeof Response.Type, Cause.TimeoutError | Error> =>
-      Effect.gen(function* () {
-        const id = generateRequestId()
-        const deferred = yield* Deferred.make<typeof Response.Type, Error>()
-        yield* Ref.update(pendingResponsesRef, HashMap.set(id, deferred))
+      Effect.acquireUseRelease(
+        Effect.gen(function* () {
+          if (yield* Deferred.isDone(closed)) {
+            return yield* Effect.fail(new Error(CLOSED_REASON))
+          }
 
-        const frame: typeof RequestFrame.Type = {
-          id,
-          maybeConnectionId,
-          request,
-        }
+          const id = generateRequestId()
+          const deferred = yield* Deferred.make<typeof Response.Type, Error>()
+          yield* Ref.update(pendingResponsesRef, HashMap.set(id, deferred))
 
-        yield* Effect.try({
-          try: () => socket.send(encodeRequestFrameToJson(frame)),
-          catch: toError('Failed to send request'),
-        }).pipe(
-          Effect.tapError(() =>
-            Ref.update(pendingResponsesRef, HashMap.remove(id)),
-          ),
-        )
+          return { id, deferred }
+        }),
+        ({ id, deferred }) => {
+          const frame: typeof RequestFrame.Type = {
+            id,
+            maybeConnectionId,
+            request,
+          }
 
-        return yield* Deferred.await(deferred).pipe(
-          Effect.timeout(timeout),
-          Effect.onError(() =>
-            Ref.update(pendingResponsesRef, HashMap.remove(id)),
-          ),
-        )
-      })
+          return Effect.try({
+            try: () => socket.send(encodeRequestFrameToJson(frame)),
+            catch: toError('Failed to send request'),
+          }).pipe(
+            Effect.andThen(
+              Effect.raceFirst(
+                Deferred.await(deferred).pipe(Effect.timeout(timeout)),
+                Deferred.await(closed).pipe(
+                  Effect.andThen(Effect.fail(new Error(CLOSED_REASON))),
+                ),
+              ),
+            ),
+          )
+        },
+        ({ id }) => Ref.update(pendingResponsesRef, HashMap.remove(id)),
+      )
 
     const listRelayRuntimes = ({
       socket,
@@ -435,15 +467,20 @@ export const makeRelayClient = <Services>(
         )
       })
 
-    const close: Effect.Effect<void> = refreshLock.withPermits(1)(
+    const close: Effect.Effect<void> = Effect.uninterruptible(
       Effect.gen(function* () {
-        yield* Ref.set(isClosedRef, true)
-        const sockets = yield* Ref.getAndSet(socketsRef, HashMap.empty())
-        yield* Effect.sync(() => {
-          for (const { socket } of HashMap.values(sockets)) {
-            socket.terminate()
-          }
-        })
+        yield* Deferred.succeed(closed, undefined)
+        yield* Scope.close(refreshScope, Exit.void)
+        yield* refreshLock.withPermits(1)(
+          Effect.gen(function* () {
+            const sockets = yield* Ref.getAndSet(socketsRef, HashMap.empty())
+            yield* Effect.sync(() => {
+              for (const { socket } of HashMap.values(sockets)) {
+                socket.terminate()
+              }
+            })
+          }),
+        )
       }),
     )
 

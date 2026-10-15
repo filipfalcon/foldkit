@@ -13,8 +13,7 @@ import { tmpdir } from 'node:os'
 import { join, win32 } from 'node:path'
 import { describe, expect, it, onTestFinished } from 'vitest'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
-import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NodeFileSystem, NodeServices } from '@effect/platform-node'
 
 import {
   powershellPath,

@@ -120,7 +120,9 @@ const parseAccessControlEntries = (
   entries: string,
 ): Option.Option<ReadonlyArray<AccessControlEntry>> =>
   pipe(
-    Array.fromIterable(entries.matchAll(ACCESS_CONTROL_ENTRY_PATTERN)),
+    entries,
+    String.matchAll(ACCESS_CONTROL_ENTRY_PATTERN),
+    Array.fromIterable,
     Array.map(entry =>
       Option.flatMap(
         capturedGroup(entry, ACCESS_CONTROL_ENTRY_GROUP),
@@ -194,7 +196,9 @@ export const powershellPath = (systemRoot: string): string =>
 
 const currentUserSidFromCsv = (identity: string): Option.Option<string> =>
   pipe(
-    Array.fromIterable(identity.matchAll(QUOTED_CSV_FIELD_PATTERN)),
+    identity,
+    String.matchAll(QUOTED_CSV_FIELD_PATTERN),
+    Array.fromIterable,
     Array.map(field => capturedGroup(field, QUOTED_CSV_FIELD_GROUP)),
     Array.getSomes,
     Array.findLast(field => SECURITY_IDENTIFIER_PATTERN.test(field)),
@@ -209,7 +213,7 @@ const probeOutputRefusal = (
     Array.map(String.trim),
     Array.filter(String.isNonEmpty),
   )
-  const maybeDescriptor = Array.get(lines, 0)
+  const maybeDescriptor = Array.head(lines)
   const maybeCurrentUserSid = Option.flatMap(
     Array.get(lines, 1),
     currentUserSidFromCsv,

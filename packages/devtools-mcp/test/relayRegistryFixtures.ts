@@ -1,6 +1,6 @@
 import { ConfigProvider, Effect, HashSet, Ref } from 'effect'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NodeServices } from '@effect/platform-node'
 
 import type { RelayRegistryReader } from '../src/relayRegistry.ts'
 
