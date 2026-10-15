@@ -31,8 +31,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build MCP dependencies
-        run: pnpm --filter @foldkit/devtools-mcp... build
+      - name: Build Foldkit
+        run: pnpm --filter foldkit exec tsc -b tsconfig.build.json
+
+      - name: Build Vite plugin
+        run: pnpm --filter @foldkit/vite-plugin exec tsc -b
 
       - name: Test Vite plugin registry trust
         run: pnpm --filter @foldkit/vite-plugin exec vitest run test/relayRegistryTrust.test.ts
