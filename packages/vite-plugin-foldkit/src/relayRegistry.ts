@@ -196,7 +196,7 @@ export const publishRelayRecord = (
     }
 
     yield* fileSystem.makeDirectory(directory, {
-      recursive: process.platform !== 'win32',
+      recursive: true,
       mode: REGISTRY_DIRECTORY_MODE,
     })
 

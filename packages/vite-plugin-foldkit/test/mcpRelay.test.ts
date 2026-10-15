@@ -837,6 +837,28 @@ describe('DevTools MCP relay discovery', () => {
     },
   )
 
+  it.runIf(process.platform === 'win32')(
+    'publishes multiple records into an existing Windows registry',
+    async () => {
+      const first: RelayRecord = {
+        version: 1,
+        id: 'first',
+        root: directories.root,
+        url: 'ws://localhost:9988',
+        pid: process.pid,
+        startedAt: 1,
+      }
+      const second = { ...first, id: 'second' }
+
+      await runRegistry(publish(first))
+      await runRegistry(publish(second))
+
+      expect(new Set(await readdir(directories.registry))).toStrictEqual(
+        new Set(['first.json', 'second.json']),
+      )
+    },
+  )
+
   it.skipIf(process.getuid === undefined)(
     'refuses a registry directory that other users can read',
     async () => {
