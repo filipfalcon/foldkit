@@ -2,7 +2,7 @@ import { Array, Effect, Match, Option, pipe } from 'effect'
 import { Request, type Response } from 'foldkit/devtools-protocol'
 import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { type Plugin, type ViteDevServer, createServer } from 'vite'
 import { beforeEach, expect, onTestFinished, vi } from 'vitest'
 import { type RawData, WebSocket } from 'ws'
@@ -129,7 +129,10 @@ const publishedRelayCount = (
   runWithNode(discoveredTargets(root, registryReader)).then(
     targets =>
       targets.filter(({ maybeProjectRoot }) =>
-        Option.contains(maybeProjectRoot, root),
+        Option.exists(
+          maybeProjectRoot,
+          projectRoot => resolve(projectRoot) === resolve(root),
+        ),
       ).length,
   )
 
