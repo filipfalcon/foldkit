@@ -40,5 +40,8 @@ jobs:
       - name: Test Vite plugin registry trust
         run: pnpm --filter @foldkit/vite-plugin exec vitest run test/relayRegistryTrust.test.ts
 
+      - name: Test Vite plugin Windows registry publication
+        run: pnpm --filter @foldkit/vite-plugin exec vitest run test/mcpRelay.test.ts -t "Windows registry"
+
       - name: Test MCP registry trust and discovery
         run: pnpm --filter @foldkit/devtools-mcp exec vitest run test/relayRegistryTrust.test.ts test/windowsRegistry.test.ts
