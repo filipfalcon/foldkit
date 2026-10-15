@@ -24,6 +24,7 @@ import {
   relayRegistryTrust,
   windowsDirectoryChainRefusal,
   windowsDirectoryRefusal,
+  windowsTempRootRefusal,
 } from '../src/relayRegistryTrust.ts'
 
 const USER = 'S-1-5-21-1111111111-2222222222-3333333333-1001'
@@ -40,8 +41,7 @@ const TRUSTED_INSTALLER =
 const PROBED_DIRECTORY = 'C:\\registry'
 const PROBE_TEST_TIMEOUT = 30_000
 const NATIVE_PROBE_TIMEOUT = 10_000
-const NATIVE_PROBE_SCRIPT =
-  '$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh'
+const NATIVE_PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:FOLDKIT_DEVTOOLS_PROBED_DIRECTORY); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { $attributes = [System.IO.File]::GetAttributes($path); if (($attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { 'REPARSE_POINT' } else { 'DIRECTORY' }; ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
 const SECONDS_PAST_PROBE_LIMIT = '30'
 const STAND_IN_POWERSHELL = join(
   import.meta.dirname,
@@ -62,6 +62,7 @@ const SHARED_WITH_OTHER_USERS = Option.some(
 const REPLACEABLE_PARENT = Option.some(
   'has a parent directory that another user can replace',
 )
+const REPARSE_PARENT = Option.some('has a reparse-point directory in its path')
 
 describe('windowsDirectoryRefusal', () => {
   it('accepts inherited entries and a directory owned by Administrators', () => {
@@ -174,8 +175,20 @@ describe('windowsDirectoryChainRefusal', () => {
     ).toStrictEqual(REPLACEABLE_PARENT)
   })
 
-  it('refuses delete or permission-control access on a child', () => {
-    for (const rights of ['SD', 'WD', 'WO', 'FA', '0x00010000', '0x10000000']) {
+  it('refuses access that can replace or redirect a child directory', () => {
+    for (const rights of [
+      'SD',
+      'WD',
+      'WO',
+      'FA',
+      'FW',
+      'GW',
+      '0x00010000',
+      '0x10000000',
+      '0x40000000',
+      '0x00000002',
+      '0x00000100',
+    ]) {
       const replaceable = `O:${USER}G:${GROUP}D:(A;;FA;;;${USER})(A;;${rights};;;BU)`
 
       expect(
@@ -229,8 +242,37 @@ describe('powershellPath', () => {
   })
 })
 
+describe('windowsTempRootRefusal', () => {
+  it('accepts only a direct child of the user temporary directory', () => {
+    expect(
+      windowsTempRootRefusal(
+        'C:\\Users\\me\\AppData\\Local\\Temp\\foldkit-devtools-relays',
+        'c:\\users\\me\\appdata\\local\\temp',
+      ),
+    ).toStrictEqual(Option.none())
+    expect(
+      windowsTempRootRefusal(
+        'C:\\Users\\me\\AppData\\Local\\Temp\\custom\\registry',
+        'C:\\Users\\me\\AppData\\Local\\Temp',
+      ),
+    ).toStrictEqual(
+      Option.some('is outside the Windows user temporary directory'),
+    )
+    expect(
+      windowsTempRootRefusal(
+        'C:\\Users\\other\\registry',
+        'C:\\Users\\me\\AppData\\Local\\Temp',
+      ),
+    ).toStrictEqual(
+      Option.some('is outside the Windows user temporary directory'),
+    )
+  })
+})
+
 const probeOutput = (...lines: ReadonlyArray<string>): string =>
-  lines.map(line => `${line}\n`).join('')
+  lines
+    .map(line => `${line.startsWith('O:') ? 'DIRECTORY\n' : ''}${line}\n`)
+    .join('')
 
 type StandInPowerShell = Readonly<{
   executable: string
@@ -273,7 +315,7 @@ describe('probeWindowsDirectory', () => {
     'reads the descriptor and the user from the probe output',
     async () => {
       const accepted = await standInPowerShell({
-        reply: `${WINDOWS_ROOT}\r\n${PRIVATE}\r\n${IDENTITY}\r\n`,
+        reply: `DIRECTORY\r\n${WINDOWS_ROOT}\r\nDIRECTORY\r\n${PRIVATE}\r\n${IDENTITY}\r\n`,
       })
       const shared = await standInPowerShell({
         reply: probeOutput('', WINDOWS_ROOT, SHARED, IDENTITY),
@@ -298,6 +340,19 @@ describe('probeWindowsDirectory', () => {
         UNVERIFIED_OWNERSHIP,
       )
       expect(await echoing.receivedDirectory()).toBe(directory)
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'refuses a reparse-point ancestor',
+    async () => {
+      const reparse = await standInPowerShell({
+        reply: `REPARSE_POINT\n${WINDOWS_ROOT}\nDIRECTORY\n${PRIVATE}\n${IDENTITY}\n`,
+      })
+
+      expect(await probe(reparse.executable, PROBED_DIRECTORY)).toStrictEqual(
+        REPARSE_PARENT,
+      )
     },
   )
 
@@ -504,6 +559,34 @@ describe('relayRegistryTrust', () => {
 
       expect((await inspect(directory)).maybeRefusal).toStrictEqual(
         REPLACEABLE_PARENT,
+      )
+    },
+  )
+
+  it.runIf(process.platform === 'darwin')(
+    'refuses macOS allow ACLs on a parent or the registry directory',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'foldkit-trusted-'))
+      const parent = join(root, 'parent')
+      const directory = join(parent, 'registry')
+      onTestFinished(() => rm(root, { recursive: true, force: true }))
+      await mkdir(parent, { mode: 0o700 })
+      await mkdir(directory, { mode: 0o700 })
+
+      execFileSync('/bin/chmod', ['+a', 'everyone deny delete', parent])
+      expect((await inspect(directory)).maybeRefusal).toStrictEqual(
+        Option.none(),
+      )
+
+      execFileSync('/bin/chmod', ['+a', 'everyone allow delete_child', parent])
+      expect((await inspect(directory)).maybeRefusal).toStrictEqual(
+        REPLACEABLE_PARENT,
+      )
+
+      execFileSync('/bin/chmod', ['-N', parent])
+      execFileSync('/bin/chmod', ['+a', 'everyone allow read', directory])
+      expect((await inspect(directory)).maybeRefusal).toStrictEqual(
+        SHARED_WITH_OTHER_USERS,
       )
     },
   )

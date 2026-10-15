@@ -18,7 +18,10 @@ import {
 } from 'foldkit/devtools-protocol'
 import { tmpdir } from 'node:os'
 
-import type { RelayRegistryTrust } from './relayRegistryTrust.js'
+import {
+  type RelayRegistryTrust,
+  windowsTempRootRefusal,
+} from './relayRegistryTrust.js'
 
 const RUNTIME_DIRECTORY_VARIABLE = 'XDG_RUNTIME_DIR'
 const RECORD_FILE_EXTENSION = '.json'
@@ -178,8 +181,22 @@ export const publishRelayRecord = (
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem
     const directory = yield* relayRegistryDirectory
+    const maybeLocationRefusal =
+      process.platform === 'win32'
+        ? windowsTempRootRefusal(directory, tmpdir())
+        : Option.none<string>()
+
+    if (Option.isSome(maybeLocationRefusal)) {
+      return yield* Effect.fail(
+        new RelayRegistryDirectoryRefused({
+          directory,
+          reason: maybeLocationRefusal.value,
+        }),
+      )
+    }
+
     yield* fileSystem.makeDirectory(directory, {
-      recursive: true,
+      recursive: process.platform !== 'win32',
       mode: REGISTRY_DIRECTORY_MODE,
     })
 

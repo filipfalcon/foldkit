@@ -798,7 +798,7 @@ describe('DevTools MCP relay discovery', () => {
     TEST_TIMEOUT,
   )
 
-  it(
+  it.skipIf(process.platform === 'win32')(
     'publishes under XDG_RUNTIME_DIR when no registry directory is configured',
     async () => {
       const runtimeDirectory = withRuntimeDirectory(directories.registry)
@@ -813,6 +813,28 @@ describe('DevTools MCP relay discovery', () => {
       ])
     },
     TEST_TIMEOUT,
+  )
+
+  it.runIf(process.platform === 'win32')(
+    'refuses a Windows registry nested below the user temporary directory',
+    async () => {
+      const nestedDirectory = join(directories.registry, 'nested')
+      process.env[RELAY_DIRECTORY_VARIABLE] = nestedDirectory
+      const record: RelayRecord = {
+        version: 1,
+        id: 'nested',
+        root: directories.root,
+        url: 'ws://localhost:9988',
+        pid: process.pid,
+        startedAt: 1,
+      }
+
+      await expect(runRegistry(publish(record))).rejects.toMatchObject({
+        _tag: 'RelayRegistryDirectoryRefused',
+        reason: 'is outside the Windows user temporary directory',
+      })
+      await expect(readdir(directories.registry)).resolves.toStrictEqual([])
+    },
   )
 
   it.skipIf(process.getuid === undefined)(

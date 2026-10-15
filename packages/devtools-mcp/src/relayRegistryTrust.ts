@@ -11,6 +11,7 @@ import {
 } from 'effect'
 import { ChildProcess, ChildProcessSpawner } from 'effect/process'
 import { lstat, realpath } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, win32 } from 'node:path'
 
 const PERMISSIONS_BEYOND_OWNER = 0o077
@@ -19,7 +20,9 @@ const STICKY_DIRECTORY = 0o1000
 const ROOT_UID = 0
 const PROBE_TIMEOUT = Duration.seconds(10)
 const PROBED_DIRECTORY_VARIABLE = 'FOLDKIT_DEVTOOLS_PROBED_DIRECTORY'
-const PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:${PROBED_DIRECTORY_VARIABLE}); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
+const DARWIN_ACL_ENTRY_PATTERN = /^\s*\d+:\s+.+\s(allow|deny)\s+\S+/
+const DARWIN_DIRECTORY_MODE_PATTERN = /^d[rwxstST-]{9}[+@ ]/
+const PROBE_SCRIPT = `$sections = [System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access; $directories = [System.Collections.Generic.List[string]]::new(); $directory = [System.IO.DirectoryInfo]::new($env:${PROBED_DIRECTORY_VARIABLE}); while ($null -ne $directory) { $directories.Insert(0, $directory.FullName); $directory = $directory.Parent }; foreach ($path in $directories) { $attributes = [System.IO.File]::GetAttributes($path); if (($attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { 'REPARSE_POINT' } else { 'DIRECTORY' }; ([System.IO.Directory]::GetAccessControl($path)).GetSecurityDescriptorSddlForm($sections) }; & "$env:SystemRoot\\System32\\whoami.exe" /user /fo csv /nh`
 
 const UNVERIFIED_OWNERSHIP = 'has ownership that cannot be verified'
 const UNVERIFIED_PERMISSIONS = 'has permissions that cannot be verified'
@@ -28,6 +31,8 @@ const SHARED_WITH_OTHER_USERS = 'is readable or writable by other users'
 const NOT_REGULAR_DIRECTORY = 'is not a regular directory'
 const REPLACEABLE_PARENT =
   'has a parent directory that another user can replace'
+const REPARSE_PARENT = 'has a reparse-point directory in its path'
+const OUTSIDE_WINDOWS_TEMP = 'is outside the Windows user temporary directory'
 
 const SECURITY_DESCRIPTOR_PATTERN =
   /^O:(S-1-[0-9-]+|[A-Z]{2})(?:G:(?:S-1-[0-9-]+|[A-Z]{2}))?(?:D:([A-Z_]*)((?:\([^()]*\))*))?(?:S:.*)?$/
@@ -197,6 +202,96 @@ const posixParentChainRefusal = (directory: string) =>
     catch: () => new DirectoryProbeFailed(),
   })
 
+const darwinAclOutputRefusal = (
+  output: string,
+  isLeaf: boolean,
+): Option.Option<string> => {
+  const outputLines = String.split(output, /\r?\n/)
+  const lines = output.endsWith('\n')
+    ? Array.dropRight(outputLines, 1)
+    : outputLines
+  const maybeSummary = Array.head(lines)
+
+  if (
+    Option.isNone(maybeSummary) ||
+    !DARWIN_DIRECTORY_MODE_PATTERN.test(maybeSummary.value)
+  ) {
+    return Option.some(UNVERIFIED_PERMISSIONS)
+  }
+
+  for (const line of Array.drop(lines, 1)) {
+    const maybeAction = Option.flatMap(
+      Option.fromNullishOr(DARWIN_ACL_ENTRY_PATTERN.exec(line)),
+      entry => Array.get(entry, 1),
+    )
+
+    if (Option.isNone(maybeAction)) {
+      return Option.some(UNVERIFIED_PERMISSIONS)
+    }
+
+    if (maybeAction.value === 'allow') {
+      return Option.some(isLeaf ? SHARED_WITH_OTHER_USERS : REPLACEABLE_PARENT)
+    }
+  }
+
+  return Option.none()
+}
+
+const darwinAclChainRefusal = (
+  directory: string,
+): Effect.Effect<
+  Option.Option<string>,
+  DirectoryProbeFailed,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
+  Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+
+    for (const component of directoryChain(directory)) {
+      const probe = yield* spawner.spawn(
+        ChildProcess.make(
+          '/bin/ls',
+          ['-l', '-d', '-e', '-P', '-b', '--', component],
+          {
+            env: { LC_ALL: 'C' },
+            extendEnv: true,
+            stdin: 'ignore',
+            stderr: 'ignore',
+          },
+        ),
+      )
+      const [output, exitCode] = yield* Effect.all(
+        [
+          pipe(probe.stdout, Stream.decodeText, Stream.mkString),
+          probe.exitCode,
+        ],
+        { concurrency: 'unbounded' },
+      )
+
+      if (exitCode !== 0) {
+        return yield* Effect.fail(new DirectoryProbeFailed())
+      }
+
+      const maybeRefusal = darwinAclOutputRefusal(
+        output,
+        component === directory,
+      )
+
+      if (Option.isSome(maybeRefusal)) {
+        return maybeRefusal
+      }
+    }
+
+    return Option.none<string>()
+  }).pipe(
+    Effect.scoped,
+    Effect.mapError(() => new DirectoryProbeFailed()),
+    Effect.timeoutOrElse({
+      duration: PROBE_TIMEOUT,
+      orElse: () => Effect.fail(new DirectoryProbeFailed()),
+    }),
+  )
+
 const capturedGroup = (
   match: RegExpMatchArray,
   group: number,
@@ -321,17 +416,23 @@ const SDDL_ACCESS_RIGHT_CODES: ReadonlyArray<string> = [
 ]
 const HEX_ACCESS_RIGHTS_PATTERN = /^0x[0-9a-f]+$/i
 const SYMBOLIC_ACCESS_RIGHTS_PATTERN = /[A-Z]{2}/g
+const WRITE_DATA_ACCESS = 0x0000_0002
+const WRITE_ATTRIBUTES_ACCESS = 0x0000_0100
 const DELETE_ACCESS = 0x0001_0000
 const DELETE_CHILD_ACCESS = 0x0000_0040
 const CHANGE_PERMISSIONS_ACCESS = 0x0004_0000
 const TAKE_OWNERSHIP_ACCESS = 0x0008_0000
 const GENERIC_ALL_ACCESS = 0x1000_0000
+const GENERIC_WRITE_ACCESS = 0x4000_0000
 const KNOWN_FILE_ACCESS = 0xf11f_01ff
 const CHILD_REPLACEMENT_ACCESS =
+  WRITE_DATA_ACCESS |
+  WRITE_ATTRIBUTES_ACCESS |
   DELETE_ACCESS |
   CHANGE_PERMISSIONS_ACCESS |
   TAKE_OWNERSHIP_ACCESS |
-  GENERIC_ALL_ACCESS
+  GENERIC_ALL_ACCESS |
+  GENERIC_WRITE_ACCESS
 const PARENT_REPLACEMENT_ACCESS =
   DELETE_CHILD_ACCESS |
   CHANGE_PERMISSIONS_ACCESS |
@@ -434,6 +535,8 @@ export const windowsDirectoryChainRefusal = (
             'SD',
             'WD',
             'WO',
+            'FW',
+            'GW',
           ])
       const maybeCanReplaceChild = accessGrantsReplacement(
         entry.rights,
@@ -467,6 +570,14 @@ export const powershellPath = (systemRoot: string): string =>
     'powershell.exe',
   )
 
+export const windowsTempRootRefusal = (
+  directory: string,
+  tempRoot: string,
+): Option.Option<string> =>
+  win32.relative(tempRoot, win32.dirname(directory)) === ''
+    ? Option.none()
+    : Option.some(OUTSIDE_WINDOWS_TEMP)
+
 const currentUserSidFromCsv = (identity: string): Option.Option<string> =>
   pipe(
     identity,
@@ -491,16 +602,40 @@ const probeOutputRefusal = (
     Array.last(lines),
     currentUserSidFromCsv,
   )
-  const descriptors = Array.take(lines, Array.length(lines) - 1)
-  const expectedDescriptorCount = Array.length(
+  const directoryResults = Array.take(lines, Array.length(lines) - 1)
+  const expectedDirectoryCount = Array.length(
     directoryChain(directory, win32.dirname),
   )
 
   return Option.match(maybeCurrentUserSid, {
     onNone: () => Effect.fail(new WindowsProbeFailed()),
     onSome: currentUserSid => {
-      if (Array.length(descriptors) !== expectedDescriptorCount) {
+      if (Array.length(directoryResults) !== expectedDirectoryCount * 2) {
         return Effect.fail(new WindowsProbeFailed())
+      }
+
+      const results = Array.chunksOf(directoryResults, 2)
+      const kinds = Array.getSomes(Array.map(results, Array.head))
+      const descriptors = Array.getSomes(Array.map(results, Array.last))
+
+      if (
+        Array.length(kinds) !== expectedDirectoryCount ||
+        Array.length(descriptors) !== expectedDirectoryCount
+      ) {
+        return Effect.fail(new WindowsProbeFailed())
+      }
+
+      if (
+        Array.some(
+          kinds,
+          kind => kind !== 'DIRECTORY' && kind !== 'REPARSE_POINT',
+        )
+      ) {
+        return Effect.fail(new WindowsProbeFailed())
+      }
+
+      if (Array.some(kinds, kind => kind === 'REPARSE_POINT')) {
+        return Effect.succeed(Option.some(REPARSE_PARENT))
       }
 
       const maybeLeafDescriptor = Array.last(descriptors)
@@ -619,19 +754,47 @@ export const relayRegistryTrust: RelayRegistryTrust = {
 
       const maybeRefusal =
         process.platform === 'win32'
-          ? yield* probeWindowsDirectory(
-              Option.map(
-                Option.fromNullishOr(process.env['SystemRoot']),
-                powershellPath,
-              ),
-              probe.directory,
-            )
-          : yield* posixParentChainRefusal(probe.directory).pipe(
-              Effect.map(maybeParentRefusal =>
-                Option.orElse(maybeParentRefusal, () =>
-                  posixDirectoryRefusal(probe.entry.mode, probe.entry.uid),
+          ? yield* Effect.gen(function* () {
+              const tempRoot = yield* Effect.tryPromise({
+                try: () => realpath(tmpdir()),
+                catch: () => new DirectoryProbeFailed(),
+              })
+              const maybeLocationRefusal = windowsTempRootRefusal(
+                probe.directory,
+                tempRoot,
+              )
+
+              if (Option.isSome(maybeLocationRefusal)) {
+                return maybeLocationRefusal
+              }
+
+              return yield* probeWindowsDirectory(
+                Option.map(
+                  Option.fromNullishOr(process.env['SystemRoot']),
+                  powershellPath,
                 ),
-              ),
+                probe.directory,
+              )
+            })
+          : yield* posixParentChainRefusal(probe.directory).pipe(
+              Effect.flatMap(maybeParentRefusal => {
+                if (Option.isSome(maybeParentRefusal)) {
+                  return Effect.succeed(maybeParentRefusal)
+                }
+
+                const maybeLeafRefusal = posixDirectoryRefusal(
+                  probe.entry.mode,
+                  probe.entry.uid,
+                )
+
+                if (Option.isSome(maybeLeafRefusal)) {
+                  return Effect.succeed(maybeLeafRefusal)
+                }
+
+                return process.platform === 'darwin'
+                  ? darwinAclChainRefusal(probe.directory)
+                  : Effect.succeed(Option.none<string>())
+              }),
             )
 
       if (Option.isSome(maybeRefusal)) {

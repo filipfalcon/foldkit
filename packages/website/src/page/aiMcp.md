@@ -100,13 +100,13 @@ The browser bridge runs alongside DevTools and subscribes to the DevTools store.
 
 ### Relay Discovery and Access
 
-The plugin publishes the relay's address to a registry private to your user. The address includes a random token that every client must present before inspecting a Model or dispatching a Message. The plugin refuses to publish into a directory owned by another user or readable by other users. The registry lives under `XDG_RUNTIME_DIR` when set, or under the operating system's temporary directory. `FOLDKIT_DEVTOOLS_RELAY_DIRECTORY` selects another directory.
+The plugin publishes the relay's address to a registry private to your user. The address includes a random token that every client must present before inspecting a Model or dispatching a Message. The plugin refuses to publish into a directory owned by another user or readable by other users. On macOS, it also refuses directory ACLs that grant access. The registry lives under `XDG_RUNTIME_DIR` when set, or under the operating system's temporary directory. `FOLDKIT_DEVTOOLS_RELAY_DIRECTORY` selects another directory; on Windows, that directory must be a direct child of the user's temporary directory.
 
 The token keeps an unapproved relay client from connecting. It does not hide runtime data from the agent that was given the MCP server.
 
 ### Registry Directory Check on Windows
 
-On Windows, the plugin and the MCP server read the registry directory's owner and access list with PowerShell's `Get-Acl`. They use the directory only when it is private to your user: owned by you, SYSTEM, or Administrators, with no access granted to another account. If the check refuses the directory or cannot run, set `devToolsMcpPort` in the Vite config and pass the same port in `FOLDKIT_DEVTOOLS_MCP_PORT`. This opens a separate socket on every interface without a token. Do not use a fixed port on a shared or untrusted network.
+On Windows, the plugin and the MCP server check the registry directory and its ancestors with PowerShell, refusing reparse points and paths another user can replace. The registry must be a direct child of the user's temporary directory and private to your user. If the check refuses the directory or cannot run, set `devToolsMcpPort` in the Vite config and pass the same port in `FOLDKIT_DEVTOOLS_MCP_PORT`. This opens a separate socket on every interface without a token. Do not use a fixed port on a shared or untrusted network.
 
 ### Dev Server Discovery and Runtime Selection
 
