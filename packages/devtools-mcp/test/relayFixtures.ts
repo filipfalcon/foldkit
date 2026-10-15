@@ -149,11 +149,18 @@ export const startApplication = async (
   })
   onTestFinished(() => server.close().catch(() => undefined))
   await server.listen()
-  await expect
-    .poll(() => publishedRelayCount(root, registryReader), {
-      timeout: POLL_TIMEOUT,
-    })
-    .toBe(relaysBefore + 1)
+  try {
+    await expect
+      .poll(() => publishedRelayCount(root, registryReader), {
+        timeout: POLL_TIMEOUT,
+      })
+      .toBe(relaysBefore + 1)
+  } catch (error) {
+    throw new Error(
+      `Relay did not publish for ${root}. Plugin errors: ${loggedErrors().join(' | ')}`,
+      { cause: error },
+    )
+  }
   return server
 }
 
