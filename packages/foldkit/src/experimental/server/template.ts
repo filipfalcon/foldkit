@@ -33,10 +33,10 @@ const NEUTRAL_CONTEXT_PREFIX =
 const NEUTRAL_CONTEXT_SUFFIX = '</body></html>'
 
 // NOTE: the template's mutation targets (the container, the <title>, the
-// <html> element, and color-scheme/canonical/og:url elements) are located by
-// parsing the template with a real HTML tokenizer and reading each element's
-// source offsets, not by matching regular expressions. A regex cannot model
-// the tokenizer's states, so a `>` inside a quoted attribute, a
+// <html> element, and the color-scheme/canonical/og:url head elements) are
+// located by parsing the template with a real HTML tokenizer and reading each
+// element's source offsets, not by matching regular expressions. A regex cannot
+// model the tokenizer's states, so a `>` inside a quoted attribute, a
 // canonical-looking or container-looking string inside a <script>, the
 // script-data-double-escaped state, and a comment-terminating metadata value
 // all let context-blind matching write request or application text into an

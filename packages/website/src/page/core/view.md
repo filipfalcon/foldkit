@@ -30,7 +30,7 @@ A `makeApplication` view returns a `Document`, not bare HTML. The Document conta
 | `body`        | `Html`                     | Yes      | Patches it into the application container.                                                                                                     |
 | `lang`        | `string`                   | No       | Writes it to `lang` on `<html>`. An omission leaves the current attribute unchanged.                                                           |
 | `dir`         | `'Ltr' \| 'Rtl' \| 'Auto'` | No       | Writes the lowercase value to `dir` on `<html>`. An omission leaves the current attribute unchanged.                                           |
-| `colorScheme` | `ColorScheme`              | No       | Writes the lowercase value to `<meta name="color-scheme">`. An omission follows the same restoration rule as `canonical`.                      |
+| `colorScheme` | `ColorScheme`              | No       | Writes its [`content` value](#color-scheme) to `<meta name="color-scheme">`. An omission follows the same restoration rule as `canonical`.     |
 | `canonical`   | `string`                   | No       | Writes it to `<link rel="canonical">`. An omission restores the value recorded before the first client write or removes a runtime-created tag. |
 | `ogUrl`       | `string`                   | No       | Writes it to `<meta property="og:url">`. An omission uses an explicit `canonical`; otherwise it follows the same restoration rule.             |
 
@@ -78,7 +78,7 @@ A `color-scheme` other than `normal` declared on the root element in a styleshee
 | `OnlyLight` | `only light` |
 | `OnlyDark`  | `only dark`  |
 
-`LightDark` and `DarkLight` support both schemes and prefer the first. `OnlyLight` and `OnlyDark` also stop the browser from forcing another scheme on the page. An omitted `colorScheme` follows the rule for [restoring served metadata](#restoring-served-metadata).
+`LightDark` and `DarkLight` support both schemes and prefer the first. `OnlyLight` and `OnlyDark` also stop the browser from forcing another scheme on the page. An omitted `colorScheme` follows the rule for [restoring served metadata](#restoring-served-metadata). After hydration, that rule restores the scheme the server rendered for the request, not the template's default.
 
 ### Canonical and Share URLs
 

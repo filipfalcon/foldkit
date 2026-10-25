@@ -222,7 +222,7 @@ const colorSchemeMetas = (): ReadonlyArray<Element> =>
     document.head.querySelectorAll('meta[name="color-scheme"]'),
   )
 
-const colorSchemeContents = (): ReadonlyArray<string | null> =>
+const headColorSchemeContents = (): ReadonlyArray<string | null> =>
   Array.map(colorSchemeMetas(), meta => meta.getAttribute('content'))
 
 const appendServedColorScheme = (
@@ -828,7 +828,7 @@ describe('makeApplication', () => {
             .querySelector('meta[property="og:url"]')
             ?.getAttribute('content'),
         ).toBe(canonicalUrl)
-        expect(colorSchemeContents()).toEqual(['dark'])
+        expect(headColorSchemeContents()).toEqual(['dark'])
       })
     } finally {
       if (document.head !== originalHead) {
@@ -973,11 +973,11 @@ describe('makeApplication', () => {
 
     try {
       await awaitBodyText('state:Dark-0')
-      expect(colorSchemeContents()).toEqual(['dark'])
+      expect(headColorSchemeContents()).toEqual(['dark'])
 
       clickButton('Light')
       await awaitBodyText('state:Light-0')
-      expect(colorSchemeContents()).toEqual(['light'])
+      expect(headColorSchemeContents()).toEqual(['light'])
     } finally {
       await Effect.runPromise(Fiber.interrupt(fiber))
     }
@@ -992,7 +992,7 @@ describe('makeApplication', () => {
       for (const { colorScheme, content } of COLOR_SCHEME_CONTENTS) {
         clickButton(colorScheme)
         await awaitBodyText(`state:${colorScheme}-0`)
-        expect(colorSchemeContents()).toEqual([content])
+        expect(headColorSchemeContents()).toEqual([content])
       }
     } finally {
       await Effect.runPromise(Fiber.interrupt(fiber))
@@ -1034,7 +1034,7 @@ describe('makeApplication', () => {
 
     try {
       await awaitBodyText('state:Dark-0')
-      expect(colorSchemeContents()).toEqual(['dark'])
+      expect(headColorSchemeContents()).toEqual(['dark'])
 
       clickButton('clear')
       await awaitBodyText('state:None-0')
